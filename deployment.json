@@ -1,0 +1,52 @@
+{
+  "root": "tidepool-sandbox.testnet",
+  "verifier": "verifier.tidepool-sandbox.testnet",
+  "maker": "maker.tidepool-sandbox.testnet",
+  "verifierWasmSha256": "f67f9559b3b512c52dfa11723a28b9119bcf773ac01780370d6409e5f1fb20e5",
+  "tokens": [
+    "nep141:usdc.tidepool-sandbox.testnet",
+    "nep141:usdt.tidepool-sandbox.testnet",
+    "nep141:wnear.tidepool-sandbox.testnet",
+    "nep141:wbtc.tidepool-sandbox.testnet",
+    "nep141:eth.tidepool-sandbox.testnet",
+    "nep141:xaut.tidepool-sandbox.testnet"
+  ],
+  "bootstrapTxs": [
+    {
+      "label": "storage ETH",
+      "h": "EtaMwKYWsFHEnzw3FNkrGH56qGHRdCE7KCdJDVJsUQVY"
+    },
+    {
+      "label": "mint ETH",
+      "h": "H5z925nEV23HiZGA5gkcJBgnzzpKMRj397SeHnHYnLND"
+    },
+    {
+      "label": "deposit ETH",
+      "h": "EoGUY9nYx5MAd4JQvY7RaHmLXmYozhWL95rwGqYdFUpg"
+    },
+    {
+      "label": "create xaut.tidepool-sandbox.testnet",
+      "h": "9qj9unTkKf7H5g5bTRevwPQA5Q6zvgqprWqKssWsxVCj"
+    },
+    {
+      "label": "deploy xaut.tidepool-sandbox.testnet",
+      "h": "GBCkbdFx5eGU1moxmAMXSzMMwQuqQFA3i9PxAJNvus9D"
+    },
+    {
+      "label": "init xaut.tidepool-sandbox.testnet",
+      "h": "AgLSX1Zw9K5dyFR1axetHnRnAYQ8QVny6aBqJUS41Pin"
+    },
+    {
+      "label": "storage XAUT",
+      "h": "6WFP34BCPCUtsP2BMsRR4ZunkHfPBXm8q8iEbKW5kRWr"
+    },
+    {
+      "label": "mint XAUT",
+      "h": "CPUjQvgbicbmunD2pScb5GMESpn33asZai1VtFnfJHbR"
+    },
+    {
+      "label": "deposit XAUT",
+      "h": "9NPUvepxeQoUr4q6afuZFLUQanLdJjd5LEFt4ULBuH8"
+    }
+  ]
+}

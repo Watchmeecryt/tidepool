@@ -1,0 +1,76 @@
+// Tidepool server: 1Click-compatible API, faucet, settlement worker and the docs site.
+import http from 'node:http';
+import fs from 'node:fs';
+import path from 'node:path';
+import { loadKeys, view, viewAccount, rpc } from './near.mjs';
+import { ROOT, VERIFIER, MAKER, TOKENS, VERIFIER_WASM_SHA256, VERIFIER_RELEASE, fromUnits } from './config.mjs';
+import { quote, tokens, statusOf, submitDeposit, startWorker, initEngine, BadRequest, makerBalance } from './engine.mjs';
+import { drip } from './faucet.mjs';
+import { prices } from './prices.mjs';
+import { db } from './store.mjs';
+import { renderPage, docs, llmsTxt, llmsFull, agentsMd } from './site.mjs';
+
+await loadKeys({ env: process.env.TIDEPOOL_KEYS, dir: process.env.TIDEPOOL_KEYS ? null : new URL('../../.secrets', import.meta.url).pathname });
+await initEngine();
+startWorker();
+
+const PUBLIC = new URL('../../site/public/', import.meta.url).pathname;
+const json = (res, code, body) => { res.writeHead(code, { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'cache-control': 'no-store' }); res.end(JSON.stringify(body)); };
+const text = (res, body, type = 'text/plain; charset=utf-8') => { res.writeHead(200, { 'content-type': type, 'access-control-allow-origin': '*' }); res.end(body); };
+const readBody = (req) => new Promise((ok, bad) => { let b = ''; req.on('data', c => { b += c; if (b.length > 1e5) req.destroy(); }); req.on('end', () => { try { ok(b ? JSON.parse(b) : {}); } catch { bad(new BadRequest('Body must be JSON')); } }); });
+const authed = (req) => Boolean(req.headers['x-api-key'] || /^Bearer\s+\S+/i.test(req.headers.authorization || ''));
+const ip = (req) => String(req.headers['x-forwarded-for'] || req.socket.remoteAddress).split(',')[0].trim();
+
+async function health() {
+  const out = { service: 'tidepool', network: 'testnet', verifier: VERIFIER, verifierWasmSha256: VERIFIER_WASM_SHA256, verifierRelease: VERIFIER_RELEASE, maker: MAKER, checks: {} };
+  const t0 = Date.now();
+  try { const b = await rpc('block', { finality: 'final' }); out.checks.rpc = { ok: true, height: b.header.height, ms: Date.now() - t0 }; } catch (e) { out.checks.rpc = { ok: false, error: e.message }; }
+  try { const a = await viewAccount(VERIFIER); const code = Buffer.from(a.code_hash ? (await import('bs58')).default.decode(a.code_hash) : []).toString('hex'); out.checks.verifier = { ok: code === VERIFIER_WASM_SHA256, codeHashHex: code }; } catch (e) { out.checks.verifier = { ok: false, error: e.message }; }
+  const p = await prices(); out.checks.prices = { ok: p.source === 'coingecko', source: p.source, updatedAt: new Date(p.at).toISOString(), error: p.error };
+  try { out.checks.makerInventory = { ok: true, balances: Object.fromEntries(await Promise.all(TOKENS.map(async t => [t.symbol, fromUnits(await makerBalance(t.assetId), t.decimals)]))) }; } catch (e) { out.checks.makerInventory = { ok: false, error: e.message }; }
+  const all = Object.values(db.swaps);
+  const count = (s) => all.filter(x => x.status === s).length;
+  out.swaps = { total: all.length, success: count('SUCCESS'), refunded: count('REFUNDED'), failed: count('FAILED'), active: all.filter(x => ['PENDING_DEPOSIT', 'KNOWN_DEPOSIT_TX', 'INCOMPLETE_DEPOSIT', 'PROCESSING'].includes(x.status)).length };
+  out.recent = all.filter(x => ['SUCCESS', 'REFUNDED'].includes(x.status)).slice(-5).reverse().map(x => ({ status: x.status, pair: `${x.quoteResponse.quoteRequest.originAsset.split(':')[1].split('.')[0]} → ${x.quoteResponse.quoteRequest.destinationAsset.split(':')[1].split('.')[0]}`, updatedAt: x.updatedAt, tx: x.txs.at(-1) && `https://testnet.nearblocks.io/txns/${x.txs.at(-1).hash}` }));
+  out.ok = Object.values(out.checks).every(c => c.ok || c.source === 'fallback' || c.source === 'coingecko-stale');
+  return out;
+}
+let healthCache = { at: 0 };
+
+const server = http.createServer(async (req, res) => {
+  const url = new URL(req.url, 'http://x');
+  const p = url.pathname;
+  try {
+    if (req.method === 'OPTIONS') { res.writeHead(204, { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type, authorization, x-api-key', 'access-control-allow-methods': 'GET, POST, OPTIONS' }); return res.end(); }
+    // ---- API (1Click-compatible) ----
+    if (p === '/v0/tokens' && req.method === 'GET') return json(res, 200, await tokens());
+    if (p === '/v0/quote' && req.method === 'POST') return json(res, 201, await quote(await readBody(req), { authed: authed(req) }));
+    if (p === '/v0/deposit/submit' && req.method === 'POST') return json(res, 201, submitDeposit(await readBody(req)));
+    if (p === '/v0/status' && req.method === 'GET') { const s = statusOf(url.searchParams.get('depositAddress')); return s ? json(res, 200, s) : json(res, 404, { message: 'Deposit address not found' }); }
+    // ---- Tidepool extensions ----
+    if (p === '/v0/faucet' && req.method === 'POST') return json(res, 200, await drip(await readBody(req), ip(req)));
+    if (p === '/v0/health') { if (Date.now() - healthCache.at > 10_000) healthCache = { at: Date.now(), body: await health() }; return json(res, 200, healthCache.body); }
+    if (p.startsWith('/v0/')) return json(res, 404, { message: 'Not found' });
+    // ---- site ----
+    if (p === '/openapi.json') return text(res, fs.readFileSync(PUBLIC + 'openapi.json'), 'application/json');
+    if (p === '/llms.txt') return text(res, llmsTxt(origin(req)));
+    if (p === '/llms-full.txt') return text(res, llmsFull(origin(req)));
+    if (p === '/AGENTS.md' || p === '/agents.md') return text(res, agentsMd(origin(req)), 'text/markdown; charset=utf-8');
+    const asMd = p.endsWith('.md');
+    const slug = (asMd ? p.slice(0, -3) : p).replace(/\/$/, '') || '/';
+    const page = docs(origin(req))[slug === '/index' ? '/' : slug];
+    if (page) return asMd ? text(res, page.md, 'text/markdown; charset=utf-8') : text(res, renderPage(slug, page, origin(req)), 'text/html; charset=utf-8');
+    const file = path.join(PUBLIC, path.normalize(p).replace(/^(\.\.[/\\])+/, ''));
+    if (file.startsWith(PUBLIC) && fs.existsSync(file) && fs.statSync(file).isFile()) {
+      const types = { '.svg': 'image/svg+xml', '.css': 'text/css', '.js': 'text/javascript', '.png': 'image/png', '.ico': 'image/x-icon', '.mjs': 'text/javascript' };
+      return text(res, fs.readFileSync(file), types[path.extname(file)] || 'application/octet-stream');
+    }
+    res.writeHead(404, { 'content-type': 'text/html' }); res.end(renderPage('/404', { title: 'Not found', md: '# Not found\n\nThat page is not in the pool. [Back home](/).' }, origin(req)));
+  } catch (e) {
+    const code = e.code && Number.isInteger(e.code) ? e.code : 500;
+    if (code >= 500) console.error(p, e);
+    json(res, code, { message: e.message });
+  }
+});
+const origin = (req) => process.env.PUBLIC_URL || `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}`;
+server.listen(process.env.PORT || 8080, () => console.log('tidepool listening on', process.env.PORT || 8080));

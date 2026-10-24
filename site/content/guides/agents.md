@@ -1,0 +1,37 @@
+# Tidepool for agents
+
+Tidepool is built to be read and used by coding agents and autonomous agents.
+
+## Files for agents
+
+- [`/llms.txt`](/llms.txt): an index of every page with a one-line summary.
+- [`/llms-full.txt`](/llms-full.txt): every page in one plain-text file.
+- [`/AGENTS.md`](/AGENTS.md): rules of the road for agents that call the API.
+- [`/openapi.json`](/openapi.json): the machine-readable API.
+- Any docs page as Markdown: add `.md` to its URL, for example [`/docs/quickstart.md`](/docs/quickstart.md).
+
+## A full swap from a script
+
+The repo ships `examples/swap.mjs`. It uses a fresh testnet account, so it needs no setup beyond Node 20:
+
+```bash
+git clone <repo> && cd tidepool/examples && npm install
+TIDEPOOL_URL={{ORIGIN}} node swap.mjs            # quote → deposit → status → SUCCESS
+TIDEPOOL_URL={{ORIGIN}} node swap.mjs --refund   # deposit too little, wait for REFUNDED
+```
+
+What it does:
+
+1. Creates a throwaway testnet account through the public testnet helper.
+2. Calls `POST /v0/faucet` with `mode: "intents"`.
+3. Calls `POST /v0/quote` with `dry: false` and `depositType: "INTENTS"`.
+4. Deposits with a signed NEP-413 `transfer` intent to the deposit address. The script submits it with `execute_intents` from its own account, so it pays its own gas.
+5. Calls `POST /v0/deposit/submit`, then polls `GET /v0/status` until `SUCCESS` or `REFUNDED`.
+
+## Rules for agents
+
+- Always get a dry quote first and check `amountOut` and `minAmountOut` before going live.
+- Deposit exactly `quote.amountIn`. Under `minAmountIn` waits for more until the deadline, then refunds.
+- Poll `/v0/status` every 2 to 5 seconds. Stop on `SUCCESS`, `REFUNDED` or `FAILED`.
+- Faucet: one drip per account and mode per hour. Do not loop on it.
+- Never send real assets. Tidepool is testnet only.

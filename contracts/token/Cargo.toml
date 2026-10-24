@@ -1,0 +1,27 @@
+[package]
+name = "tidepool_token"
+version = "0.1.0"
+edition = "2021"
+description = "Tidepool testnet NEP-141 token (no real value)"
+repository = "https://github.com/Watchmeecryt/tidepool"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+near-sdk = "5.29.1"
+near-contract-standards = "5.29.1"
+
+[profile.release]
+codegen-units = 1
+opt-level = "z"
+lto = true
+debug = false
+panic = "abort"
+overflow-checks = true
+
+[package.metadata.near.reproducible_build]
+image = "sourcescan/cargo-near:0.22.0-rust-1.86.0"
+image_digest = "sha256:0"
+passed_env = []
+container_build_command = ["cargo", "near", "build", "non-reproducible-wasm", "--locked"]
