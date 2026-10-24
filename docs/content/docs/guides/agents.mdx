@@ -19,8 +19,8 @@ The repo ships `examples/swap.mjs`. It uses a fresh testnet account, so it needs
 
 ```bash
 git clone <your copy of the tidepool repo> && cd tidepool/examples && npm install
-TIDEPOOL_URL=https://tidepool-production-8594.up.railway.app node swap.mjs            # quote → deposit → status → SUCCESS
-TIDEPOOL_URL=https://tidepool-production-8594.up.railway.app node swap.mjs --refund   # deposit too little, wait for REFUNDED
+TIDEPOOL_URL=https://www.usetidepool.tech node swap.mjs            # quote → deposit → status → SUCCESS
+TIDEPOOL_URL=https://www.usetidepool.tech node swap.mjs --refund   # deposit too little, wait for REFUNDED
 ```
 
 What it does:
@@ -45,7 +45,7 @@ Paste this into your agent's system prompt:
 
 ```text
 You can swap test tokens on NEAR testnet through Tidepool, a 1Click-compatible sandbox
-(base URL https://tidepool-production-8594.up.railway.app). Read /llms-full.txt for the API.
+(base URL https://www.usetidepool.tech). Read /llms-full.txt for the API.
 Flow: POST /v0/faucet → POST /v0/quote (dry:true, then dry:false) → deposit quote.amountIn
 to quote.depositAddress → POST /v0/deposit/submit → poll GET /v0/status until SUCCESS,
 REFUNDED or FAILED. Amounts are strings in base units. Testnet only.

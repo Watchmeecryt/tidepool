@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { SwapFlow } from '@/components/diagrams';
 
-const ORIGIN = 'https://tidepool-production-8594.up.railway.app';
+const ORIGIN = 'https://www.usetidepool.tech';
 
 const features = [
   { t: 'Official verifier', d: 'defuse v0.4.2, byte-identical to the GitHub release and re-checked by /v0/health.' },

@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://tidepool-production-8594.up.railway.app",
+      "url": "https://www.usetidepool.tech",
       "description": "Tidepool testnet"
     }
   ],

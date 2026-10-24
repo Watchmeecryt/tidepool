@@ -6,7 +6,7 @@ const here = path.dirname(new URL(import.meta.url).pathname);
 const spec = JSON.parse(fs.readFileSync(path.join(here, '../../site/public/openapi.json'), 'utf8'));
 const examples = JSON.parse(fs.readFileSync(path.join(here, 'examples.json'), 'utf8'));
 const out = path.join(here, '../content/docs/api-reference');
-const ORIGIN = spec.servers?.[0]?.url || 'https://tidepool-production-8594.up.railway.app';
+const ORIGIN = spec.servers?.[0]?.url || 'https://www.usetidepool.tech';
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
 

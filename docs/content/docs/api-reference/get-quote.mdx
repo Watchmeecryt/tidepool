@@ -17,7 +17,7 @@ Generates a swap quote based on input parameters such as the assets, amount, sli
 <Tab value="curl">
 
 ```bash
-curl -X POST "https://tidepool-production-8594.up.railway.app/v0/quote" \
+curl -X POST "https://www.usetidepool.tech/v0/quote" \
   -H 'content-type: application/json' \
   -d '{
   "dry": true,
@@ -39,7 +39,7 @@ curl -X POST "https://tidepool-production-8594.up.railway.app/v0/quote" \
 <Tab value="JavaScript">
 
 ```ts
-const res = await fetch('https://tidepool-production-8594.up.railway.app/v0/quote', {
+const res = await fetch('https://www.usetidepool.tech/v0/quote', {
   method: 'POST',
   headers: { 'content-type': 'application/json' },
   body: JSON.stringify({

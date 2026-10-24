@@ -1,7 +1,7 @@
 import { createGetUrl } from 'fumadocs-core/source';
 
 export const appName = 'Tidepool';
-export const ORIGIN = process.env.NEXT_PUBLIC_TIDEPOOL_URL || 'https://tidepool-production-8594.up.railway.app';
+export const ORIGIN = process.env.NEXT_PUBLIC_TIDEPOOL_URL || 'https://www.usetidepool.tech';
 export const docsRoute = '/docs';
 export const docsImageRoute = '/og/docs';
 export const docsContentRoute = '/llms.mdx/docs';

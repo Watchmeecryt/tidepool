@@ -42,7 +42,7 @@ Before your first intents signature, your account needs a public key registered 
 The worker polls every deposit address, so this is optional, but it moves the status to `KNOWN_DEPOSIT_TX` right away:
 
 ```bash
-curl -X POST https://tidepool-production-8594.up.railway.app/v0/deposit/submit -H 'content-type: application/json' \
+curl -X POST https://www.usetidepool.tech/v0/deposit/submit -H 'content-type: application/json' \
   -d '{"txHash":"<hash>","depositAddress":"<depositAddress>"}'
 ```
 

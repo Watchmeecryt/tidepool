@@ -19,7 +19,7 @@ Drips every Tidepool test token to a NEAR testnet account. mode=wallet mints NEP
 <Tab value="curl">
 
 ```bash
-curl -X POST "https://tidepool-production-8594.up.railway.app/v0/faucet" \
+curl -X POST "https://www.usetidepool.tech/v0/faucet" \
   -H 'content-type: application/json' \
   -d '{
   "accountId": "alice.testnet",
@@ -31,7 +31,7 @@ curl -X POST "https://tidepool-production-8594.up.railway.app/v0/faucet" \
 <Tab value="JavaScript">
 
 ```ts
-const res = await fetch('https://tidepool-production-8594.up.railway.app/v0/faucet', {
+const res = await fetch('https://www.usetidepool.tech/v0/faucet', {
   method: 'POST',
   headers: { 'content-type': 'application/json' },
   body: JSON.stringify({

@@ -17,7 +17,7 @@ Optionally notifies the 1Click service that a deposit has been sent to the speci
 <Tab value="curl">
 
 ```bash
-curl -X POST "https://tidepool-production-8594.up.railway.app/v0/deposit/submit" \
+curl -X POST "https://www.usetidepool.tech/v0/deposit/submit" \
   -H 'content-type: application/json' \
   -d '{
   "txHash": "HbwEo318L69bJS7XYse18mUTzBBa2tjK6wtGeDYo3dY8",
@@ -29,7 +29,7 @@ curl -X POST "https://tidepool-production-8594.up.railway.app/v0/deposit/submit"
 <Tab value="JavaScript">
 
 ```ts
-const res = await fetch('https://tidepool-production-8594.up.railway.app/v0/deposit/submit', {
+const res = await fetch('https://www.usetidepool.tech/v0/deposit/submit', {
   method: 'POST',
   headers: { 'content-type': 'application/json' },
   body: JSON.stringify({
