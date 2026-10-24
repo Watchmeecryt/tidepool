@@ -3,3 +3,7 @@ node_modules
 contracts/token/target
 .git
 *.log
+docs/node_modules
+docs/.next
+docs/out
+docs/.source

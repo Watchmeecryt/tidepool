@@ -1,0 +1,27 @@
+---
+title: Tokens and contracts
+description: Every Tidepool test token, its asset id, decimals and owner.
+---
+
+| Symbol | Asset id | Decimals | Faucet drip |
+| --- | --- | --- | --- |
+| USDC | `nep141:usdc.tidepool-sandbox.testnet` | 6 | 100 |
+| USDT | `nep141:usdt.tidepool-sandbox.testnet` | 6 | 100 |
+| wNEAR | `nep141:wnear.tidepool-sandbox.testnet` | 24 | 40 |
+| wBTC | `nep141:wbtc.tidepool-sandbox.testnet` | 8 | 0.001 |
+| ETH | `nep141:eth.tidepool-sandbox.testnet` | 18 | 0.03 |
+| XAUT | `nep141:xaut.tidepool-sandbox.testnet` | 6 | 0.03 |
+
+All are standard NEP-141 tokens (with NEP-145 storage) and use the same contract code. Names read "Tidepool Testnet X (no value)". Read the live list, including USD prices, from [`GET /v0/tokens`](/docs/api-reference/get-tokens).
+
+## Admin methods
+
+| Method | Who | Effect |
+| --- | --- | --- |
+| `owner_id()` | view | Returns the owner. Currently `privacei.testnet` on all six. |
+| `is_minter({ account_id })` | view | `true` for the owner and allowed minters. |
+| `mint({ account_id, amount })` | owner or minter | Mints any amount. Used by the faucet. |
+| `add_minter` / `remove_minter({ account_id })` | owner | Manage the minter allowlist. |
+| `set_owner({ new_owner })` | owner | Transfers ownership and registers storage for the new owner. |
+
+Current minters: `tidepool-sandbox.testnet` (wallet faucet) and `maker.tidepool-sandbox.testnet`.

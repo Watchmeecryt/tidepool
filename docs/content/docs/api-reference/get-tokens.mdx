@@ -1,0 +1,87 @@
+---
+title: "Get supported tokens"
+description: "GET /v0/tokens · 1Click-compatible"
+---
+
+<p><span className="tp-method tp-get">GET</span><code>/v0/tokens</code></p>
+
+Returns all six Tidepool test tokens (two shown below) with live USD prices. `ondoTokens` is accepted and ignored.
+
+Retrieves a list of tokens currently supported by the 1Click API for asset swaps. Each token entry includes its blockchain, contract address (if available), price in USD, and other metadata such as symbol and decimals.
+
+**Operation id:** `getTokens`
+
+## Request
+
+<Tabs items={['curl', 'JavaScript']}>
+<Tab value="curl">
+
+```bash
+curl "https://tidepool-production-8594.up.railway.app/v0/tokens"
+```
+
+</Tab>
+<Tab value="JavaScript">
+
+```ts
+const res = await fetch('https://tidepool-production-8594.up.railway.app/v0/tokens');
+const data = await res.json();
+```
+
+</Tab>
+</Tabs>
+
+### Try it
+
+<TryIt method="GET" path={"/v0/tokens"} />
+
+### Query parameters
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| `ondoTokens` | string |  | Show Ondo tokens if the query is set |
+
+## Responses
+
+### 200 
+
+```json
+[
+  {
+    "assetId": "nep141:usdc.tidepool-sandbox.testnet",
+    "decimals": 6,
+    "blockchain": "near",
+    "symbol": "USDC",
+    "price": 0.999585,
+    "priceUpdatedAt": "2026-10-24T21:30:25.128Z",
+    "contractAddress": "usdc.tidepool-sandbox.testnet",
+    "coingeckoId": "usd-coin"
+  },
+  {
+    "assetId": "nep141:usdt.tidepool-sandbox.testnet",
+    "decimals": 6,
+    "blockchain": "near",
+    "symbol": "USDT",
+    "price": 0.999101,
+    "priceUpdatedAt": "2026-10-24T21:30:25.128Z",
+    "contractAddress": "usdt.tidepool-sandbox.testnet",
+    "coingeckoId": "tether"
+  }
+]
+```
+
+<Accordions><Accordion title="Response fields">
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `[]assetId` | string | yes | Unique asset identifier |
+| `[]decimals` | number | yes | Number of decimals for the token |
+| `[]blockchain` | "near" | yes | Blockchain associated with the token |
+| `[]symbol` | string | yes | Token symbol (e.g. BTC, ETH) |
+| `[]price` | number | yes | Current price of the token in USD |
+| `[]priceUpdatedAt` | string | yes | Date when the token price was last updated |
+| `[]contractAddress` | string |  | Contract address of the token |
+| `[]coingeckoId` | string |  | CoinGecko coin id, when known. Use it to fetch price history from CoinGecko. |
+
+</Accordion></Accordions>
+

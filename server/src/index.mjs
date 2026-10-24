@@ -15,6 +15,24 @@ await initEngine();
 startWorker();
 
 const PUBLIC = new URL('../../site/public/', import.meta.url).pathname;
+const DOCS = new URL('../../docs/out/', import.meta.url).pathname;
+const TYPES = { '.html': 'text/html; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.md': 'text/markdown; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.css': 'text/css', '.js': 'text/javascript', '.mjs': 'text/javascript', '.png': 'image/png', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.webp': 'image/webp' };
+const sendFile = (res, file, code = 200) => { const immutable = file.includes('/_next/static/'); res.writeHead(code, { 'content-type': TYPES[path.extname(file)] || 'application/octet-stream', 'access-control-allow-origin': '*', 'cache-control': immutable ? 'public, max-age=31536000, immutable' : 'public, max-age=60' }); res.end(fs.readFileSync(file)); };
+const LEGACY = { '/quickstart': '/docs/quickstart', '/faucet': '/docs/guides/faucet', '/status': '/docs/status', '/guides/first-swap': '/docs/guides/first-swap', '/guides/sdk': '/docs/guides/sdk', '/guides/agents': '/docs/guides/agents' };
+function serveDocs(req, res, p) {
+  let rel = decodeURIComponent(p).replace(/\/+$/, '') || '/';
+  if (LEGACY[rel]) { res.writeHead(301, { location: LEGACY[rel] }); return res.end(); }
+  if (LEGACY[rel.replace(/\.md$/, '')]) { res.writeHead(301, { location: LEGACY[rel.replace(/\.md$/, '')] + '.md' }); return res.end(); }
+  // Markdown view of any docs page: /docs/x.md or /docs/x.mdx -> /llms.mdx/docs/x/content.md
+  const md = rel.match(/^\/docs(\/.*)?\.mdx?$/);
+  if (md) rel = `/llms.mdx/docs${md[1] || ''}/content.md`;
+  const safe = path.normalize(rel).replace(/^(\.\.[/\\])+/, '');
+  for (const cand of [safe, safe + '.html', path.join(safe, 'index.html')]) {
+    const file = path.join(DOCS, cand);
+    if (file.startsWith(DOCS) && fs.existsSync(file) && fs.statSync(file).isFile()) return sendFile(res, file);
+  }
+  return sendFile(res, DOCS + '404.html', 404);
+}
 const json = (res, code, body) => { res.writeHead(code, { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'cache-control': 'no-store' }); res.end(JSON.stringify(body)); };
 const text = (res, body, type = 'text/plain; charset=utf-8') => { res.writeHead(200, { 'content-type': type, 'access-control-allow-origin': '*' }); res.end(body); };
 const readBody = (req) => new Promise((ok, bad) => { let b = ''; req.on('data', c => { b += c; if (b.length > 1e5) req.destroy(); }); req.on('end', () => { try { ok(b ? JSON.parse(b) : {}); } catch { bad(new BadRequest('Body must be JSON')); } }); });
@@ -53,18 +71,17 @@ const server = http.createServer(async (req, res) => {
     if (p.startsWith('/v0/')) return json(res, 404, { message: 'Not found' });
     // ---- site ----
     if (p === '/openapi.json') return text(res, fs.readFileSync(PUBLIC + 'openapi.json'), 'application/json');
+    if (p === '/AGENTS.md' || p === '/agents.md') return text(res, agentsMd(origin(req)), 'text/markdown; charset=utf-8');
+    if (fs.existsSync(DOCS + 'index.html')) return serveDocs(req, res, p);
+    // fallback: built-in renderer when the docs export is missing
     if (p === '/llms.txt') return text(res, llmsTxt(origin(req)));
     if (p === '/llms-full.txt') return text(res, llmsFull(origin(req)));
-    if (p === '/AGENTS.md' || p === '/agents.md') return text(res, agentsMd(origin(req)), 'text/markdown; charset=utf-8');
     const asMd = p.endsWith('.md');
     const slug = (asMd ? p.slice(0, -3) : p).replace(/\/$/, '') || '/';
     const page = docs(origin(req))[slug === '/index' ? '/' : slug];
     if (page) return asMd ? text(res, page.md, 'text/markdown; charset=utf-8') : text(res, renderPage(slug, page, origin(req)), 'text/html; charset=utf-8');
     const file = path.join(PUBLIC, path.normalize(p).replace(/^(\.\.[/\\])+/, ''));
-    if (file.startsWith(PUBLIC) && fs.existsSync(file) && fs.statSync(file).isFile()) {
-      const types = { '.svg': 'image/svg+xml', '.css': 'text/css', '.js': 'text/javascript', '.png': 'image/png', '.ico': 'image/x-icon', '.mjs': 'text/javascript' };
-      return text(res, fs.readFileSync(file), types[path.extname(file)] || 'application/octet-stream');
-    }
+    if (file.startsWith(PUBLIC) && fs.existsSync(file) && fs.statSync(file).isFile()) return sendFile(res, file);
     res.writeHead(404, { 'content-type': 'text/html' }); res.end(renderPage('/404', { title: 'Not found', md: '# Not found\n\nThat page is not in the pool. [Back home](/).' }, origin(req)));
   } catch (e) {
     const code = e.code && Number.isInteger(e.code) ? e.code : 500;

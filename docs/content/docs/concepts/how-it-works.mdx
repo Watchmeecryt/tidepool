@@ -1,0 +1,56 @@
+---
+title: How it works
+description: The verifier, the maker, deposit addresses, and how a quote becomes a settled swap.
+---
+
+<SwapFlow />
+
+Tidepool has four moving parts. Three run on NEAR testnet and one is the API server.
+
+## The verifier
+
+The verifier is the **official NEAR Intents contract** (`defuse` v0.4.2), deployed unmodified at [`verifier.tidepool-sandbox.testnet`](https://testnet.nearblocks.io/address/verifier.tidepool-sandbox.testnet). Its wasm SHA-256 is `f67f9559…20e5`, byte-identical to the [GitHub release](https://github.com/near/intents/releases/tag/defuse/v0.4.2). [`/v0/health`](/docs/api-reference/tidepool-health) re-checks the on-chain code hash on every call.
+
+The verifier keeps an internal multi-token ledger (NEP-245). Tokens enter it via `ft_transfer_call` and leave via `ft_withdraw` intents. Inside it, accounts swap by signing **intents**: NEP-413 messages that say "my balance of X goes down by a, my balance of Y goes up by b". The verifier executes a batch only if every `token_diff` in the batch nets to zero, so neither side can be shortchanged. That atomicity is the whole trust story of a swap.
+
+## The maker (solver)
+
+The maker is [`maker.tidepool-sandbox.testnet`](https://testnet.nearblocks.io/address/maker.tidepool-sandbox.testnet), an account that **Tidepool runs**. It holds inventory of every test token inside the verifier and is the counterparty to every swap. On mainnet 1Click, many independent solvers compete to fill a quote. On Tidepool there is exactly one, so the price you get is Tidepool's price (see [Quotes](/docs/concepts/quotes)).
+
+## Deposit addresses
+
+Every live quote (`dry: false`) gets its own deposit address: a NEAR **implicit account** (64 hex characters) whose ed25519 key is derived on the server as `HMAC-SHA256(master seed, "tidepool-deposit:" + correlationId)`. Nobody holds a list of keys and no account is reused. Because the server can derive the key, deposit addresses are **custodial**: Tidepool signs on their behalf to settle or refund. See [Trust model](/docs/resources/trust-model).
+
+## The API server
+
+The server exposes the 1Click-shaped endpoints, prices quotes, watches deposit addresses every few seconds, and submits settlement and refund transactions.
+
+## One swap, step by step
+
+<Steps>
+<Step>
+**Quote.** You `POST /v0/quote`. Tidepool fetches prices, applies the fee and slippage, checks the maker has enough of the destination token, and signs the quote. With `dry: false` it also derives and returns `depositAddress`.
+</Step>
+<Step>
+**Deposit.** You send `amountIn` of the origin token. With `ORIGIN_CHAIN` you `ft_transfer` to the deposit address. With `INTENTS` you credit the deposit address inside the verifier (`ft_transfer_call` with `msg` = address, or an intents `transfer`). See [Deposits](/docs/concepts/deposits).
+</Step>
+<Step>
+**Sweep (ORIGIN_CHAIN only).** The worker tops up the deposit address with 0.12 NEAR for gas if needed, adds its key, and moves the tokens into the verifier with `ft_transfer_call`.
+</Step>
+<Step>
+**Settle.** Once the in-verifier balance reaches `minAmountIn` before the deadline, the worker re-prices, checks slippage, and submits one `execute_intents` with two signed payloads: the maker's `token_diff` (+in, −out) and the deposit address's `token_diff` (−in, +out), plus a transfer or `ft_withdraw` of the output to `recipient` and of any excess back to `refundTo`.
+</Step>
+<Step>
+**Report.** `/v0/status` moves to `SUCCESS` with `swapDetails.nearTxHashes` and `intentHashes`. If anything fails, the deposit is refunded. See [Refunds](/docs/concepts/refunds).
+</Step>
+</Steps>
+
+## Accounts
+
+| Account | Role |
+| --- | --- |
+| `tidepool-sandbox.testnet` | Root. Deploys the system and pays gas top-ups. Allowed minter on every token. |
+| `verifier.tidepool-sandbox.testnet` | The official verifier contract. |
+| `maker.tidepool-sandbox.testnet` | The maker. Holds inventory, signs the solver side of each swap, funds intents-mode faucet drips. |
+| `usdc. usdt. wnear. wbtc. eth. xaut.tidepool-sandbox.testnet` | NEP-141 test tokens. Owner: `privacei.testnet`. |
+| 64-hex implicit accounts | Per-quote deposit addresses. |

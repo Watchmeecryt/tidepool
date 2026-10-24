@@ -1,0 +1,239 @@
+---
+title: "Submit deposit transaction hash"
+description: "POST /v0/deposit/submit · 1Click-compatible"
+---
+
+<p><span className="tp-method tp-post">POST</span><code>/v0/deposit/submit</code></p>
+
+Optional. Returns **HTTP 201** and the current status object. Moves `PENDING_DEPOSIT` to `KNOWN_DEPOSIT_TX`; the worker detects deposits on its own either way.
+
+Optionally notifies the 1Click service that a deposit has been sent to the specified address, using the blockchain transaction hash. This step can speed up swap processing by allowing the system to preemptively verify the deposit.
+
+**Operation id:** `submitDepositTx` · **Auth:** optional (`X-API-Key` or `Authorization: Bearer`, any value)
+
+## Request
+
+<Tabs items={['curl', 'JavaScript']}>
+<Tab value="curl">
+
+```bash
+curl -X POST "https://tidepool-production-8594.up.railway.app/v0/deposit/submit" \
+  -H 'content-type: application/json' \
+  -d '{
+  "txHash": "HbwEo318L69bJS7XYse18mUTzBBa2tjK6wtGeDYo3dY8",
+  "depositAddress": "c47208de64cde76fc6803b5f26c137bc51fbf151eb1c0964488ea56704142151"
+}'
+```
+
+</Tab>
+<Tab value="JavaScript">
+
+```ts
+const res = await fetch('https://tidepool-production-8594.up.railway.app/v0/deposit/submit', {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({
+    "txHash": "HbwEo318L69bJS7XYse18mUTzBBa2tjK6wtGeDYo3dY8",
+    "depositAddress": "c47208de64cde76fc6803b5f26c137bc51fbf151eb1c0964488ea56704142151"
+  }),
+});
+const data = await res.json();
+```
+
+</Tab>
+</Tabs>
+
+### Body
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `txHash` | string | yes | Transaction hash of your deposit |
+| `depositAddress` | string | yes | Deposit address for the quote |
+| `nearSenderAccount` | string |  | Sender account (used only for NEAR blockchain) |
+| `memo` | string |  | Memo (use if deposit was submitted with one) |
+
+## Responses
+
+### 200 
+
+```json
+{
+  "correlationId": "6e7d2aad-b262-4b13-b88e-0c4d6b64325c",
+  "quoteResponse": {
+    "correlationId": "6e7d2aad-b262-4b13-b88e-0c4d6b64325c",
+    "timestamp": "2026-10-24T21:30:28.060Z",
+    "quoteRequest": {
+      "swapType": "EXACT_INPUT",
+      "slippageTolerance": 100,
+      "originAsset": "nep141:usdc.tidepool-sandbox.testnet",
+      "destinationAsset": "nep141:wnear.tidepool-sandbox.testnet",
+      "amount": "5000000",
+      "depositType": "INTENTS",
+      "refundTo": "tidepool-try-0937467b.testnet",
+      "refundType": "INTENTS",
+      "recipient": "tidepool-try-0937467b.testnet",
+      "recipientType": "DESTINATION_CHAIN",
+      "dry": false,
+      "deadline": "2026-10-24T21:40:27.927Z"
+    },
+    "quote": {
+      "amountIn": "5000000",
+      "amountInFormatted": "5",
+      "amountInUsd": "4.9979",
+      "minAmountIn": "5000000",
+      "amountOut": "1123407466216216112640000",
+      "amountOutFormatted": "1.12340746621621611264",
+      "amountOutUsd": "4.9879",
+      "minAmountOut": "1112173391554053951513600",
+      "timeEstimate": 10,
+      "depositAddress": "c47208de64cde76fc6803b5f26c137bc51fbf151eb1c0964488ea56704142151",
+      "deadline": "2026-10-24T21:40:27.927Z",
+      "timeWhenInactive": "2026-10-24T21:40:27.927Z"
+    },
+    "signature": "ed25519:3D679QeYbrSEAnHRmkG1eurAeWnnecYQBNWLgmQuEzSvdQpqmKzP2R9W4FqeqLzJvrem4JU3xVnXamFjz74sCKfj"
+  },
+  "status": "SUCCESS",
+  "updatedAt": "2026-10-24T21:30:42.751Z",
+  "swapDetails": {
+    "intentHashes": [
+      "DsrGVDFfwq6ifa9LctU2JaCzWB2kZB1VzNe1XHFCC3qS",
+      "23MCaK5ZV2qanV6p1LYzpGh7zwPC3pa9vqGSm6hLij6H"
+    ],
+    "nearTxHashes": [
+      "EB5xfEyjiC1oESNjEyNjnkzW4Zpsi24e4H2s6aUGEh9d"
+    ],
+    "originChainTxHashes": [
+      {
+        "hash": "HbwEo318L69bJS7XYse18mUTzBBa2tjK6wtGeDYo3dY8",
+        "explorerUrl": "https://testnet.nearblocks.io/txns/HbwEo318L69bJS7XYse18mUTzBBa2tjK6wtGeDYo3dY8"
+      }
+    ],
+    "destinationChainTxHashes": [
+      {
+        "hash": "EB5xfEyjiC1oESNjEyNjnkzW4Zpsi24e4H2s6aUGEh9d",
+        "explorerUrl": "https://testnet.nearblocks.io/txns/EB5xfEyjiC1oESNjEyNjnkzW4Zpsi24e4H2s6aUGEh9d"
+      }
+    ],
+    "amountIn": "5000000",
+    "amountInFormatted": "5",
+    "amountInUsd": "4.9979",
+    "amountOut": "1123407466216216112640000",
+    "amountOutFormatted": "1.12340746621621611264",
+    "amountOutUsd": "4.9879",
+    "slippage": 0,
+    "depositedAmount": "5000000",
+    "depositedAmountFormatted": "5",
+    "depositedAmountUsd": "4.9979"
+  },
+  "tidepool": {
+    "explorer": [
+      {
+        "label": "swap (execute_intents)",
+        "url": "https://testnet.nearblocks.io/txns/EB5xfEyjiC1oESNjEyNjnkzW4Zpsi24e4H2s6aUGEh9d"
+      }
+    ]
+  }
+}
+```
+
+<Accordions><Accordion title="Response fields">
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `correlationId` | string | yes | Unique identifier for request tracing and debugging |
+| `quoteResponse` | object | yes | Quote response from the original request |
+| `quoteResponse.correlationId` | string | yes | Unique identifier for request tracing and debugging |
+| `quoteResponse.timestamp` | string | yes | Timestamp in ISO format that was used to derive the deposit address |
+| `quoteResponse.signature` | string | yes | Signature of the 1Click service confirming the quote for the specific deposit address. Must be saved on the client side (along with the whole quote) in order to resolve any disputes or mistakes. |
+| `quoteResponse.quoteRequest` | object | yes | User request |
+| `quoteResponse.quoteRequest.dry` | boolean | yes | Flag indicating whether this is a dry run request. If `true`, the response will **NOT** contain the following fields: - `depositAddress` - `timeWhenInactive` - `deadline` |
+| `quoteResponse.quoteRequest.depositMode` | "SIMPLE" \\| "MEMO" |  | What deposit address mode you will get in the response, most chain supports only `SIMPLE` and some(for example `stellar`) only `MEMO`: - `SIMPLE` - usual deposit with only deposit address. - `MEMO` - some chains will **REQUIRE** the `memo` together with `depositAddress` for swap to work. `depositMode` applies only to deposit transaction metadata. |
+| `quoteResponse.quoteRequest.swapType` | "EXACT_INPUT" \\| "EXACT_OUTPUT" \\| "FLEX_INPUT" \\| "ANY_INPUT" | yes | How to interpret `amount` (and refunds) when performing the swap: - `EXACT_INPUT` — requests the output amount for an exact input.   - If deposit is less than `amountIn`, the deposit is refunded by deadline.   - If deposit is above than `amountIn`, the swap is processed and the excess is refunded to `refundTo` address after swap is complete. - `EXACT_OUTPUT` — requests the input amount for an exact output.   - The output amount (`amountOut`) is fixed; slippage is applied to the **input** side.   - The quote response includes `amountIn` (the proposed input with slippage tolerance baked in) and `minAmountIn` (the minimum input required).   - **Important**: `amountIn` will appear higher than `minAmountIn` by approximately your `slippageTolerance`. This is **not** price degradation—it is a buffer to ensure successful execution. Any input amount above what is actually needed for the swap is **refunded** to your `refundTo` address after the swap completes.   - If the deposit is above `amountIn`, the swap is processed and the excess is refunded to `refundTo` address after swap is complete.   - If the deposit is less than `minAmountIn`, the deposit is refunded by deadline. - `FLEX_INPUT` — a flexible input amount that allows for partial deposits and variable amounts.   - `slippage` applies both to `amountOut` and `amountIn` and defines an acceptable range (`minAmountIn` and `minAmountOut`).   - Any amount higher than `minAmountIn` is accepted and converted to the output asset as long as `minAmountOut` is met.   - The deposit must be at least `minAmountIn`, after applying the slippage constraint to the quoted amount. Deposits below `minAmountIn` are refunded if the total received by the deadline is below this amount.   - If deposits exceed the upper bound, the swap is still processed - `ANY_INPUT` — collects deposits and converts them to a destination asset. Used for fee aggregation and similar use cases. Only available for authorized partners. |
+| `quoteResponse.quoteRequest.slippageTolerance` | number | yes | Slippage tolerance for the swap. This value is in basis points (1/100th of a percent), e.g. 100 for 1% slippage. |
+| `quoteResponse.quoteRequest.originAsset` | string | yes | ID of the origin asset. |
+| `quoteResponse.quoteRequest.depositType` | "ORIGIN_CHAIN" \\| "INTENTS" \\| "CONFIDENTIAL_INTENTS" | yes | Type of deposit address: - `ORIGIN_CHAIN` - deposit address on the origin chain. - `INTENTS` - the account ID within NEAR Intents to which you should transfer assets. - `CONFIDENTIAL_INTENTS` - the account ID within Confidential Intents to which assets are to be transferred. Fund the swap from a Confidential Intents account by submitting a signed transfer intent to the quote `depositAddress`. Direct token transfers are not supported. |
+| `quoteResponse.quoteRequest.destinationAsset` | string | yes | ID of the destination asset. |
+| `quoteResponse.quoteRequest.amount` | string | yes | Amount to swap as the base amount. It is interpreted as the input or output amount based on the `swapType` flag and is specified in the smallest unit of the currency (e.g., wei for ETH). Must be an integer string; decimal values like "0.01" are invalid—use base units (e.g. "10000000000000000" for 0.01 with 18 decimals). |
+| `quoteResponse.quoteRequest.refundTo` | string | yes | Address used for refunds. |
+| `quoteResponse.quoteRequest.refundType` | "ORIGIN_CHAIN" \\| "INTENTS" \\| "CONFIDENTIAL_INTENTS" | yes | Type of refund address: - `ORIGIN_CHAIN` - assets are refunded to the `refundTo` address on the origin chain. - `INTENTS` - assets are refunded to the `refundTo` Intents account. - `CONFIDENTIAL_INTENTS` - assets are refunded to the `refundTo` Confidential Intents account. On Confidential Intents, 1Click settles refunds via signed transfer intent rather than direct token transfer. |
+| `quoteResponse.quoteRequest.recipient` | string | yes | Recipient address. The format must match `recipientType`. Destination routing metadata, when required, must be encoded according to the destination chain address format. |
+| `quoteResponse.quoteRequest.connectedWallets` | string[] |  | Addresses of connected wallets. |
+| `quoteResponse.quoteRequest.sessionId` | string |  | Unique client session identifier for 1Click. |
+| `quoteResponse.quoteRequest.virtualChainRecipient` | string |  | EVM address of a transfer recipient in a virtual chain |
+| `quoteResponse.quoteRequest.virtualChainRefundRecipient` | string |  | EVM address of a refund recipient in a virtual chain |
+| `quoteResponse.quoteRequest.customRecipientMsg` | string |  | **HIGHLY EXPERIMENTAL** Message to pass to `ft_transfer_call` when withdrawing assets to NEAR. Otherwise, `ft_transfer` will be used. **WARNING**: Funds will be lost if used with non NEP-141 tokens, in case of insufficient `storage_deposit` or if the recipient does not implement `ft_on_transfer` method. |
+| `quoteResponse.quoteRequest.recipientType` | "DESTINATION_CHAIN" \\| "INTENTS" \\| "CONFIDENTIAL_INTENTS" | yes | Type of recipient address: - `DESTINATION_CHAIN` - assets are transferred to the chain of `destinationAsset`. - `INTENTS` - assets are transferred to an account inside Intents. - `CONFIDENTIAL_INTENTS` - assets are transferred to the `recipient` account inside Confidential Intents. On Confidential Intents, 1Click settles swap output via signed transfer intent rather than direct token transfer. |
+| `quoteResponse.quoteRequest.deadline` | string | yes | Timestamp in ISO format that identifies when the user refund begins if the swap isn't completed by then. It must exceed the time required for the deposit transaction to be mined. For example, Bitcoin may require around one hour depending on the fees paid. |
+| `quoteResponse.quoteRequest.confidentiality` | "public" \\| "basic" \\| "advanced" |  | Confidentiality mode for this quote. PUBLIC is the default; BASIC or ADVANCED request Confidential Intents handling. |
+| `quoteResponse.quoteRequest.referral` | string |  | Distribution channel / venue identifier (for example: ledger, trustwallet). Keep lowercase for consistency. |
+| `quoteResponse.quoteRequest.rebates` | Rebate[] |  | Rebate distribution for this quote. Provide up to 3 confidential Intents recipients (for example, `rebate-recipient.near` on confidential Intents); each item defines a recipient and its percent share, and all shares must add up to 100. |
+| `quoteResponse.quoteRequest.rebates[].[]recipient` | string | yes | Confidential Intents account identifier that receives this rebate share. Rebate delivery uses signed transfer intent on Confidential Intents; direct token transfers are not supported. |
+| `quoteResponse.quoteRequest.rebates[].[]share` | number | yes | Rebate share for this recipient in percent. |
+| `quoteResponse.quoteRequest.quoteWaitingTimeMs` | number |  | Time in milliseconds the user is willing to wait for a quote from the relay. **Defaults to 0ms delay if not specified, if you want to receive the fastest quote. |
+| `quoteResponse.quoteRequest.appFees` | AppFee[] |  | List of recipients and their fees |
+| `quoteResponse.quoteRequest.appFees[].[]recipient` | string | yes | Account ID within Intents to which this fee will be transferred |
+| `quoteResponse.quoteRequest.appFees[].[]fee` | number | yes | Fee for this recipient as part of amountIn in basis points (1/100th of a percent), e.g. 100 for 1% fee |
+| `quoteResponse.quoteRequest.insured` | boolean |  | Opt into an insured swap. When `true`, an additional 0.02% (2 basis points) insurance fee is charged on top of any other fees. |
+| `quoteResponse.quote` | object | yes | Response containing the deposit address for sending the `amount` of `originAsset` and the expected output amount. |
+| `quoteResponse.quote.depositAddress` | string |  | The deposit address on the chain of `originAsset` when `depositType` is `ORIGIN_CHAIN`. The deposit address inside NEAR Intents (the verifier smart contract) when `depositType` is `INTENTS`. The account ID within Confidential Intents to which assets are to be transferred when `depositType` is `CONFIDENTIAL_INTENTS`. Fund the swap by submitting a signed transfer intent to this value. Direct token transfers are not supported. |
+| `quoteResponse.quote.depositMemo` | string |  | Some deposit addresses **REQUIRE** a `memo` together with `depositAddress` for the deposit to be processed. This field is deposit-side metadata. |
+| `quoteResponse.quote.chainDepositAddresses` | ChainDepositAddress[] |  | Deposit addresses across all bridge-supported blockchains for funding the same Intents account. Present only for public `ANY_INPUT` quotes (`depositType` `INTENTS`); the confidential rail does not support multi-chain funding addresses yet. Each entry forwards to the Intents account in `depositAddress`, so the user may deposit from any listed chain. |
+| `quoteResponse.quote.chainDepositAddresses[].[]blockchain` | "near" | yes | Blockchain on which this deposit address accepts funds for the quote. |
+| `quoteResponse.quote.chainDepositAddresses[].[]address` | string | yes | Deposit address on `blockchain`. Funds sent here are credited to the same Intents account. |
+| `quoteResponse.quote.chainDepositAddresses[].[]memo` | string |  | Memo required together with `address` on chains that need it (e.g. Stellar, XRP, TON). |
+| `quoteResponse.quote.amountIn` | string | yes | Amount of the origin asset |
+| `quoteResponse.quote.amountInFormatted` | string | yes | Amount of the origin asset in readable format |
+| `quoteResponse.quote.amountInUsd` | string | yes | Amount of the origin assets equivalent in USD |
+| `quoteResponse.quote.minAmountIn` | string | yes | Minimum amount of the origin asset that will be used for the swap |
+| `quoteResponse.quote.amountOut` | string | yes | Amount of the destination asset |
+| `quoteResponse.quote.amountOutFormatted` | string | yes | Amount of the destination asset in readable format |
+| `quoteResponse.quote.amountOutUsd` | string | yes | Amount of the destination asset equivalent in USD |
+| `quoteResponse.quote.minAmountOut` | string | yes | Minimum output amount after slippage is applied |
+| `quoteResponse.quote.deadline` | string |  | Time when the deposit address becomes inactive and funds may be lost |
+| `quoteResponse.quote.timeWhenInactive` | string |  | Time when the deposit address becomes cold, causing swap processing to take longer |
+| `quoteResponse.quote.timeEstimate` | number | yes | Estimated time in seconds for the swap to be executed after the deposit transaction is confirmed |
+| `quoteResponse.quote.virtualChainRecipient` | string |  | EVM address of a transfer recipient in a virtual chain |
+| `quoteResponse.quote.virtualChainRefundRecipient` | string |  | EVM address of a refund recipient in a virtual chain |
+| `quoteResponse.quote.customRecipientMsg` | string |  | **HIGHLY EXPERIMENTAL** Message passed to `ft_transfer_call` when withdrawing assets to NEAR. Otherwise, `ft_transfer` will be used. **WARNING**: Funds will be lost if used with non NEP-141 tokens, in case of insufficient `storage_deposit` or if the recipient does not implement `ft_on_transfer` method. |
+| `quoteResponse.quote.refundFee` | string |  | Fee charged for refunding assets to the refund address in the smallest unit of the origin asset |
+| `quoteResponse.quote.withdrawFee` | string |  | Fee charged for withdrawing assets to the recipient in the smallest unit of the destination asset. This fee is already accounted for in the final amountOut result |
+| `status` | "KNOWN_DEPOSIT_TX" \\| "PENDING_DEPOSIT" \\| "INCOMPLETE_DEPOSIT" \\| "PROCESSING" \\| "SUCCESS" \\| "REFUNDED" \\| "FAILED" | yes |  |
+| `updatedAt` | string | yes | Last time the state was updated |
+| `swapDetails` | object | yes | Details of actual swaps and withdrawals |
+| `swapDetails.intentHashes` | string[] | yes | All intent hashes that took part in this swap |
+| `swapDetails.nearTxHashes` | string[] | yes | All NEAR transactions executed for this swap |
+| `swapDetails.amountIn` | string |  | Exact amount of `originToken` after the trade was settled |
+| `swapDetails.amountInFormatted` | string |  | Exact amount of `originToken` in readable format after the trade was settled |
+| `swapDetails.amountInUsd` | string |  | Exact amount of `originToken` equivalent in USD |
+| `swapDetails.amountOut` | string |  | Exact amount of `destinationToken` after the trade was settled |
+| `swapDetails.amountOutFormatted` | string |  | Exact amount of `destinationToken` in readable format after the trade was settled |
+| `swapDetails.amountOutUsd` | string |  | Exact amount of `destinationToken` equivalent in USD |
+| `swapDetails.slippage` | number |  | Actual slippage |
+| `swapDetails.originChainTxHashes` | TransactionDetails[] | yes | Hashes and explorer URLs for all transactions on the origin chain |
+| `swapDetails.originChainTxHashes[].[]hash` | string | yes | Transaction hash |
+| `swapDetails.originChainTxHashes[].[]explorerUrl` | string | yes | Explorer URL for the transaction |
+| `swapDetails.destinationChainTxHashes` | TransactionDetails[] | yes | Hashes and explorer URLs for all transactions on the destination chain |
+| `swapDetails.destinationChainTxHashes[].[]hash` | string | yes | Transaction hash |
+| `swapDetails.destinationChainTxHashes[].[]explorerUrl` | string | yes | Explorer URL for the transaction |
+| `swapDetails.refundedAmount` | string |  | Amount of `originAsset` transferred to `refundTo` |
+| `swapDetails.refundedAmountFormatted` | string |  | Refunded amount in readable format |
+| `swapDetails.refundedAmountUsd` | string |  | Refunded amount equivalent in USD |
+| `swapDetails.refundReason` | string |  | Reason for refund |
+| `swapDetails.depositedAmount` | string |  | Amount deposited to `depositAddress` onchain |
+| `swapDetails.depositedAmountFormatted` | string |  | Amount deposited in readable format |
+| `swapDetails.depositedAmountUsd` | string |  | Amount deposited equivalent in USD |
+| `swapDetails.withdrawFee` | string |  | Fee charged for withdrawing assets to the recipient in the smallest unit of the destination asset. This fee is already accounted for in the final amountOut result |
+| `swapDetails.referral` | string |  | Referral identifier |
+
+</Accordion></Accordions>
+
+### 400 Bad Request - Invalid input data
+
+```json
+{
+  "message": "txHash and depositAddress are required"
+}
+```
+
+### 401 Unauthorized - API key or JWT token is invalid
+

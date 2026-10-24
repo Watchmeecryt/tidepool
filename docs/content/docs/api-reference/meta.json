@@ -1,0 +1,12 @@
+{
+  "title": "API reference",
+  "pages": [
+    "index",
+    "get-tokens",
+    "get-quote",
+    "get-execution-status",
+    "submit-deposit-tx",
+    "tidepool-faucet",
+    "tidepool-health"
+  ]
+}

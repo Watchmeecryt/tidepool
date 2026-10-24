@@ -1,0 +1,102 @@
+---
+title: "Get testnet tokens"
+description: "POST /v0/faucet · Tidepool extension"
+---
+
+<p><span className="tp-method tp-post">POST</span><code>/v0/faucet</code></p>
+
+<Callout title="Tidepool extension">This endpoint is not part of the 1Click API. Do not call it on mainnet.</Callout>
+
+Limits: one drip per account per mode per hour, six per IP per hour. Response lists all drips (trimmed here). See [Faucet](/docs/guides/faucet).
+
+Drips every Tidepool test token to a NEAR testnet account. mode=wallet mints NEP-141 tokens to the account; mode=intents credits the account inside the Tidepool verifier. One drip per account and mode per hour; 6 per IP per hour.
+
+**Operation id:** `TidepoolFaucet`
+
+## Request
+
+<Tabs items={['curl', 'JavaScript']}>
+<Tab value="curl">
+
+```bash
+curl -X POST "https://tidepool-production-8594.up.railway.app/v0/faucet" \
+  -H 'content-type: application/json' \
+  -d '{
+  "accountId": "alice.testnet",
+  "mode": "wallet"
+}'
+```
+
+</Tab>
+<Tab value="JavaScript">
+
+```ts
+const res = await fetch('https://tidepool-production-8594.up.railway.app/v0/faucet', {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({
+    "accountId": "alice.testnet",
+    "mode": "wallet"
+  }),
+});
+const data = await res.json();
+```
+
+</Tab>
+</Tabs>
+
+### Body
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `accountId` | string | yes |  |
+| `mode` | "wallet" \\| "intents" |  |  |
+| `assets` | string[] |  | Optional subset (assetId or symbol) |
+
+## Responses
+
+### 200 Drip sent
+
+```json
+{
+  "accountId": "alice.testnet",
+  "mode": "wallet",
+  "drips": [
+    {
+      "assetId": "nep141:usdc.tidepool-sandbox.testnet",
+      "symbol": "USDC",
+      "amount": "100"
+    },
+    {
+      "assetId": "nep141:usdt.tidepool-sandbox.testnet",
+      "symbol": "USDT",
+      "amount": "100"
+    }
+  ],
+  "transactions": [
+    {
+      "assetId": "nep141:usdc.tidepool-sandbox.testnet",
+      "amount": "100",
+      "txHash": "F6JiEXj2LSkzhAdGoBV5hBs5etTjdgNvvNsH72aBACcN",
+      "explorerUrl": "https://testnet.nearblocks.io/txns/F6JiEXj2LSkzhAdGoBV5hBs5etTjdgNvvNsH72aBACcN"
+    }
+  ]
+}
+```
+
+### 400 Bad request
+
+```json
+{
+  "message": "error message"
+}
+```
+
+### 429 Rate limited
+
+```json
+{
+  "message": "Rate limited: alice.testnet can use the wallet faucet again after 2026-10-24T22:20:00.000Z"
+}
+```
+

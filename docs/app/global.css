@@ -1,0 +1,20 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/ocean.css';
+@import 'fumadocs-ui/css/preset.css';
+
+:root {
+  --color-fd-primary: hsl(174, 72%, 30%);
+  --color-fd-ring: hsl(174, 72%, 36%);
+}
+.dark {
+  --color-fd-primary: hsl(172, 66%, 55%);
+}
+html { scrollbar-gutter: stable; }
+html > body[data-scroll-locked] { margin-right: 0px !important; --removed-body-scroll-bar-size: 0px !important; }
+
+.tp-diagram { margin: 1.5rem 0; border: 1px solid var(--color-fd-border); border-radius: 1rem; padding: 1.25rem; background: linear-gradient(180deg, var(--color-fd-card), color-mix(in oklab, var(--color-fd-primary) 6%, var(--color-fd-card))); }
+.tp-diagram svg { width: 100%; height: auto; display: block; }
+.tp-diagram figcaption { margin-top: .75rem; font-size: .875rem; color: var(--color-fd-muted-foreground); text-align: center; }
+.tp-method { display:inline-block; font: 600 12px ui-monospace, monospace; padding: 2px 8px; border-radius: 6px; margin-right: 6px; }
+.tp-get { background: #dcfce7; color: #166534 } .tp-post { background: #dbeafe; color: #1e40af }
+.dark .tp-get { background:#14532d; color:#bbf7d0 } .dark .tp-post { background:#1e3a8a; color:#bfdbfe }

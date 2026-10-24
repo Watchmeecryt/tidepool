@@ -1,0 +1,32 @@
+---
+title: Moving to mainnet 1Click
+description: What changes when you point your integration at the real 1Click API.
+---
+
+Tidepool mirrors the 1Click request and response shapes, so most code moves unchanged. This checklist covers what does change.
+
+<Steps>
+<Step>
+**Base URL.** Replace `https://tidepool-production-8594.up.railway.app` with `https://1click.chaindefuser.com`. With the SDK, delete the `OpenAPI.BASE = …` line.
+</Step>
+<Step>
+**Real auth.** Get a real JWT from the 1Click partner portal and set it as `OpenAPI.TOKEN` / `Authorization: Bearer`. Tidepool accepts any value; mainnet does not. Keyless mainnet calls pay an extra fee.
+</Step>
+<Step>
+**Real asset ids.** Load ids from `GET /v0/tokens` at runtime. Never hardcode `nep141:*.tidepool-sandbox.testnet`; those contracts exist only on testnet.
+</Step>
+<Step>
+**Real chains.** Mainnet supports many `blockchain` values and deposit addresses on other chains (EVM, Solana, Bitcoin…). Your deposit code must send on the origin chain, not with `ft_transfer` on NEAR. `refundTo` and `recipient` must be valid addresses on their chains.
+</Step>
+<Step>
+**Features Tidepool lacks.** `ANY_INPUT`, `depositMode: MEMO`, `appFees`, `CONFIDENTIAL_INTENTS` and `/v0/auth/*` exist on mainnet. Test them there with small amounts.
+</Step>
+<Step>
+**Prices and timing.** Mainnet quotes come from competing solvers and settle cross-chain, so `timeEstimate` can be minutes. Keep your polling loop tolerant of long `PROCESSING` periods.
+</Step>
+<Step>
+**Ignore Tidepool-only fields.** Drop any use of `tidepool.explorer`, `tidepool.note`, `/v0/faucet` and `/v0/health`.
+</Step>
+</Steps>
+
+<Callout type="warn">Always confirm the current mainnet API in the official 1Click documentation before shipping. Tidepool tracks OpenAPI v0.1.10 and may lag behind.</Callout>

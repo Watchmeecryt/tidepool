@@ -1,0 +1,39 @@
+---
+title: Status lifecycle
+description: Every status a swap can have, what moves it, and when to stop polling.
+---
+
+<StatusLifecycle />
+
+| Status | Meaning | Final |
+| --- | --- | --- |
+| `PENDING_DEPOSIT` | Live quote created. Nothing deposited yet. | |
+| `KNOWN_DEPOSIT_TX` | You called `/v0/deposit/submit`, but the funds have not landed in the verifier yet. | |
+| `INCOMPLETE_DEPOSIT` | Something arrived, but less than `minAmountIn`. Top up before the deadline or it is refunded. | |
+| `PROCESSING` | Enough arrived. Settlement transaction is being sent. | |
+| `SUCCESS` | Swapped. `swapDetails` has amounts, tx hashes and intent hashes. | ✓ |
+| `REFUNDED` | Deposit returned to `refundTo`. `swapDetails.refundReason` says why. | ✓ |
+| `FAILED` | Settlement and refund both failed. Rare; contact the maintainer with the deposit address. | ✓ |
+
+## Polling
+
+```bash
+curl "https://tidepool-production-8594.up.railway.app/v0/status?depositAddress=<depositAddress>"
+```
+
+Poll every 2–5 seconds and stop on a final status. The worker checks each active address about every 4 seconds and stops watching a quote 24 hours after its deadline.
+
+## swapDetails
+
+| Field | Meaning |
+| --- | --- |
+| `amountIn`, `amountOut` (+ `Formatted`, `Usd`) | What was actually swapped. |
+| `depositedAmount` (+ `Formatted`, `Usd`) | What the deposit address holds in the verifier. |
+| `slippage` | Realised slippage vs. the quote, as a fraction. |
+| `refundedAmount` (+ `Formatted`, `Usd`) | Excess or refunded input. |
+| `refundReason` | `PARTIAL_DEPOSIT`, `DEADLINE_PASSED`, `SLIPPAGE_EXCEEDED`, `PRICE_MOVED`, `INSUFFICIENT_LIQUIDITY`, `SWAP_FAILED`. |
+| `nearTxHashes` | Settlement / refund transaction(s). |
+| `originChainTxHashes`, `destinationChainTxHashes` | `{ hash, explorerUrl }` on NearBlocks testnet. |
+| `intentHashes` | Intent hashes logged by the verifier. |
+
+The response also carries a Tidepool-only `tidepool` object: `explorer` (a labelled list of every transaction, such as "gas top-up", "move deposit into verifier", "swap (execute_intents)" or "refund") and `note` (the last error, if any). 1Click clients ignore it.

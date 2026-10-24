@@ -1,0 +1,33 @@
+---
+title: Trust model and limitations
+description: Exactly what you are trusting when you use Tidepool, and what it does not do.
+---
+
+<Callout type="warn">Testnet only. Test tokens have no value. Do not send mainnet assets to any address Tidepool shows you.</Callout>
+
+## What is trustless
+
+- **Swap atomicity.** Settlement is one `execute_intents` call on the unmodified verifier. Either both `token_diff`s apply or neither does.
+- **The verifier code.** Byte-identical to `near/intents` `defuse/v0.4.2`, checked live by `/v0/health`.
+- **Auditability.** Every deposit, settlement and refund is a public testnet transaction listed in `/v0/status`.
+
+## What you trust Tidepool for
+
+- **Deposit addresses are custodial.** Their keys are derived on the server from a master seed. Tidepool could move funds sent to them. This is the same trust you give 1Click's deposit addresses.
+- **One maker sets every price.** Tidepool's maker is the only solver. Prices follow CoinGecko plus a fixed fee, not a competitive market.
+- **Liveness.** If the server is down, deposits wait. Funds are not lost; they are refunded once the worker runs again and the deadline has passed.
+- **Token admin.** The six token contracts are owned by `privacei.testnet`, which can mint any amount and change minters. The root and maker accounts are minters.
+- **Contract keys.** The token accounts still hold full-access keys controlled by the Tidepool deployer, so their code could be upgraded. Treat balances as test data.
+
+## Limitations (v1)
+
+- NEAR testnet only; `blockchain: "near"` only.
+- No `ANY_INPUT`, `depositMode: MEMO`, `appFees`, `CONFIDENTIAL_INTENTS` or `/v0/auth/*`.
+- Single maker with finite inventory. Large quotes fail with `Not enough maker liquidity`.
+- Faucet: one drip per account per mode per hour, six per IP per hour.
+- Live quotes need a deadline between 60 seconds and 24 hours ahead.
+- State is a JSON file on one server volume; there is no SLA.
+
+## Affiliation
+
+Tidepool is community-built. It is **not** operated, endorsed or reviewed by NEAR Foundation, Defuse Labs or 1Click.

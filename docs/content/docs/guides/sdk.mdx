@@ -1,0 +1,66 @@
+---
+title: Official 1Click SDK
+description: Use @defuse-protocol/one-click-sdk-typescript against Tidepool by changing one base URL.
+---
+
+The official TypeScript client, [`@defuse-protocol/one-click-sdk-typescript`](https://www.npmjs.com/package/@defuse-protocol/one-click-sdk-typescript), works against Tidepool unchanged. Point `OpenAPI.BASE` at Tidepool and use the same calls. We tested `getTokens`, `getQuote` and `getExecutionStatus` with SDK version 0.1.26.
+
+```bash
+npm i @defuse-protocol/one-click-sdk-typescript
+```
+
+```ts
+import { OpenAPI, OneClickService, QuoteRequest } from '@defuse-protocol/one-click-sdk-typescript';
+
+OpenAPI.BASE = 'https://tidepool-production-8594.up.railway.app';          // the only change; remove it to go to mainnet
+// OpenAPI.TOKEN = 'any-dummy-jwt';   // optional: selects the lower fee tier
+
+const tokens = await OneClickService.getTokens();
+
+const quote = await OneClickService.getQuote({
+  dry: false,
+  swapType: QuoteRequest.swapType.EXACT_INPUT,
+  slippageTolerance: 100,
+  originAsset: 'nep141:usdc.tidepool-sandbox.testnet',
+  destinationAsset: 'nep141:wnear.tidepool-sandbox.testnet',
+  amount: '5000000',
+  depositType: QuoteRequest.depositType.INTENTS,
+  refundTo: 'you.testnet',
+  refundType: QuoteRequest.refundType.INTENTS,
+  recipient: 'you.testnet',
+  recipientType: QuoteRequest.recipientType.INTENTS,
+  deadline: new Date(Date.now() + 10 * 60_000).toISOString(),
+});
+
+// Deposit to quote.quote.depositAddress (see First swap), then:
+await OneClickService.submitDepositTx({ txHash: '<your tx hash>', depositAddress: quote.quote.depositAddress! });
+const status = await OneClickService.getExecutionStatus(quote.quote.depositAddress!);
+console.log(status.status); // PENDING_DEPOSIT → PROCESSING → SUCCESS | REFUNDED
+```
+
+> Asset ids differ from mainnet: Tidepool tokens live under `tidepool-sandbox.testnet`. Read them from `getTokens()` instead of hardcoding mainnet ids.
+
+## Other languages
+
+Any OpenAPI generator works with [`/openapi.json`](/openapi.json), which mirrors the 1Click v0.1.10 schemas plus two Tidepool-only operations (`/v0/faucet`, `/v0/health`):
+
+```bash
+npx @openapitools/openapi-generator-cli generate -i https://tidepool-production-8594.up.railway.app/openapi.json -g python -o tidepool-client
+```
+
+## Plain fetch
+
+```ts
+const BASE = 'https://tidepool-production-8594.up.railway.app';
+const q = await fetch(`${BASE}/v0/quote`, {
+  method: 'POST',
+  headers: { 'content-type': 'application/json', authorization: 'Bearer dummy' },
+  body: JSON.stringify({ /* QuoteRequest */ }),
+}).then(r => r.json());
+
+for (;;) {
+  const s = await fetch(`${BASE}/v0/status?depositAddress=${q.quote.depositAddress}`).then(r => r.json());
+  if (['SUCCESS', 'REFUNDED', 'FAILED'].includes(s.status)) break;
+  await new Promise(r => setTimeout(r, 3000));
+}
+```

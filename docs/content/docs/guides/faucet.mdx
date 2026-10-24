@@ -1,0 +1,46 @@
+---
+title: Faucet
+description: Free test tokens for any NEAR testnet account, with exact amounts and limits.
+---
+
+<FaucetWidget />
+
+## What you get per drip
+
+| Token | Amount | Contract |
+| --- | --- | --- |
+| USDC | 100 | `usdc.tidepool-sandbox.testnet` (6 decimals) |
+| USDT | 100 | `usdt.tidepool-sandbox.testnet` (6 decimals) |
+| wNEAR | 40 | `wnear.tidepool-sandbox.testnet` (24 decimals) |
+| wBTC | 0.001 | `wbtc.tidepool-sandbox.testnet` (8 decimals) |
+| ETH | 0.03 | `eth.tidepool-sandbox.testnet` (18 decimals) |
+| XAUT | 0.03 | `xaut.tidepool-sandbox.testnet` (6 decimals) |
+
+Pass `"assets": ["USDC", "wNEAR"]` (symbols or asset ids) to drip only some tokens.
+
+## Modes
+
+| `mode` | Where tokens land | Needs |
+| --- | --- | --- |
+| `wallet` | NEP-141 wallet balance. Minted fresh by the root account, one `mint` tx per token. | The account must exist on testnet. Storage is registered automatically. |
+| `intents` | Your intents balance inside the verifier. One `mt_batch_transfer` from the maker. | Nothing. Works for any account id, even one that does not exist yet. |
+
+## Limits
+
+- **One drip per account per mode per hour.** `alice.testnet` can take one `wallet` and one `intents` drip each hour.
+- **Six drips per IP per hour.**
+- Over the limit returns **HTTP 429** with the time you can retry.
+- If a transfer fails, the limit is not consumed.
+
+Supply is not capped, but the faucet can only mint these fixed amounts. Only the token owner (`privacei.testnet`) and the two allowed minters (`tidepool-sandbox.testnet`, `maker.tidepool-sandbox.testnet`) can call `mint`.
+
+## API
+
+```bash
+curl -X POST https://tidepool-production-8594.up.railway.app/v0/faucet -H 'content-type: application/json' \
+  -d '{"accountId":"alice.testnet","mode":"wallet"}'
+```
+
+See [POST /v0/faucet](/docs/api-reference/tidepool-faucet) for the full response.
+
+<Callout type="warn">Test tokens have **no value** and are not bridged. Do not list or trade them anywhere.</Callout>

@@ -1,0 +1,21 @@
+---
+title: API reference
+description: Every Tidepool endpoint, generated from openapi.json.
+---
+
+Base URL: `https://tidepool-production-8594.up.railway.app` · Spec: [`/openapi.json`](/openapi.json) (1Click Swap API v0.1.10 shapes plus two Tidepool extensions).
+
+All amounts are strings in the token's base units. Errors return `{ "message": "…" }` with HTTP 400, 404 or 429. CORS is open (`*`).
+
+| Method | Path | What it does | |
+| --- | --- | --- | --- |
+| <span className="tp-method tp-get">GET</span> | [`/v0/tokens`](/docs/api-reference/get-tokens) | Get supported tokens | 1Click |
+| <span className="tp-method tp-post">POST</span> | [`/v0/quote`](/docs/api-reference/get-quote) | Request a swap quote | 1Click |
+| <span className="tp-method tp-get">GET</span> | [`/v0/status`](/docs/api-reference/get-execution-status) | Check swap execution status | 1Click |
+| <span className="tp-method tp-post">POST</span> | [`/v0/deposit/submit`](/docs/api-reference/submit-deposit-tx) | Submit deposit transaction hash | 1Click |
+| <span className="tp-method tp-post">POST</span> | [`/v0/faucet`](/docs/api-reference/tidepool-faucet) | Get testnet tokens | Tidepool only |
+| <span className="tp-method tp-get">GET</span> | [`/v0/health`](/docs/api-reference/tidepool-health) | Service health | Tidepool only |
+
+## Authentication
+
+Optional. Send any `X-API-Key: <anything>` or `Authorization: Bearer <anything>` to get the lower fee tier. See [Quotes](/docs/concepts/quotes#fees).

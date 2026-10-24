@@ -1,4 +1,4 @@
-//! Tidepool testnet token: a plain NEP-141 fungible token with an owner-only `mint`.
+//! Tidepool testnet token: a plain NEP-141 fungible token. The owner, and minters the owner allows, can `mint`.
 //! Testnet only. These tokens have no value and are not bridged from any real asset.
 use near_contract_standards::fungible_token::metadata::{FungibleTokenMetadata, FungibleTokenMetadataProvider, FT_METADATA_SPEC};
 use near_contract_standards::fungible_token::{FungibleToken, FungibleTokenCore, FungibleTokenResolver};
@@ -6,6 +6,10 @@ use near_contract_standards::storage_management::{StorageBalance, StorageBalance
 use near_sdk::json_types::U128;
 use near_sdk::{env, near, require, AccountId, BorshStorageKey, NearToken, PanicOnDefault, PromiseOrValue};
 use near_sdk::borsh::BorshSerialize;
+use near_sdk::collections::LookupSet;
+
+/// Minter allowlist, kept outside the state struct so upgrades stay state-compatible.
+fn minters() -> LookupSet<AccountId> { LookupSet::new(b"m".to_vec()) }
 
 #[derive(BorshSerialize, BorshStorageKey)]
 #[borsh(crate = "near_sdk::borsh")]
@@ -30,9 +34,10 @@ impl Contract {
         Self { token, owner_id, name, symbol, decimals }
     }
 
-    /// Owner-only mint. Registers storage for `account_id` if needed (owner pays from attached deposit or contract balance).
+    /// Mint (owner or allowed minter). Registers storage for `account_id` if needed (paid from contract balance).
     pub fn mint(&mut self, account_id: AccountId, amount: U128) {
-        require!(env::predecessor_account_id() == self.owner_id, "owner only");
+        let caller = env::predecessor_account_id();
+        require!(caller == self.owner_id || minters().contains(&caller), "owner or minter only");
         if !self.token.accounts.contains_key(&account_id) {
             self.token.internal_register_account(&account_id);
         }
@@ -41,6 +46,22 @@ impl Contract {
     }
 
     pub fn owner_id(&self) -> AccountId { self.owner_id.clone() }
+
+    fn assert_owner(&self) { require!(env::predecessor_account_id() == self.owner_id, "owner only"); }
+
+    /// Owner-only: hand ownership to another account.
+    pub fn set_owner(&mut self, new_owner: AccountId) {
+        self.assert_owner();
+        if !self.token.accounts.contains_key(&new_owner) { self.token.internal_register_account(&new_owner); }
+        env::log_str(&format!("owner changed from {} to {}", self.owner_id, new_owner));
+        self.owner_id = new_owner;
+    }
+
+    /// Owner-only: allow an account (for example the faucet) to mint.
+    pub fn add_minter(&mut self, account_id: AccountId) { self.assert_owner(); minters().insert(&account_id); }
+    /// Owner-only: revoke a minter.
+    pub fn remove_minter(&mut self, account_id: AccountId) { self.assert_owner(); minters().remove(&account_id); }
+    pub fn is_minter(&self, account_id: AccountId) -> bool { minters().contains(&account_id) }
 }
 
 #[near]

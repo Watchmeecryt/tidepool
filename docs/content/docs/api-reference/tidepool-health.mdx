@@ -1,0 +1,113 @@
+---
+title: "Service health"
+description: "GET /v0/health · Tidepool extension"
+---
+
+<p><span className="tp-method tp-get">GET</span><code>/v0/health</code></p>
+
+<Callout title="Tidepool extension">This endpoint is not part of the 1Click API. Do not call it on mainnet.</Callout>
+
+Cached for 10 seconds. Re-checks the verifier code hash against the `defuse/v0.4.2` release. See [Live status](/docs/status).
+
+**Operation id:** `TidepoolHealth`
+
+## Request
+
+<Tabs items={['curl', 'JavaScript']}>
+<Tab value="curl">
+
+```bash
+curl "https://tidepool-production-8594.up.railway.app/v0/health"
+```
+
+</Tab>
+<Tab value="JavaScript">
+
+```ts
+const res = await fetch('https://tidepool-production-8594.up.railway.app/v0/health');
+const data = await res.json();
+```
+
+</Tab>
+</Tabs>
+
+### Try it
+
+<TryIt method="GET" path={"/v0/health"} />
+
+## Responses
+
+### 200 Health report
+
+```json
+{
+  "service": "tidepool",
+  "network": "testnet",
+  "verifier": "verifier.tidepool-sandbox.testnet",
+  "verifierWasmSha256": "f67f9559b3b512c52dfa11723a28b9119bcf773ac01780370d6409e5f1fb20e5",
+  "verifierRelease": "https://github.com/near/intents/releases/tag/defuse/v0.4.2",
+  "maker": "maker.tidepool-sandbox.testnet",
+  "checks": {
+    "rpc": {
+      "ok": true,
+      "height": 274605756,
+      "ms": 80
+    },
+    "verifier": {
+      "ok": true,
+      "codeHashHex": "f67f9559b3b512c52dfa11723a28b9119bcf773ac01780370d6409e5f1fb20e5"
+    },
+    "prices": {
+      "ok": true,
+      "source": "coingecko",
+      "updatedAt": "2026-10-24T21:30:25.128Z"
+    },
+    "makerInventory": {
+      "ok": true,
+      "balances": {
+        "USDC": "1999720",
+        "USDT": "1999710",
+        "wNEAR": "799875.5214169960396638752",
+        "wBTC": "19.99693796",
+        "ETH": "599.907873451968147949",
+        "XAUT": "599.91"
+      }
+    }
+  },
+  "swaps": {
+    "total": 4,
+    "success": 3,
+    "refunded": 1,
+    "failed": 0,
+    "active": 0
+  },
+  "recent": [
+    {
+      "status": "SUCCESS",
+      "pair": "usdc → wnear",
+      "updatedAt": "2026-10-24T21:30:42.751Z",
+      "tx": "https://testnet.nearblocks.io/txns/EB5xfEyjiC1oESNjEyNjnkzW4Zpsi24e4H2s6aUGEh9d"
+    },
+    {
+      "status": "REFUNDED",
+      "pair": "usdc → eth",
+      "updatedAt": "2026-10-24T21:10:30.279Z",
+      "tx": "https://testnet.nearblocks.io/txns/4LaFRDyTHHyAWP4PNz2z38MC34GAcr6aE2KTUTdTHysy"
+    },
+    {
+      "status": "SUCCESS",
+      "pair": "usdt → wbtc",
+      "updatedAt": "2026-10-24T21:09:07.722Z",
+      "tx": "https://testnet.nearblocks.io/txns/F4NQXgVoczTixw1bvekQf7k5NGNKoDY4huveLxhkoToX"
+    },
+    {
+      "status": "SUCCESS",
+      "pair": "usdc → wnear",
+      "updatedAt": "2026-10-24T21:08:51.970Z",
+      "tx": "https://testnet.nearblocks.io/txns/CTnAzK9YrbNy64GR9hhEQUF7ctn6KHYY5tpt57g5pEPe"
+    }
+  ],
+  "ok": true
+}
+```
+

@@ -1,0 +1,16 @@
+---
+title: Changelog
+description: What changed in Tidepool and when.
+---
+
+## 2026-10-24 · Docs v2 and token ownership
+
+- New documentation site: concepts, lifecycle diagrams, an API reference generated from `openapi.json`, live faucet and status widgets, Copy Markdown / Open in ChatGPT or Claude on every page, `llms.txt` and `llms-full.txt`.
+- Token contracts gained `set_owner`, `add_minter`, `remove_minter` and `is_minter`. Ownership of all six tokens moved to `privacei.testnet`. The root and maker accounts stay as minters, so the faucet is unchanged.
+- `ORIGIN_CHAIN` deposits: gas top-up raised to 0.12 NEAR so the sweep never runs out of prepaid gas.
+- `/v0/status`: duplicate `intentHashes` removed.
+
+## 2026-10-24 · v1
+
+- First public release: official verifier v0.4.2, six test tokens, faucet, maker, and the 1Click-shaped `/v0/tokens`, `/v0/quote`, `/v0/deposit/submit`, `/v0/status`.
+- `EXACT_INPUT`, `EXACT_OUTPUT`, `FLEX_INPUT`; `ORIGIN_CHAIN` and `INTENTS` deposits.

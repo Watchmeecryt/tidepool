@@ -1,0 +1,51 @@
+---
+title: Swap types
+description: EXACT_INPUT, EXACT_OUTPUT and FLEX_INPUT, with examples.
+---
+
+`swapType` decides which side of the trade `amount` fixes.
+
+<Tabs items={['EXACT_INPUT', 'EXACT_OUTPUT', 'FLEX_INPUT']}>
+<Tab value="EXACT_INPUT">
+`amount` is what you **send**. `amountIn = minAmountIn = amount`. Output floats with price, floored by `minAmountOut`.
+
+Send exactly 10 USDC, receive about 10 USDC worth of wNEAR:
+
+```json
+{ "swapType": "EXACT_INPUT", "amount": "10000000", "slippageTolerance": 100 }
+```
+
+A larger deposit swaps `amountIn` and refunds the excess in the same transaction.
+</Tab>
+<Tab value="EXACT_OUTPUT">
+`amount` is what the recipient **receives**. Tidepool works out the input needed (`minAmountIn`) and asks you to deposit `amountIn = minAmountIn × (1 + slippage)` as a buffer. At settlement it uses only what the current price requires and **refunds the rest**. If the price moved so far that the deposit no longer covers the output, everything is refunded with `PRICE_MOVED`.
+
+Receive exactly 1 wNEAR:
+
+```json
+{ "swapType": "EXACT_OUTPUT", "amount": "1000000000000000000000000", "slippageTolerance": 100 }
+```
+</Tab>
+<Tab value="FLEX_INPUT">
+Like `EXACT_INPUT`, but a deposit down to `minAmountIn = amount × (1 − slippage)` is still accepted and swapped pro rata. Useful when fees or rounding on the sending side may shave a little off.
+
+```json
+{ "swapType": "FLEX_INPUT", "amount": "10000000", "slippageTolerance": 100 }
+```
+
+Here any deposit of at least 9.9 USDC is swapped.
+</Tab>
+</Tabs>
+
+<Callout title="Not supported">
+`ANY_INPUT` returns 400. It needs streaming deposits, which Tidepool v1 does not implement.
+</Callout>
+
+## Recipient and refund types
+
+| Field | Values | Meaning |
+| --- | --- | --- |
+| `recipientType` | `DESTINATION_CHAIN` | Output is withdrawn to `recipient` as a normal NEP-141 balance (`ft_withdraw`). Tidepool registers storage for you. |
+| | `INTENTS` | Output stays in the verifier, credited to `recipient`'s intents balance. |
+| `refundType` | `ORIGIN_CHAIN` | Refunds and excess are withdrawn to `refundTo`'s wallet. |
+| | `INTENTS` | Refunds are credited inside the verifier. |

@@ -1,0 +1,372 @@
+{
+  "getTokens": {
+    "tryIt": true,
+    "responses": {
+      "200": [
+        {
+          "assetId": "nep141:usdc.tidepool-sandbox.testnet",
+          "decimals": 6,
+          "blockchain": "near",
+          "symbol": "USDC",
+          "price": 0.999585,
+          "priceUpdatedAt": "2026-10-24T21:30:25.128Z",
+          "contractAddress": "usdc.tidepool-sandbox.testnet",
+          "coingeckoId": "usd-coin"
+        },
+        {
+          "assetId": "nep141:usdt.tidepool-sandbox.testnet",
+          "decimals": 6,
+          "blockchain": "near",
+          "symbol": "USDT",
+          "price": 0.999101,
+          "priceUpdatedAt": "2026-10-24T21:30:25.128Z",
+          "contractAddress": "usdt.tidepool-sandbox.testnet",
+          "coingeckoId": "tether"
+        }
+      ]
+    },
+    "notes": "Returns all six Tidepool test tokens (two shown below) with live USD prices. `ondoTokens` is accepted and ignored."
+  },
+  "getQuote": {
+    "tryIt": true,
+    "request": {
+      "dry": true,
+      "swapType": "EXACT_INPUT",
+      "slippageTolerance": 100,
+      "originAsset": "nep141:usdc.tidepool-sandbox.testnet",
+      "depositType": "INTENTS",
+      "destinationAsset": "nep141:wnear.tidepool-sandbox.testnet",
+      "amount": "10000000",
+      "refundTo": "alice.testnet",
+      "refundType": "INTENTS",
+      "recipient": "alice.testnet",
+      "recipientType": "DESTINATION_CHAIN",
+      "deadline": "2030-01-01T00:00:00.000Z"
+    },
+    "responses": {
+      "200": {
+        "correlationId": "922a68ad-3d13-4a3f-a396-2965f8cc79d4",
+        "timestamp": "2026-10-24T21:31:23.183Z",
+        "quoteRequest": {
+          "dry": true,
+          "swapType": "EXACT_INPUT",
+          "slippageTolerance": 100,
+          "originAsset": "nep141:usdc.tidepool-sandbox.testnet",
+          "depositType": "INTENTS",
+          "destinationAsset": "nep141:wnear.tidepool-sandbox.testnet",
+          "amount": "10000000",
+          "refundTo": "alice.testnet",
+          "refundType": "INTENTS",
+          "recipient": "alice.testnet",
+          "recipientType": "DESTINATION_CHAIN",
+          "deadline": "2030-01-01T00:00:00.000Z"
+        },
+        "quote": {
+          "amountIn": "10000000",
+          "amountInFormatted": "10",
+          "amountInUsd": "9.9958",
+          "minAmountIn": "10000000",
+          "amountOut": "2241186638513513306880000",
+          "amountOutFormatted": "2.24118663851351330688",
+          "amountOutUsd": "9.9509",
+          "minAmountOut": "2218774772128378173811200",
+          "timeEstimate": 10
+        },
+        "signature": "ed25519:peWDyRaujC7pRHxRRU7DnSTWiw1vuiu8T5Pz9gNdfFYbGPedmnYLYKv7nfgLh9JbvZ5Nu6otgbKscHkDYU3JPaL"
+      },
+      "400": {
+        "message": "swapType is required"
+      }
+    },
+    "notes": "Returns **HTTP 201** on success (the spec lists 200, matching 1Click). With `dry: false` the response adds `quote.depositAddress`, `deadline` and `timeWhenInactive`. See [Quotes and pricing](/docs/concepts/quotes) and [Swap types](/docs/concepts/swap-types)."
+  },
+  "getExecutionStatus": {
+    "tryIt": true,
+    "query": {
+      "depositAddress": "c47208de64cde76fc6803b5f26c137bc51fbf151eb1c0964488ea56704142151"
+    },
+    "responses": {
+      "200": {
+        "correlationId": "6e7d2aad-b262-4b13-b88e-0c4d6b64325c",
+        "quoteResponse": {
+          "correlationId": "6e7d2aad-b262-4b13-b88e-0c4d6b64325c",
+          "timestamp": "2026-10-24T21:30:28.060Z",
+          "quoteRequest": {
+            "swapType": "EXACT_INPUT",
+            "slippageTolerance": 100,
+            "originAsset": "nep141:usdc.tidepool-sandbox.testnet",
+            "destinationAsset": "nep141:wnear.tidepool-sandbox.testnet",
+            "amount": "5000000",
+            "depositType": "INTENTS",
+            "refundTo": "tidepool-try-0937467b.testnet",
+            "refundType": "INTENTS",
+            "recipient": "tidepool-try-0937467b.testnet",
+            "recipientType": "DESTINATION_CHAIN",
+            "dry": false,
+            "deadline": "2026-10-24T21:40:27.927Z"
+          },
+          "quote": {
+            "amountIn": "5000000",
+            "amountInFormatted": "5",
+            "amountInUsd": "4.9979",
+            "minAmountIn": "5000000",
+            "amountOut": "1123407466216216112640000",
+            "amountOutFormatted": "1.12340746621621611264",
+            "amountOutUsd": "4.9879",
+            "minAmountOut": "1112173391554053951513600",
+            "timeEstimate": 10,
+            "depositAddress": "c47208de64cde76fc6803b5f26c137bc51fbf151eb1c0964488ea56704142151",
+            "deadline": "2026-10-24T21:40:27.927Z",
+            "timeWhenInactive": "2026-10-24T21:40:27.927Z"
+          },
+          "signature": "ed25519:3D679QeYbrSEAnHRmkG1eurAeWnnecYQBNWLgmQuEzSvdQpqmKzP2R9W4FqeqLzJvrem4JU3xVnXamFjz74sCKfj"
+        },
+        "status": "SUCCESS",
+        "updatedAt": "2026-10-24T21:30:42.751Z",
+        "swapDetails": {
+          "intentHashes": [
+            "DsrGVDFfwq6ifa9LctU2JaCzWB2kZB1VzNe1XHFCC3qS",
+            "23MCaK5ZV2qanV6p1LYzpGh7zwPC3pa9vqGSm6hLij6H"
+          ],
+          "nearTxHashes": [
+            "EB5xfEyjiC1oESNjEyNjnkzW4Zpsi24e4H2s6aUGEh9d"
+          ],
+          "originChainTxHashes": [
+            {
+              "hash": "HbwEo318L69bJS7XYse18mUTzBBa2tjK6wtGeDYo3dY8",
+              "explorerUrl": "https://testnet.nearblocks.io/txns/HbwEo318L69bJS7XYse18mUTzBBa2tjK6wtGeDYo3dY8"
+            }
+          ],
+          "destinationChainTxHashes": [
+            {
+              "hash": "EB5xfEyjiC1oESNjEyNjnkzW4Zpsi24e4H2s6aUGEh9d",
+              "explorerUrl": "https://testnet.nearblocks.io/txns/EB5xfEyjiC1oESNjEyNjnkzW4Zpsi24e4H2s6aUGEh9d"
+            }
+          ],
+          "amountIn": "5000000",
+          "amountInFormatted": "5",
+          "amountInUsd": "4.9979",
+          "amountOut": "1123407466216216112640000",
+          "amountOutFormatted": "1.12340746621621611264",
+          "amountOutUsd": "4.9879",
+          "slippage": 0,
+          "depositedAmount": "5000000",
+          "depositedAmountFormatted": "5",
+          "depositedAmountUsd": "4.9979"
+        },
+        "tidepool": {
+          "explorer": [
+            {
+              "label": "swap (execute_intents)",
+              "url": "https://testnet.nearblocks.io/txns/EB5xfEyjiC1oESNjEyNjnkzW4Zpsi24e4H2s6aUGEh9d"
+            }
+          ]
+        }
+      },
+      "404": {
+        "message": "Deposit address not found"
+      }
+    },
+    "notes": "The example below is a real `SUCCESS` swap (5 USDC → wNEAR). See [Status lifecycle](/docs/concepts/status-lifecycle)."
+  },
+  "submitDepositTx": {
+    "request": {
+      "txHash": "HbwEo318L69bJS7XYse18mUTzBBa2tjK6wtGeDYo3dY8",
+      "depositAddress": "c47208de64cde76fc6803b5f26c137bc51fbf151eb1c0964488ea56704142151"
+    },
+    "responses": {
+      "200": {
+        "correlationId": "6e7d2aad-b262-4b13-b88e-0c4d6b64325c",
+        "quoteResponse": {
+          "correlationId": "6e7d2aad-b262-4b13-b88e-0c4d6b64325c",
+          "timestamp": "2026-10-24T21:30:28.060Z",
+          "quoteRequest": {
+            "swapType": "EXACT_INPUT",
+            "slippageTolerance": 100,
+            "originAsset": "nep141:usdc.tidepool-sandbox.testnet",
+            "destinationAsset": "nep141:wnear.tidepool-sandbox.testnet",
+            "amount": "5000000",
+            "depositType": "INTENTS",
+            "refundTo": "tidepool-try-0937467b.testnet",
+            "refundType": "INTENTS",
+            "recipient": "tidepool-try-0937467b.testnet",
+            "recipientType": "DESTINATION_CHAIN",
+            "dry": false,
+            "deadline": "2026-10-24T21:40:27.927Z"
+          },
+          "quote": {
+            "amountIn": "5000000",
+            "amountInFormatted": "5",
+            "amountInUsd": "4.9979",
+            "minAmountIn": "5000000",
+            "amountOut": "1123407466216216112640000",
+            "amountOutFormatted": "1.12340746621621611264",
+            "amountOutUsd": "4.9879",
+            "minAmountOut": "1112173391554053951513600",
+            "timeEstimate": 10,
+            "depositAddress": "c47208de64cde76fc6803b5f26c137bc51fbf151eb1c0964488ea56704142151",
+            "deadline": "2026-10-24T21:40:27.927Z",
+            "timeWhenInactive": "2026-10-24T21:40:27.927Z"
+          },
+          "signature": "ed25519:3D679QeYbrSEAnHRmkG1eurAeWnnecYQBNWLgmQuEzSvdQpqmKzP2R9W4FqeqLzJvrem4JU3xVnXamFjz74sCKfj"
+        },
+        "status": "SUCCESS",
+        "updatedAt": "2026-10-24T21:30:42.751Z",
+        "swapDetails": {
+          "intentHashes": [
+            "DsrGVDFfwq6ifa9LctU2JaCzWB2kZB1VzNe1XHFCC3qS",
+            "23MCaK5ZV2qanV6p1LYzpGh7zwPC3pa9vqGSm6hLij6H"
+          ],
+          "nearTxHashes": [
+            "EB5xfEyjiC1oESNjEyNjnkzW4Zpsi24e4H2s6aUGEh9d"
+          ],
+          "originChainTxHashes": [
+            {
+              "hash": "HbwEo318L69bJS7XYse18mUTzBBa2tjK6wtGeDYo3dY8",
+              "explorerUrl": "https://testnet.nearblocks.io/txns/HbwEo318L69bJS7XYse18mUTzBBa2tjK6wtGeDYo3dY8"
+            }
+          ],
+          "destinationChainTxHashes": [
+            {
+              "hash": "EB5xfEyjiC1oESNjEyNjnkzW4Zpsi24e4H2s6aUGEh9d",
+              "explorerUrl": "https://testnet.nearblocks.io/txns/EB5xfEyjiC1oESNjEyNjnkzW4Zpsi24e4H2s6aUGEh9d"
+            }
+          ],
+          "amountIn": "5000000",
+          "amountInFormatted": "5",
+          "amountInUsd": "4.9979",
+          "amountOut": "1123407466216216112640000",
+          "amountOutFormatted": "1.12340746621621611264",
+          "amountOutUsd": "4.9879",
+          "slippage": 0,
+          "depositedAmount": "5000000",
+          "depositedAmountFormatted": "5",
+          "depositedAmountUsd": "4.9979"
+        },
+        "tidepool": {
+          "explorer": [
+            {
+              "label": "swap (execute_intents)",
+              "url": "https://testnet.nearblocks.io/txns/EB5xfEyjiC1oESNjEyNjnkzW4Zpsi24e4H2s6aUGEh9d"
+            }
+          ]
+        }
+      },
+      "400": {
+        "message": "txHash and depositAddress are required"
+      }
+    },
+    "notes": "Optional. Returns **HTTP 201** and the current status object. Moves `PENDING_DEPOSIT` to `KNOWN_DEPOSIT_TX`; the worker detects deposits on its own either way."
+  },
+  "TidepoolFaucet": {
+    "request": {
+      "accountId": "alice.testnet",
+      "mode": "wallet"
+    },
+    "responses": {
+      "200": {
+        "accountId": "alice.testnet",
+        "mode": "wallet",
+        "drips": [
+          {
+            "assetId": "nep141:usdc.tidepool-sandbox.testnet",
+            "symbol": "USDC",
+            "amount": "100"
+          },
+          {
+            "assetId": "nep141:usdt.tidepool-sandbox.testnet",
+            "symbol": "USDT",
+            "amount": "100"
+          }
+        ],
+        "transactions": [
+          {
+            "assetId": "nep141:usdc.tidepool-sandbox.testnet",
+            "amount": "100",
+            "txHash": "F6JiEXj2LSkzhAdGoBV5hBs5etTjdgNvvNsH72aBACcN",
+            "explorerUrl": "https://testnet.nearblocks.io/txns/F6JiEXj2LSkzhAdGoBV5hBs5etTjdgNvvNsH72aBACcN"
+          }
+        ]
+      },
+      "429": {
+        "message": "Rate limited: alice.testnet can use the wallet faucet again after 2026-10-24T22:20:00.000Z"
+      }
+    },
+    "notes": "Limits: one drip per account per mode per hour, six per IP per hour. Response lists all drips (trimmed here). See [Faucet](/docs/guides/faucet)."
+  },
+  "TidepoolHealth": {
+    "tryIt": true,
+    "responses": {
+      "200": {
+        "service": "tidepool",
+        "network": "testnet",
+        "verifier": "verifier.tidepool-sandbox.testnet",
+        "verifierWasmSha256": "f67f9559b3b512c52dfa11723a28b9119bcf773ac01780370d6409e5f1fb20e5",
+        "verifierRelease": "https://github.com/near/intents/releases/tag/defuse/v0.4.2",
+        "maker": "maker.tidepool-sandbox.testnet",
+        "checks": {
+          "rpc": {
+            "ok": true,
+            "height": 274605756,
+            "ms": 80
+          },
+          "verifier": {
+            "ok": true,
+            "codeHashHex": "f67f9559b3b512c52dfa11723a28b9119bcf773ac01780370d6409e5f1fb20e5"
+          },
+          "prices": {
+            "ok": true,
+            "source": "coingecko",
+            "updatedAt": "2026-10-24T21:30:25.128Z"
+          },
+          "makerInventory": {
+            "ok": true,
+            "balances": {
+              "USDC": "1999720",
+              "USDT": "1999710",
+              "wNEAR": "799875.5214169960396638752",
+              "wBTC": "19.99693796",
+              "ETH": "599.907873451968147949",
+              "XAUT": "599.91"
+            }
+          }
+        },
+        "swaps": {
+          "total": 4,
+          "success": 3,
+          "refunded": 1,
+          "failed": 0,
+          "active": 0
+        },
+        "recent": [
+          {
+            "status": "SUCCESS",
+            "pair": "usdc → wnear",
+            "updatedAt": "2026-10-24T21:30:42.751Z",
+            "tx": "https://testnet.nearblocks.io/txns/EB5xfEyjiC1oESNjEyNjnkzW4Zpsi24e4H2s6aUGEh9d"
+          },
+          {
+            "status": "REFUNDED",
+            "pair": "usdc → eth",
+            "updatedAt": "2026-10-24T21:10:30.279Z",
+            "tx": "https://testnet.nearblocks.io/txns/4LaFRDyTHHyAWP4PNz2z38MC34GAcr6aE2KTUTdTHysy"
+          },
+          {
+            "status": "SUCCESS",
+            "pair": "usdt → wbtc",
+            "updatedAt": "2026-10-24T21:09:07.722Z",
+            "tx": "https://testnet.nearblocks.io/txns/F4NQXgVoczTixw1bvekQf7k5NGNKoDY4huveLxhkoToX"
+          },
+          {
+            "status": "SUCCESS",
+            "pair": "usdc → wnear",
+            "updatedAt": "2026-10-24T21:08:51.970Z",
+            "tx": "https://testnet.nearblocks.io/txns/CTnAzK9YrbNy64GR9hhEQUF7ctn6KHYY5tpt57g5pEPe"
+          }
+        ],
+        "ok": true
+      }
+    },
+    "notes": "Cached for 10 seconds. Re-checks the verifier code hash against the `defuse/v0.4.2` release. See [Live status](/docs/status)."
+  }
+}

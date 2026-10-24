@@ -1,0 +1,51 @@
+---
+title: Deposit modes
+description: ORIGIN_CHAIN vs INTENTS deposits, with ready-to-run commands.
+---
+
+Every live quote has a fresh `depositAddress`. `depositType` says **how** you will fund it.
+
+## ORIGIN_CHAIN
+
+Send the NEP-141 token straight to the deposit address, like sending to any wallet. It is a brand-new implicit account, so register storage first:
+
+```bash
+near contract call-function as-transaction usdc.tidepool-sandbox.testnet storage_deposit \
+  json-args '{"account_id":"<depositAddress>","registration_only":true}' \
+  prepaid-gas '30 Tgas' attached-deposit '0.00125 NEAR' sign-as you.testnet network-config testnet sign-with-keychain send
+
+near contract call-function as-transaction usdc.tidepool-sandbox.testnet ft_transfer \
+  json-args '{"receiver_id":"<depositAddress>","amount":"5000000"}' \
+  prepaid-gas '30 Tgas' attached-deposit '1 yoctoNEAR' sign-as you.testnet network-config testnet sign-with-keychain send
+```
+
+The worker then funds the address with 0.12 NEAR for gas (from root) and moves the tokens into the verifier. Expect one or two extra transactions in `/v0/status`.
+
+## INTENTS
+
+Credit the deposit address **inside the verifier**. Two ways:
+
+**From a wallet balance**, one call, no storage step:
+
+```bash
+near contract call-function as-transaction usdc.tidepool-sandbox.testnet ft_transfer_call \
+  json-args '{"receiver_id":"verifier.tidepool-sandbox.testnet","amount":"5000000","msg":"<depositAddress>"}' \
+  prepaid-gas '100 Tgas' attached-deposit '1 yoctoNEAR' sign-as you.testnet network-config testnet sign-with-keychain send
+```
+
+**From an intents balance** (for example after an `intents` faucet drip): sign a NEP-413 `transfer` intent `{ "intent": "transfer", "receiver_id": "<depositAddress>", "tokens": { "nep141:usdc.tidepool-sandbox.testnet": "5000000" } }` and submit it with `execute_intents` on the verifier. `examples/swap.mjs` in the repo does exactly this.
+
+Before your first intents signature, your account needs a public key registered on the verifier (`add_public_key`), or it must be an implicit account.
+
+## Tell Tidepool about the deposit (optional)
+
+The worker polls every deposit address, so this is optional, but it moves the status to `KNOWN_DEPOSIT_TX` right away:
+
+```bash
+curl -X POST https://tidepool-production-8594.up.railway.app/v0/deposit/submit -H 'content-type: application/json' \
+  -d '{"txHash":"<hash>","depositAddress":"<depositAddress>"}'
+```
+
+## Not supported
+
+`depositMode: "MEMO"` (shared address plus memo) and `CONFIDENTIAL_INTENTS` return 400. Only `blockchain: "near"` exists.

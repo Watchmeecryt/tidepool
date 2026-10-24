@@ -1,0 +1,38 @@
+---
+title: Introduction
+description: Tidepool is a 1Click-compatible testnet sandbox for NEAR Intents. Build and test swap flows end to end without real funds.
+---
+
+<Callout type="warn" title="Community project">
+Tidepool is community-built and **not affiliated with NEAR, Defuse or 1Click**. It runs on NEAR **testnet** only. Never send real assets to a Tidepool address.
+</Callout>
+
+Tidepool gives you everything a 1Click swap needs, on testnet:
+
+- **The official NEAR Intents verifier** (`defuse` v0.4.2, wasm byte-identical to the GitHub release) deployed at `verifier.tidepool-sandbox.testnet`.
+- **Six test tokens**: USDC, USDT, wNEAR, wBTC, ETH and XAUT, with a public faucet.
+- **A live maker** that quotes every pair from real CoinGecko prices and fills every quote by signing intents on the verifier.
+- **The 1Click Swap API shape** (`/v0/tokens`, `/v0/quote`, `/v0/deposit/submit`, `/v0/status`), so the official SDK works by changing one base URL.
+
+<SwapFlow />
+
+## Where to start
+
+<Cards>
+  <Card title="Quickstart" href="/docs/quickstart" description="List tokens, get a dry quote and go live with curl in two minutes." />
+  <Card title="First swap" href="/docs/guides/first-swap" description="Faucet → quote → deposit → SUCCESS, with real testnet transactions." />
+  <Card title="How it works" href="/docs/concepts/how-it-works" description="Verifier, maker, deposit addresses and how a quote is filled." />
+  <Card title="API reference" href="/docs/api-reference" description="Every endpoint with request and response examples, generated from openapi.json." />
+  <Card title="Official SDK" href="/docs/guides/sdk" description="Use @defuse-protocol/one-click-sdk-typescript unchanged." />
+  <Card title="For agents" href="/docs/guides/agents" description="llms.txt, Markdown pages, AGENTS.md and rules for autonomous callers." />
+</Cards>
+
+## Endpoints at a glance
+
+| | Base URL |
+| --- | --- |
+| API | `https://tidepool-production-8594.up.railway.app` |
+| OpenAPI | [`/openapi.json`](/openapi.json) |
+| Agent index | [`/llms.txt`](/llms.txt) · [`/llms-full.txt`](/llms-full.txt) · [`/AGENTS.md`](/AGENTS.md) |
+
+Every page has a **Copy Markdown** button and an **Open** menu (view as Markdown, open in ChatGPT or Claude) at the top.

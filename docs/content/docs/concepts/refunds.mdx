@@ -1,0 +1,25 @@
+---
+title: Refunds
+description: When Tidepool refunds a deposit, where the funds go and how to verify it.
+---
+
+A refund always returns the **origin token** to `refundTo`, as a wallet balance (`refundType: ORIGIN_CHAIN`) or an intents balance (`refundType: INTENTS`). It is signed by the deposit address and executed on the verifier, so you can audit it on NearBlocks.
+
+| Reason | When |
+| --- | --- |
+| `PARTIAL_DEPOSIT` | Deadline passed with less than `minAmountIn` deposited. |
+| `DEADLINE_PASSED` | Funds landed only after the deadline. |
+| `SLIPPAGE_EXCEEDED` | At settlement the re-priced output fell below `minAmountOut`. |
+| `PRICE_MOVED` | `EXACT_OUTPUT`: the deposit no longer covers the requested output. |
+| `INSUFFICIENT_LIQUIDITY` | The maker ran out of the destination token. |
+| `SWAP_FAILED` | The settlement transaction failed on chain. |
+
+## Excess is not a refund
+
+If you deposit **more** than `amountIn` (or more than an `EXACT_OUTPUT` swap needs), the swap still succeeds and the excess is returned in the **same** transaction. The status is `SUCCESS` and `swapDetails.refundedAmount` shows the excess.
+
+## Example
+
+A real `PARTIAL_DEPOSIT` refund on testnet: deposit [452vagfg…](https://testnet.nearblocks.io/txns/452vagfgdDpY8bEcFzsVsvcWjiAqQVsoUjrgR9zKH8xb), refund [4LaFRDyT…](https://testnet.nearblocks.io/txns/4LaFRDyTHHyAWP4PNz2z38MC34GAcr6aE2KTUTdTHysy).
+
+Reproduce it with `node examples/swap.mjs --refund`.
