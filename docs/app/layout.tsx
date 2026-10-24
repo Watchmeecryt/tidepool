@@ -1,9 +1,10 @@
-import { Inter, JetBrains_Mono } from 'next/font/google';
+import { Inter, JetBrains_Mono, Bricolage_Grotesque } from 'next/font/google';
 import type { Metadata } from 'next';
 import { Provider } from '@/components/provider';
 import './global.css';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
+const display = Bricolage_Grotesque({ subsets: ['latin'], variable: '--font-display', weight: ['500', '600', '700', '800'] });
 const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' });
 
 export const metadata: Metadata = {
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
 
 export default function Layout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="en" className={`${inter.variable} ${mono.variable} ${inter.className}`} suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${mono.variable} ${display.variable} ${inter.className}`} suppressHydrationWarning>
       <body className="flex flex-col min-h-screen">
         <Provider>{children}</Provider>
       </body>

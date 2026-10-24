@@ -6,12 +6,13 @@ import { TypeTable } from 'fumadocs-ui/components/type-table';
 import type { MDXComponents } from 'mdx/types';
 import { StatusLifecycle, SwapFlow } from './diagrams';
 import { FaucetWidget, StatusWidget, TryIt } from './live';
+import { DocsHero } from './ocean';
 
 export function getMDXComponents(components?: MDXComponents) {
   return {
     ...defaultMdxComponents,
     Tab, Tabs, Step, Steps, Accordion, Accordions, TypeTable,
-    SwapFlow, StatusLifecycle, FaucetWidget, StatusWidget, TryIt,
+    SwapFlow, StatusLifecycle, FaucetWidget, StatusWidget, TryIt, DocsHero,
     ...components,
   } satisfies MDXComponents;
 }
