@@ -19,7 +19,7 @@ Tidepool mirrors the 1Click request and response shapes, so most code moves unch
 **Real chains.** Mainnet supports many `blockchain` values and deposit addresses on other chains (EVM, Solana, Bitcoin…). Your deposit code must send on the origin chain, not with `ft_transfer` on NEAR. `refundTo` and `recipient` must be valid addresses on their chains.
 </Step>
 <Step>
-**Features Tidepool lacks.** `ANY_INPUT`, `depositMode: MEMO`, `appFees`, `CONFIDENTIAL_INTENTS` and `/v0/auth/*` exist on mainnet. Test them there with small amounts.
+**Features Tidepool lacks.** `ANY_INPUT`, `depositMode: MEMO`, `appFees`, `CONFIDENTIAL_INTENTS` and `/v0/auth/*` exist on mainnet. Test them there with small amounts. What is planned for Tidepool is on the [Roadmap](/docs/resources/roadmap).
 </Step>
 <Step>
 **Prices and timing.** Mainnet quotes come from competing solvers and settle cross-chain, so `timeEstimate` can be minutes. Keep your polling loop tolerant of long `PROCESSING` periods.

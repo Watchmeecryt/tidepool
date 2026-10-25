@@ -88,7 +88,7 @@ Auth is optional. Any `X-API-Key` header or `Authorization: Bearer <token>` valu
 
 - Tokens are Tidepool test tokens on NEAR testnet, not bridged assets. Only `blockchain: "near"` exists.
 - Supported: `EXACT_INPUT`, `EXACT_OUTPUT`, `FLEX_INPUT`; deposit and refund types `ORIGIN_CHAIN` and `INTENTS`; recipient types `DESTINATION_CHAIN` and `INTENTS`.
-- `ANY_INPUT`, `CONFIDENTIAL_INTENTS`, `appFees`, `depositMode: MEMO` and `/v0/auth/*` return 400 or 404.
+- `ANY_INPUT`, `CONFIDENTIAL_INTENTS`, `appFees`, `depositMode: MEMO` and `/v0/auth/*` return 400 or 404. See the [Roadmap](/docs/resources/roadmap).
 - One maker (Tidepool's) fills every quote. There is no solver competition.
 - The quote `signature` is Tidepool's maker key over the quote body, not 1Click's.
 
