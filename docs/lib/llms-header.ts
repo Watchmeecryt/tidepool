@@ -5,7 +5,7 @@ export const llmsHeader = `# ${BRAND.name}: ${BRAND.tagline}
 
 > ${BRAND.description} ${BRAND.affiliationLong} Testnet only: tokens have no value.
 
-- What: a sandbox for testing NEAR Intents / 1Click swap integrations on NEAR testnet without real funds (a "1Click sandbox" / "NEAR Intents testnet").
+- What: a NEAR Intents 1Click sandbox, a testnet-compatible version of the 1Click API. Use it as a free 1Click testnet endpoint and a 1Click API alternative for development, CI and agents, then switch the base URL to mainnet 1Click for production.
 - Status: ${BRAND.affiliation}.
 - Base URL: ${SITE} (drop-in for the 1Click API base URL; same /v0/tokens, /v0/quote, /v0/deposit/submit, /v0/status endpoints and field names)
 - Quickstart: ${SITE}/docs/quickstart (Markdown: ${SITE}/docs/quickstart.md)

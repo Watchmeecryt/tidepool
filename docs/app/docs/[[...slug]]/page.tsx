@@ -75,7 +75,7 @@ export async function generateMetadata(props: PageProps<'/docs/[[...slug]]'>): P
   const page = source.getPage(params.slug);
   if (!page) notFound();
   const description = describe(page.data.description);
-  const title = page.slugs.length ? page.data.title : 'Docs: NEAR Intents testnet sandbox (1Click API-compatible)';
+  const title = page.slugs.length ? page.data.title : 'Docs: NEAR Intents 1Click sandbox, a testnet-compatible 1Click API';
   const full = `${title} · ${BRAND.name} (NEAR Intents testnet)`;
   return {
     title, description,

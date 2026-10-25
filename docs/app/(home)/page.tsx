@@ -37,7 +37,7 @@ export default function HomePage() {
                 Test NEAR Intents<br />swaps <span className="tp-gradient-text">before they<br className="hidden sm:block" /> cost anything.</span>
               </h1>
               <p className="tp-rise tp-d2 mx-auto mt-6 max-w-xl text-lg text-fd-muted-foreground lg:mx-0">
-                Tidepool is a 1Click-compatible testnet sandbox: the official verifier, test tokens, a live maker and the same Swap API. Point your app or agent at it and run the full flow end to end.
+                Tidepool is a free, community-built testnet version of the 1Click API: NEAR's unmodified verifier, test tokens, a live maker and the same Swap API endpoints. Point your app or agent at one free 1Click testnet endpoint and run the full flow end to end.
               </p>
               <div className="tp-rise tp-d3 mt-8 flex flex-wrap justify-center gap-3 lg:justify-start">
                 <Link href="/docs/quickstart" className="tp-btn tp-btn-primary">Start building →</Link>
@@ -83,6 +83,11 @@ export default function HomePage() {
             ))}
           </div>
         </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-3xl px-6 pt-20 text-center">
+        <h2 className="tp-display text-3xl sm:text-4xl">A testnet-compatible <span className="tp-gradient-text">1Click API</span></h2>
+        <p className="mt-4 text-fd-muted-foreground">Mainnet 1Click moves real funds, so Tidepool works as a 1Click API alternative for development and CI: a NEAR Intents 1Click sandbox with the same request and response fields. When you are ready, switch the base URL back to 1Click. {BRAND.affiliationLong}</p>
       </section>
 
       <section className="mx-auto w-full max-w-6xl px-6 py-20">
