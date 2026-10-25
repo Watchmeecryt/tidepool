@@ -13,6 +13,7 @@ WORKDIR /app
 COPY server/package*.json server/
 RUN cd server && npm ci --omit=dev
 COPY server/src server/src
+COPY docs/brand.json docs/brand.json
 COPY site site
 COPY contracts/verifier/defuse.sha256 contracts/verifier/defuse.sha256
 COPY --from=docs /app/docs/out docs/out

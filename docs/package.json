@@ -9,7 +9,7 @@
     "types:check": "next typegen && tsc --noEmit",
     "lint": "biome check",
     "format": "biome format --write",
-    "prebuild": "node scripts/gen-api.mjs"
+    "prebuild": "node scripts/gen-api.mjs && node scripts/gen-lastmod.mjs"
   },
   "dependencies": {
     "cn": "^0.5.0",

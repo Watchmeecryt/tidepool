@@ -18,7 +18,7 @@ startWorker();
 
 const PUBLIC = new URL('../../site/public/', import.meta.url).pathname;
 const DOCS = new URL('../../docs/out/', import.meta.url).pathname;
-const TYPES = { '.html': 'text/html; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.md': 'text/markdown; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.css': 'text/css', '.js': 'text/javascript', '.mjs': 'text/javascript', '.png': 'image/png', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.webp': 'image/webp' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.xml': 'application/xml; charset=utf-8', '.webmanifest': 'application/manifest+json', '.txt': 'text/plain; charset=utf-8', '.md': 'text/markdown; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.css': 'text/css', '.js': 'text/javascript', '.mjs': 'text/javascript', '.png': 'image/png', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.webp': 'image/webp' };
 const sendFile = (res, file, code = 200) => { const immutable = file.includes('/_next/static/'); res.writeHead(code, { 'content-type': TYPES[path.extname(file)] || 'application/octet-stream', 'access-control-allow-origin': '*', 'cache-control': immutable ? 'public, max-age=31536000, immutable' : 'public, max-age=60' }); res.end(fs.readFileSync(file)); };
 const LEGACY = { '/quickstart': '/docs/quickstart', '/faucet': '/docs/guides/faucet', '/status': '/docs/status', '/guides/first-swap': '/docs/guides/first-swap', '/guides/sdk': '/docs/guides/sdk', '/guides/agents': '/docs/guides/agents' };
 function serveDocs(req, res, p) {

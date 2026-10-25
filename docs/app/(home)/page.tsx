@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { SwapFlow } from '@/components/diagrams';
 import { Aurora, Waves } from '@/components/ocean';
+import { BRAND, ldJson, organization, software, website } from '@/lib/seo';
 
 const ORIGIN = 'https://www.usetidepool.tech';
 
@@ -95,8 +96,10 @@ export default function HomePage() {
       </section>
 
       <footer className="border-t border-fd-border/60 py-10 text-center text-xs text-fd-muted-foreground">
-        Tidepool is community-built and not affiliated with NEAR, Defuse or 1Click. Testnet only; test tokens have no value.
+        <p className="font-medium">{BRAND.affiliation}</p>
+        <p className="mt-1">{BRAND.affiliationLong} Testnet only; test tokens have no value.</p>
       </footer>
+      <script type="application/ld+json" dangerouslySetInnerHTML={ldJson({ '@context': 'https://schema.org', '@graph': [organization, website, software] })} />
     </main>
   );
 }

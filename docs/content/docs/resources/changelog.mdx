@@ -3,6 +3,14 @@ title: Changelog
 description: What changed in Tidepool and when.
 ---
 
+## 2026-10-25 · SEO and agent discoverability
+
+- Every page now has a unique title and description, a canonical URL, Open Graph and Twitter card tags, and a 1200×630 share image. All of these are in the server-rendered HTML.
+- New `robots.txt` (all crawlers allowed, including AI crawlers; `/admin` disallowed), `sitemap.xml` with `lastmod`, `site.webmanifest` and a full favicon set.
+- JSON-LD structured data: Organization, WebSite and SoftwareApplication/WebAPI on the home page, and BreadcrumbList and TechArticle on docs pages.
+- `llms.txt`, `llms-full.txt` and `AGENTS.md` now open with a short summary: what Tidepool is, the base URL, the quickstart and the faucet.
+- The footer of the site and of every docs page says Tidepool is community-built and not affiliated with NEAR.
+
 ## 2026-10-25 · Testing failure cases guide and roadmap
 
 - New guide: [Testing failure cases](/docs/guides/failure-cases). It was added in response to community feedback on Discord about expired quotes and under-deposits. It covers a partial deposit (`INCOMPLETE_DEPOSIT` → `REFUNDED` / `PARTIAL_DEPOSIT`), a late deposit (`REFUNDED` / `DEADLINE_PASSED`) and an overpay (`SUCCESS` with `refundedAmount`). Each case shows the real `/v0/status` JSON from testnet runs, with NearBlocks links for every deposit and refund.

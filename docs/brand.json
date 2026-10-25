@@ -1,0 +1,14 @@
+{
+  "_comment": "Single source of truth for Tidepool branding/affiliation wording. Used by docs metadata, JSON-LD, manifest, robots/sitemap, OG image, footers and the server's llms.txt / AGENTS.md. If Tidepool's status ever changes, edit affiliation/affiliationShort here only.",
+  "name": "Tidepool",
+  "origin": "https://www.usetidepool.tech",
+  "tagline": "1Click API-compatible testnet sandbox for NEAR Intents",
+  "affiliation": "Community-built · not affiliated with NEAR",
+  "affiliationLong": "Tidepool is community-built and not affiliated with NEAR, Defuse or 1Click.",
+  "affiliationShort": "community-built",
+  "description": "Free, community-built testnet sandbox for NEAR Intents, compatible with the 1Click API (same endpoints and field names). Runs NEAR's unmodified Intents verifier on testnet, with test tokens and a faucet. Test NEAR Intents swaps without real funds.",
+  "keywords": ["NEAR Intents testnet", "1Click API testnet", "1Click sandbox", "NEAR Intents sandbox", "test NEAR Intents without real funds", "NEAR testnet faucet", "NEAR Intents verifier testnet", "1Click Swap API", "chain abstraction testnet"],
+  "themeColor": "#031a22",
+  "backgroundColor": "#031a22",
+  "accentColor": "#2dd4bf"
+}
