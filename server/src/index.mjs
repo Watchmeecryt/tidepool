@@ -8,6 +8,8 @@ import { quote, tokens, statusOf, submitDeposit, startWorker, initEngine, BadReq
 import { drip } from './faucet.mjs';
 import { prices } from './prices.mjs';
 import { db } from './store.mjs';
+import { record } from './analytics.mjs';
+import { admin } from './admin.mjs';
 import { renderPage, docs, llmsTxt, llmsFull, agentsMd } from './site.mjs';
 
 await loadKeys({ env: process.env.TIDEPOOL_KEYS, dir: process.env.TIDEPOOL_KEYS ? null : new URL('../../.secrets', import.meta.url).pathname });
@@ -35,7 +37,7 @@ function serveDocs(req, res, p) {
 }
 const json = (res, code, body) => { res.writeHead(code, { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'cache-control': 'no-store' }); res.end(JSON.stringify(body)); };
 const text = (res, body, type = 'text/plain; charset=utf-8') => { res.writeHead(200, { 'content-type': type, 'access-control-allow-origin': '*' }); res.end(body); };
-const readBody = (req) => new Promise((ok, bad) => { let b = ''; req.on('data', c => { b += c; if (b.length > 1e5) req.destroy(); }); req.on('end', () => { try { ok(b ? JSON.parse(b) : {}); } catch { bad(new BadRequest('Body must be JSON')); } }); });
+const readBody = (req) => new Promise((ok, bad) => { let b = ''; req.on('data', c => { b += c; if (b.length > 1e5) req.destroy(); }); req.on('end', () => { try { ok(req._body = b ? JSON.parse(b) : {}); } catch { bad(new BadRequest('Body must be JSON')); } }); });
 const authed = (req) => Boolean(req.headers['x-api-key'] || /^Bearer\s+\S+/i.test(req.headers.authorization || ''));
 const ip = (req) => String(req.headers['x-forwarded-for'] || req.socket.remoteAddress).split(',')[0].trim();
 
@@ -58,7 +60,9 @@ let healthCache = { at: 0 };
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   const p = url.pathname;
+  res.on('finish', () => { try { record(req, res, p, req._body, url); } catch (e) { console.error('analytics', e.message); } });
   try {
+    if (await admin(req, res, p, url)) return;
     if (req.method === 'OPTIONS') { res.writeHead(204, { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type, authorization, x-api-key', 'access-control-allow-methods': 'GET, POST, OPTIONS' }); return res.end(); }
     // ---- API (1Click-compatible) ----
     if (p === '/v0/tokens' && req.method === 'GET') return json(res, 200, await tokens());
