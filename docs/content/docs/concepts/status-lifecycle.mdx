@@ -37,3 +37,7 @@ Poll every 2–5 seconds and stop on a final status. The worker checks each acti
 | `intentHashes` | Intent hashes logged by the verifier. |
 
 The response also carries a Tidepool-only `tidepool` object: `explorer` (a labelled list of every transaction, such as "gas top-up", "move deposit into verifier", "swap (execute_intents)" or "refund") and `note` (the last error, if any). 1Click clients ignore it.
+
+## Testing the failure paths
+
+[Testing failure cases](/docs/guides/failure-cases) walks through `INCOMPLETE_DEPOSIT` → `REFUNDED`, a late deposit, and an overpaid `SUCCESS` on testnet. It shows the real `/v0/status` JSON for every transition, plus a script to reproduce them.

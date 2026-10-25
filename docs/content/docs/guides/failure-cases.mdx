@@ -1,0 +1,455 @@
+---
+title: Testing failure cases
+description: Reproduce partial deposits, expired quotes, overpayment and API errors on testnet, with the real status JSON each one returns.
+---
+
+Happy-path swaps are the easy part. This guide covers what your integration has to handle when a deposit goes wrong. Each case below was run against `https://www.usetidepool.tech` on NEAR testnet. The status JSON on this page is the real response from those runs, and every transaction is linked on NearBlocks.
+
+<Callout title="Same semantics as 1Click">
+Tidepool uses the 1Click status values (`PENDING_DEPOSIT`, `KNOWN_DEPOSIT_TX`, `INCOMPLETE_DEPOSIT`, `PROCESSING`, `SUCCESS`, `REFUNDED`, `FAILED`) and the same `swapDetails` fields (`depositedAmount`, `refundedAmount`, `refundReason`). Code that handles these cases here should handle them the same way against 1Click. Only the extra `tidepool` object is Tidepool-specific, and 1Click clients can ignore it.
+</Callout>
+
+| Case | What you do | What you get |
+| --- | --- | --- |
+| [Partial deposit](#partial-deposit) | Deposit less than `minAmountIn` | `INCOMPLETE_DEPOSIT`, then `REFUNDED` with `refundReason: PARTIAL_DEPOSIT` at the deadline |
+| [Late deposit](#late-deposit) | Deposit the full amount after `deadline` | `REFUNDED` with `refundReason: DEADLINE_PASSED` |
+| [Overpay](#overpay) | Deposit more than `amountIn` | `SUCCESS`, with the excess in `swapDetails.refundedAmount` |
+| [API errors](#api-errors) | A bad deadline, or an unknown deposit address | HTTP 400 or 404 before any funds move |
+
+The refund always returns the **origin token** to `refundTo`. See [Refunds](/docs/concepts/refunds) for every refund reason and [Status lifecycle](/docs/concepts/status-lifecycle) for the state machine.
+
+## Run it yourself
+
+`examples/failure-cases.mjs` (in the repo, and in full below) runs every case. It tops up your intents balance from the faucet, deposits with a signed intents `transfer`, and prints the full `/v0/status` JSON on every status change.
+
+```bash
+npm install near-api-js@5 bs58@6   # Node 20+; save the script below as failure-cases.mjs
+# Uses a throwaway testnet account by default, or set NEAR_ACCOUNT_ID + NEAR_PRIVATE_KEY.
+TIDEPOOL_URL=https://www.usetidepool.tech node failure-cases.mjs all       # about 3 minutes
+node failure-cases.mjs partial   # or: expired | overpay | errors
+node failure-cases.mjs all --json run.json   # also save every status response
+```
+
+<Accordions><Accordion title="failure-cases.mjs (full script)">
+
+```js title="failure-cases.mjs"
+// Tidepool failure cases on NEAR testnet: partial deposit, expired quote, overpay, and API errors.
+//
+//   TIDEPOOL_URL=https://www.usetidepool.tech node failure-cases.mjs [partial|expired|overpay|errors|all]
+//
+// Account: NEAR_ACCOUNT_ID + NEAR_PRIVATE_KEY, or a throwaway testnet account kept in ./.example-account.json
+// (same as swap.mjs). Deposits are INTENTS transfers from your verifier balance; the faucet tops it up.
+// Every /v0/status change is printed as full JSON. Keys are never printed. Pass --json out.json to save a log.
+import fs from 'node:fs';
+import crypto from 'node:crypto';
+import { connect, keyStores, KeyPair } from 'near-api-js';
+import bs58 from 'bs58';
+
+const API = process.env.TIDEPOOL_URL || 'https://www.usetidepool.tech';
+const RPC = process.env.NEAR_RPC || 'https://test.rpc.fastnear.com';
+const CASE = process.argv.slice(2).find(a => !a.startsWith('--') && !a.endsWith('.json')) || 'all';
+const OUT = process.argv.includes('--json') ? process.argv[process.argv.indexOf('--json') + 1] : null;
+const log = [];
+const say = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const call = async (method, path, body) => {
+  const r = await fetch(API + path, { method, headers: { 'content-type': 'application/json', 'x-api-key': process.env.TIDEPOOL_KEY || 'dummy.jwt.token' }, body: body && JSON.stringify(body) });
+  return { status: r.status, body: await r.json().catch(() => null) };
+};
+const api = async (m, p, b) => { const r = await call(m, p, b); if (r.status >= 400) throw new Error(`${m} ${p} ${r.status}: ${r.body?.message}`); return r.body; };
+
+// ---- account ----
+const keyStore = new keyStores.InMemoryKeyStore();
+let accountId = process.env.NEAR_ACCOUNT_ID;
+if (accountId) await keyStore.setKey('testnet', accountId, KeyPair.fromString(process.env.NEAR_PRIVATE_KEY));
+else {
+  const f = new URL('./.example-account.json', import.meta.url);
+  if (!fs.existsSync(f)) {
+    const kp = KeyPair.fromRandom('ed25519'); const id = `tidepool-try-${crypto.randomBytes(4).toString('hex')}.testnet`;
+    const r = await fetch('https://helper.nearprotocol.com/account', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ newAccountId: id, newAccountPublicKey: kp.getPublicKey().toString() }) });
+    if (!r.ok) throw new Error('could not create a testnet account: ' + r.status);
+    fs.writeFileSync(f, JSON.stringify({ accountId: id, privateKey: kp.toString() }), { mode: 0o600 });
+  }
+  const k = JSON.parse(fs.readFileSync(f)); accountId = k.accountId; await keyStore.setKey('testnet', accountId, KeyPair.fromString(k.privateKey));
+}
+const near = await connect({ networkId: 'testnet', nodeUrl: RPC, keyStore });
+const me = await near.account(accountId);
+const tokens = await api('GET', '/v0/tokens');
+const USDC = tokens.find(t => t.symbol === 'USDC'), WNEAR = tokens.find(t => t.symbol === 'wNEAR');
+const verifier = (await api('GET', '/v0/health')).verifier;
+say('account', accountId, 'verifier', verifier);
+try { await api('POST', '/v0/faucet', { accountId, mode: 'intents' }); say('faucet: topped up intents balance'); } catch (e) { say('faucet skipped:', e.message); }
+
+// ---- helpers ----
+const quote = (deadlineMs, extra = {}) => api('POST', '/v0/quote', {
+  dry: false, swapType: 'EXACT_INPUT', slippageTolerance: 100, originAsset: USDC.assetId, destinationAsset: WNEAR.assetId,
+  amount: '5000000', depositType: 'INTENTS', refundTo: accountId, refundType: 'INTENTS', recipient: accountId, recipientType: 'INTENTS',
+  deadline: new Date(Date.now() + deadlineMs).toISOString(), ...extra,
+});
+async function deposit(depositAddress, amount) {
+  const kp = await keyStore.getKey('testnet', accountId); const pk = kp.getPublicKey().toString();
+  if (!(await me.viewFunction({ contractId: verifier, methodName: 'has_public_key', args: { account_id: accountId, public_key: pk } })))
+    await me.functionCall({ contractId: verifier, methodName: 'add_public_key', args: { public_key: pk }, attachedDeposit: 1n, gas: 30_000_000_000_000n });
+  const nonce = crypto.randomBytes(32); if (nonce[0] === 0x56 && nonce[1] === 0x28) nonce[0] ^= 0xff;
+  const message = JSON.stringify({ signer_id: accountId, verifying_contract: verifier, deadline: new Date(Date.now() + 120_000).toISOString(), nonce: nonce.toString('base64'), intents: [{ intent: 'transfer', receiver_id: depositAddress, tokens: { [USDC.assetId]: amount } }] });
+  const s = x => { const b = Buffer.from(x); const l = Buffer.alloc(4); l.writeUInt32LE(b.length); return Buffer.concat([l, b]); };
+  const tag = Buffer.alloc(4); tag.writeUInt32LE(2 ** 31 + 413);
+  const hash = crypto.createHash('sha256').update(Buffer.concat([tag, s(message), nonce, s(verifier), Buffer.from([0])])).digest();
+  const signed = { standard: 'nep413', payload: { message, nonce: nonce.toString('base64'), recipient: verifier }, public_key: pk, signature: 'ed25519:' + bs58.encode(Buffer.from(kp.sign(hash).signature)) };
+  const out = await me.functionCall({ contractId: verifier, methodName: 'execute_intents', args: { signed: [signed] }, gas: 100_000_000_000_000n });
+  const txHash = out.transaction.hash;
+  say(`deposited ${amount} tx https://testnet.nearblocks.io/txns/${txHash}`);
+  await api('POST', '/v0/deposit/submit', { txHash, depositAddress, nearSenderAccount: accountId });
+  return txHash;
+}
+// Poll /v0/status, printing the full JSON on every status change, until a final status (or timeout).
+async function watch(name, depositAddress, timeoutMs = 240_000) {
+  let last; const t0 = Date.now();
+  while (Date.now() - t0 < timeoutMs) {
+    const st = await api('GET', `/v0/status?depositAddress=${depositAddress}`);
+    if (st.status !== last) { last = st.status; say(`[${name}] status ${st.status}`); console.log(JSON.stringify(st, null, 2)); log.push({ case: name, at: new Date().toISOString(), status: st }); }
+    if (['SUCCESS', 'REFUNDED', 'FAILED'].includes(st.status)) return st;
+    await sleep(3000);
+  }
+  throw new Error(`${name}: no final status after ${timeoutMs / 1000}s (last ${last})`);
+}
+
+// ---- cases ----
+const cases = {
+  // Deposit half of amountIn. Status sits at INCOMPLETE_DEPOSIT, then REFUNDED (PARTIAL_DEPOSIT) once the deadline passes.
+  async partial() {
+    const q = await quote(75_000); const { depositAddress, amountIn, minAmountIn, deadline } = q.quote;
+    say('[partial] quote', depositAddress, 'amountIn', amountIn, 'minAmountIn', minAmountIn, 'deadline', deadline);
+    const tx = await deposit(depositAddress, (BigInt(amountIn) / 2n).toString());
+    const st = await watch('partial', depositAddress); log.push({ case: 'partial', depositTx: tx, depositAddress }); return st;
+  },
+  // Quote with a 65 s deadline, wait it out, then deposit the full amount: REFUNDED (DEADLINE_PASSED).
+  async expired() {
+    const q = await quote(65_000); const { depositAddress, amountIn, deadline } = q.quote;
+    say('[expired] quote', depositAddress, 'deadline', deadline, '- waiting for it to pass');
+    await watch('expired', depositAddress, 1).catch(() => {});
+    await sleep(new Date(deadline).getTime() - Date.now() + 5_000);
+    const tx = await deposit(depositAddress, amountIn);
+    const st = await watch('expired', depositAddress); log.push({ case: 'expired', depositTx: tx, depositAddress }); return st;
+  },
+  // Deposit 1.5x amountIn: SUCCESS, and the excess comes back as swapDetails.refundedAmount.
+  async overpay() {
+    const q = await quote(600_000); const { depositAddress, amountIn } = q.quote;
+    const tx = await deposit(depositAddress, (BigInt(amountIn) * 3n / 2n).toString());
+    const st = await watch('overpay', depositAddress); log.push({ case: 'overpay', depositTx: tx, depositAddress }); return st;
+  },
+  // API errors you should handle before any funds move.
+  async errors() {
+    const show = async (label, r) => { say(`[errors] ${label}: HTTP ${(r = await r).status}`, JSON.stringify(r.body)); log.push({ case: 'errors', label, http: r.status, body: r.body }); };
+    const body = { dry: false, swapType: 'EXACT_INPUT', slippageTolerance: 100, originAsset: USDC.assetId, destinationAsset: WNEAR.assetId, amount: '5000000', depositType: 'INTENTS', refundTo: accountId, refundType: 'INTENTS', recipient: accountId, recipientType: 'INTENTS' };
+    await show('deadline 30 s ahead', call('POST', '/v0/quote', { ...body, deadline: new Date(Date.now() + 30_000).toISOString() }));
+    await show('deadline in the past', call('POST', '/v0/quote', { ...body, deadline: new Date(Date.now() - 60_000).toISOString() }));
+    await show('deadline not a date', call('POST', '/v0/quote', { ...body, deadline: 'tomorrow' }));
+    await show('deadline 2 days ahead', call('POST', '/v0/quote', { ...body, deadline: new Date(Date.now() + 48 * 3600_000).toISOString() }));
+    const bogus = crypto.randomBytes(32).toString('hex');
+    await show('status of an unknown deposit address', call('GET', `/v0/status?depositAddress=${bogus}`));
+    await show('submit a deposit for an unknown address', call('POST', '/v0/deposit/submit', { txHash: '8HAgViUuMBZ6bMSU3g6tMx5df6FFpevyHkQTLLcWqZzK', depositAddress: bogus }));
+  },
+};
+const run = CASE === 'all' ? ['errors', 'overpay', 'partial', 'expired'] : [CASE];
+for (const c of run) {
+  const st = await cases[c]();
+  if (st) { const d = st.swapDetails; say(`[${c}] final ${st.status}`, JSON.stringify({ refundReason: d.refundReason, refundedAmount: d.refundedAmountFormatted, amountOut: d.amountOutFormatted })); for (const t of st.tidepool?.explorer || []) say('  ', t.label, t.url); }
+}
+if (OUT) fs.writeFileSync(OUT, JSON.stringify(log, null, 2));
+```
+
+</Accordion></Accordions>
+
+Live quotes need a deadline at least 60 seconds ahead, so the script uses 65–75 second deadlines for the cases that wait on the deadline. Every run below quotes 5 USDC → wNEAR (`EXACT_INPUT`, `INTENTS` in and out, `refundType: INTENTS`).
+
+## Partial deposit
+
+Quote 5 USDC with a 75 s deadline, then deposit only **2.5 USDC**. The deposit sits at `INCOMPLETE_DEPOSIT` until the deadline. The swap never runs, and Tidepool refunds the 2.5 USDC with `PARTIAL_DEPOSIT`. You can top up to `minAmountIn` before the deadline, and the swap then runs normally.
+
+- Deposit: [6jy6yoRW…](https://testnet.nearblocks.io/txns/6jy6yoRWzAVVh37qoneiudxeHrGg7V8tHjpKRRt65ubZ)
+- Refund: [Ctg38ANS…](https://testnet.nearblocks.io/txns/Ctg38ANS2qKmCMmQzJ4CCxfNoSodiDyYvVowhudCV2h5)
+- Deposit address: `3351231f2eb0fd8fc3a79f815144702bd955fa94be3c6e0fc6965d4b2bcace14`
+
+```json title="KNOWN_DEPOSIT_TX"
+{
+  "status": "KNOWN_DEPOSIT_TX",
+  "updatedAt": "2026-10-25T04:33:10.761Z",
+  "swapDetails": {
+    "intentHashes": [],
+    "nearTxHashes": [],
+    "originChainTxHashes": [
+      {
+        "hash": "6jy6yoRWzAVVh37qoneiudxeHrGg7V8tHjpKRRt65ubZ",
+        "explorerUrl": "https://testnet.nearblocks.io/txns/6jy6yoRWzAVVh37qoneiudxeHrGg7V8tHjpKRRt65ubZ"
+      }
+    ],
+    "destinationChainTxHashes": []
+  },
+  "tidepool": {
+    "explorer": []
+  }
+}
+```
+
+```json title="INCOMPLETE_DEPOSIT"
+{
+  "status": "INCOMPLETE_DEPOSIT",
+  "updatedAt": "2026-10-25T04:33:12.022Z",
+  "swapDetails": {
+    "intentHashes": [],
+    "nearTxHashes": [],
+    "originChainTxHashes": [
+      {
+        "hash": "6jy6yoRWzAVVh37qoneiudxeHrGg7V8tHjpKRRt65ubZ",
+        "explorerUrl": "https://testnet.nearblocks.io/txns/6jy6yoRWzAVVh37qoneiudxeHrGg7V8tHjpKRRt65ubZ"
+      }
+    ],
+    "destinationChainTxHashes": [],
+    "depositedAmount": "2500000",
+    "depositedAmountFormatted": "2.5",
+    "depositedAmountUsd": "0.0000"
+  },
+  "tidepool": {
+    "explorer": []
+  }
+}
+```
+
+```json title="REFUNDED"
+{
+  "status": "REFUNDED",
+  "updatedAt": "2026-10-25T04:34:25.578Z",
+  "swapDetails": {
+    "intentHashes": [
+      "85E9asFtZAUXJgLvDAe1h2rs8nY1v4dTFBXPqd4f8dgr"
+    ],
+    "nearTxHashes": [
+      "Ctg38ANS2qKmCMmQzJ4CCxfNoSodiDyYvVowhudCV2h5"
+    ],
+    "originChainTxHashes": [
+      {
+        "hash": "6jy6yoRWzAVVh37qoneiudxeHrGg7V8tHjpKRRt65ubZ",
+        "explorerUrl": "https://testnet.nearblocks.io/txns/6jy6yoRWzAVVh37qoneiudxeHrGg7V8tHjpKRRt65ubZ"
+      }
+    ],
+    "destinationChainTxHashes": [
+      {
+        "hash": "Ctg38ANS2qKmCMmQzJ4CCxfNoSodiDyYvVowhudCV2h5",
+        "explorerUrl": "https://testnet.nearblocks.io/txns/Ctg38ANS2qKmCMmQzJ4CCxfNoSodiDyYvVowhudCV2h5"
+      }
+    ],
+    "depositedAmount": "2500000",
+    "depositedAmountFormatted": "2.5",
+    "depositedAmountUsd": "0.0000",
+    "refundedAmount": "2500000",
+    "refundedAmountFormatted": "2.5",
+    "refundedAmountUsd": "0.0000",
+    "refundReason": "PARTIAL_DEPOSIT"
+  },
+  "tidepool": {
+    "explorer": [
+      {
+        "label": "refund",
+        "url": "https://testnet.nearblocks.io/txns/Ctg38ANS2qKmCMmQzJ4CCxfNoSodiDyYvVowhudCV2h5"
+      }
+    ]
+  }
+}
+```
+
+## Late deposit
+
+Quote with a 65 s deadline, wait until it passes, then deposit the full 5 USDC. The deposit is seen (`KNOWN_DEPOSIT_TX`) but never swapped, because the quote has expired. It is refunded in full with `DEADLINE_PASSED`.
+
+- Deposit: [DCVvLK8Z…](https://testnet.nearblocks.io/txns/DCVvLK8ZTGzxwsryJzhv4nzmTEdBjXNchAZSYG4xdkrB)
+- Refund: [Ek1J8oxs…](https://testnet.nearblocks.io/txns/Ek1J8oxsnSrrByQbFKQyam3ztbB4yC6QGpjkihCrzMhn)
+- Deposit address: `5c516f8670ea04cbc7df8c41ea7cd20a2d2a32001ef98e874397ae2db6f68d21`
+
+Before the deposit, the status was `PENDING_DEPOSIT` with empty `swapDetails`.
+
+```json title="PENDING_DEPOSIT"
+{
+  "status": "PENDING_DEPOSIT",
+  "updatedAt": "2026-10-25T04:33:01.873Z",
+  "swapDetails": {
+    "intentHashes": [],
+    "nearTxHashes": [],
+    "originChainTxHashes": [],
+    "destinationChainTxHashes": []
+  },
+  "tidepool": {
+    "explorer": []
+  }
+}
+```
+
+```json title="KNOWN_DEPOSIT_TX"
+{
+  "status": "KNOWN_DEPOSIT_TX",
+  "updatedAt": "2026-10-25T04:34:17.393Z",
+  "swapDetails": {
+    "intentHashes": [],
+    "nearTxHashes": [],
+    "originChainTxHashes": [
+      {
+        "hash": "DCVvLK8ZTGzxwsryJzhv4nzmTEdBjXNchAZSYG4xdkrB",
+        "explorerUrl": "https://testnet.nearblocks.io/txns/DCVvLK8ZTGzxwsryJzhv4nzmTEdBjXNchAZSYG4xdkrB"
+      }
+    ],
+    "destinationChainTxHashes": []
+  },
+  "tidepool": {
+    "explorer": []
+  }
+}
+```
+
+```json title="REFUNDED"
+{
+  "status": "REFUNDED",
+  "updatedAt": "2026-10-25T04:34:21.555Z",
+  "swapDetails": {
+    "intentHashes": [
+      "G4Af1MS3GdCK5TVHpQLM2DKWrqY2NUndzZXaRPYFL9sX"
+    ],
+    "nearTxHashes": [
+      "Ek1J8oxsnSrrByQbFKQyam3ztbB4yC6QGpjkihCrzMhn"
+    ],
+    "originChainTxHashes": [
+      {
+        "hash": "DCVvLK8ZTGzxwsryJzhv4nzmTEdBjXNchAZSYG4xdkrB",
+        "explorerUrl": "https://testnet.nearblocks.io/txns/DCVvLK8ZTGzxwsryJzhv4nzmTEdBjXNchAZSYG4xdkrB"
+      }
+    ],
+    "destinationChainTxHashes": [
+      {
+        "hash": "Ek1J8oxsnSrrByQbFKQyam3ztbB4yC6QGpjkihCrzMhn",
+        "explorerUrl": "https://testnet.nearblocks.io/txns/Ek1J8oxsnSrrByQbFKQyam3ztbB4yC6QGpjkihCrzMhn"
+      }
+    ],
+    "depositedAmount": "5000000",
+    "depositedAmountFormatted": "5",
+    "depositedAmountUsd": "0.0000",
+    "refundedAmount": "5000000",
+    "refundedAmountFormatted": "5",
+    "refundedAmountUsd": "0.0000",
+    "refundReason": "DEADLINE_PASSED"
+  },
+  "tidepool": {
+    "explorer": [
+      {
+        "label": "refund",
+        "url": "https://testnet.nearblocks.io/txns/Ek1J8oxsnSrrByQbFKQyam3ztbB4yC6QGpjkihCrzMhn"
+      }
+    ]
+  }
+}
+```
+
+## Overpay
+
+Deposit **7.5 USDC** against a 5 USDC quote. Overpaying is not a failure. The swap settles for the quoted `amountIn`, and the 2.5 USDC excess goes back to `refundTo` in the **same** settlement transaction. The status is `SUCCESS` with no `refundReason`, and `refundedAmount` shows the excess.
+
+- Deposit: [knMzFyej…](https://testnet.nearblocks.io/txns/knMzFyejBWrbQjrgnUo32MaJ93V8SUT276QtNXCDXv8)
+- Settlement and excess refund: [8wFtrpCz…](https://testnet.nearblocks.io/txns/8wFtrpCzxheAWupkzLwaCifiUR71jYnixzCwuMPi4mo2)
+- Deposit address: `eb5a94fc5ab39402b170d97ed1deabf04bdf195fb4ea1b638e2bf8dccaf78d81`
+
+```json title="KNOWN_DEPOSIT_TX"
+{
+  "status": "KNOWN_DEPOSIT_TX",
+  "updatedAt": "2026-10-25T04:33:03.008Z",
+  "swapDetails": {
+    "intentHashes": [],
+    "nearTxHashes": [],
+    "originChainTxHashes": [
+      {
+        "hash": "knMzFyejBWrbQjrgnUo32MaJ93V8SUT276QtNXCDXv8",
+        "explorerUrl": "https://testnet.nearblocks.io/txns/knMzFyejBWrbQjrgnUo32MaJ93V8SUT276QtNXCDXv8"
+      }
+    ],
+    "destinationChainTxHashes": []
+  },
+  "tidepool": {
+    "explorer": []
+  }
+}
+```
+
+```json title="SUCCESS"
+{
+  "status": "SUCCESS",
+  "updatedAt": "2026-10-25T04:33:05.704Z",
+  "swapDetails": {
+    "intentHashes": [
+      "5SwFhbxezTjp3JGmxoLH2wZMXrf4rf29CG7PUZa87kN8",
+      "ACKkgpXJznEaDfaWJW6v2y78BncyhKd6UsCKquLN9zq4"
+    ],
+    "nearTxHashes": [
+      "8wFtrpCzxheAWupkzLwaCifiUR71jYnixzCwuMPi4mo2"
+    ],
+    "originChainTxHashes": [
+      {
+        "hash": "knMzFyejBWrbQjrgnUo32MaJ93V8SUT276QtNXCDXv8",
+        "explorerUrl": "https://testnet.nearblocks.io/txns/knMzFyejBWrbQjrgnUo32MaJ93V8SUT276QtNXCDXv8"
+      }
+    ],
+    "destinationChainTxHashes": [
+      {
+        "hash": "8wFtrpCzxheAWupkzLwaCifiUR71jYnixzCwuMPi4mo2",
+        "explorerUrl": "https://testnet.nearblocks.io/txns/8wFtrpCzxheAWupkzLwaCifiUR71jYnixzCwuMPi4mo2"
+      }
+    ],
+    "amountIn": "5000000",
+    "amountInFormatted": "5",
+    "amountInUsd": "4.9980",
+    "amountOut": "1113387066964285623040000",
+    "amountOutFormatted": "1.11338706696428562304",
+    "amountOutUsd": "4.9880",
+    "slippage": 0,
+    "depositedAmount": "7500000",
+    "depositedAmountFormatted": "7.5",
+    "depositedAmountUsd": "7.4970",
+    "refundedAmount": "2500000",
+    "refundedAmountFormatted": "2.5",
+    "refundedAmountUsd": "2.4990"
+  },
+  "tidepool": {
+    "explorer": [
+      {
+        "label": "swap (execute_intents)",
+        "url": "https://testnet.nearblocks.io/txns/8wFtrpCzxheAWupkzLwaCifiUR71jYnixzCwuMPi4mo2"
+      }
+    ]
+  }
+}
+```
+
+## API errors
+
+These requests are rejected before any funds move. The response bodies below are real.
+
+| Request | HTTP | Body |
+| --- | --- | --- |
+| `POST /v0/quote`, `dry: false`, deadline 30 s ahead | 400 | `{"message":"deadline must be at least 60 seconds in the future"}` |
+| `POST /v0/quote`, `dry: false`, deadline in the past | 400 | `{"message":"deadline must be at least 60 seconds in the future"}` |
+| `POST /v0/quote`, `deadline: "tomorrow"` | 400 | `{"message":"deadline must be an ISO 8601 date"}` |
+| `POST /v0/quote`, `dry: false`, deadline 48 h ahead | 400 | `{"message":"deadline must be within 24 hours"}` |
+| `GET /v0/status?depositAddress=<unknown>` | 404 | `{"message":"Deposit address not found"}` |
+| `POST /v0/deposit/submit` with an unknown `depositAddress` | 404 | `{"message":"Unknown depositAddress"}` |
+
+Dry quotes (`dry: true`) skip the deadline window checks, because nothing is reserved.
+
+<Callout type="warn" title="Never send funds to an address the API doesn't know">
+A 404 from `/v0/status` means Tidepool never issued that deposit address. Funds sent there are not watched and will not be refunded automatically. Always deposit to `quote.depositAddress` from a live quote you received yourself.
+</Callout>
+
+## Integration tips
+
+- **Poll `/v0/status`** every 2–5 s after you deposit, until the status is `SUCCESS`, `REFUNDED` or `FAILED`. `KNOWN_DEPOSIT_TX`, `INCOMPLETE_DEPOSIT` and `PROCESSING` are not final. Calling `/v0/deposit/submit` with your tx hash makes detection faster, but it is optional.
+- **Treat `REFUNDED` as a normal outcome.** Branch on `swapDetails.refundReason`. For `PARTIAL_DEPOSIT` and `DEADLINE_PASSED`, ask the user for a fresh quote. For `SLIPPAGE_EXCEEDED` and `PRICE_MOVED`, re-quote, perhaps with more slippage. Show `refundedAmountFormatted` and the refund link from `destinationChainTxHashes`.
+- **Check `refundedAmount` on `SUCCESS` as well.** It is non-zero when the user overpaid. That money is back in their `refundTo` balance and does not need a support ticket.
+- **Show `INCOMPLETE_DEPOSIT` to the user.** Show `depositedAmount` against `minAmountIn`, with a countdown to `deadline`, so they can top up in time.
+- **Pick deadlines that fit the deposit.** Live quotes need 60 s to 24 h. Allow for wallet confirmation and block time: 5–30 minutes suits interactive flows. Never reuse an expired deposit address. Get a new quote instead.
+- **Make it idempotent.** One live quote is one deposit address is one swap. Key your records by `depositAddress` (or `correlationId`). Retrying `/v0/deposit/submit` or polling `/v0/status` is safe. Don't create a new quote on a retry, or you end up with two addresses for one payment.
+- **Handle `FAILED`** (rare) as "contact support". It is kept for cases where a refund itself could not be completed. Log `correlationId` and `tidepool.note`.
