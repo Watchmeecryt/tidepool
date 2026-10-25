@@ -3,6 +3,19 @@ title: Changelog
 description: What changed in Tidepool and when.
 ---
 
+## 2026-10-25 · Testing failure cases guide and roadmap
+
+- New guide: [Testing failure cases](/docs/guides/failure-cases). It was added in response to community feedback on Discord about expired quotes and under-deposits. It covers a partial deposit (`INCOMPLETE_DEPOSIT` → `REFUNDED` / `PARTIAL_DEPOSIT`), a late deposit (`REFUNDED` / `DEADLINE_PASSED`) and an overpay (`SUCCESS` with `refundedAmount`). Each case shows the real `/v0/status` JSON from testnet runs, with NearBlocks links for every deposit and refund.
+- New runnable script `examples/failure-cases.mjs` (`partial`, `expired`, `overpay`, `errors`, `all`).
+- New API error table for bad deadlines and unknown deposit addresses, plus integration tips (polling, `refundReason`, deadlines, idempotency).
+- [Refunds](/docs/concepts/refunds) and [Status lifecycle](/docs/concepts/status-lifecycle) now link to the guide.
+- New [Roadmap](/docs/resources/roadmap) page. It lists `appFees`, `ANY_INPUT`, `depositMode: MEMO`, Base Sepolia and Ethereum Sepolia test bridges, and `/v0/auth`-compatible endpoints as planned, pending v1 traction. `CONFIDENTIAL_INTENTS` is not planned. The feature-gap notes in Mainnet migration, Trust model and Quickstart link to it.
+
+## 2026-10-24 · New domain and redesign
+
+- Tidepool moved to [www.usetidepool.tech](https://www.usetidepool.tech). The API, docs, `openapi.json`, `llms.txt` and explorer links all use the new URL.
+- Site and docs redesign: a deep-ocean palette, an aurora and wave hero, a display font, glass cards, and restyled code blocks and sidebar.
+
 ## 2026-10-24 · Docs v2 and token ownership
 
 - New documentation site: concepts, lifecycle diagrams, an API reference generated from `openapi.json`, live faucet and status widgets, Copy Markdown / Open in ChatGPT or Claude on every page, `llms.txt` and `llms-full.txt`.
