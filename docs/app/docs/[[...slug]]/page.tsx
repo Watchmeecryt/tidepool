@@ -11,8 +11,8 @@ import { notFound } from 'next/navigation';
 import { getMDXComponents } from '@/components/mdx';
 import type { Metadata } from 'next';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
-import { getPageMarkdownUrl, gitConfig } from '@/lib/shared';
-import { BRAND, LASTMOD, OG_IMAGE, SITE, ldJson } from '@/lib/seo';
+import { getPageImageUrl, getPageMarkdownUrl, gitConfig } from '@/lib/shared';
+import { BRAND, LASTMOD, SITE, ldJson } from '@/lib/seo';
 
 const SUFFIX = ` Part of ${BRAND.name}, the ${BRAND.affiliationShort} 1Click API testnet sandbox for NEAR Intents.`;
 const describe = (d?: string) => { const base = d || BRAND.description; return base.length < 110 ? `${/[.!?]$/.test(base) ? base : `${base}.`}${SUFFIX}` : base; };
@@ -63,7 +63,7 @@ function jsonLd(page: NonNullable<ReturnType<typeof source.getPage>>) {
     '@graph': [
       { '@type': 'BreadcrumbList', itemListElement: crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 1, name: c.name, item: c.url })) },
       { '@type': 'TechArticle', headline: page.data.title, description: describe(page.data.description), url, mainEntityOfPage: url,
-        image: `${SITE}${OG_IMAGE.url}`, dateModified: LASTMOD[page.slugs.join('/')] || undefined, inLanguage: 'en',
+        image: `${SITE}${getPageImageUrl(page).url}`, dateModified: LASTMOD[page.slugs.join('/')] || undefined, inLanguage: 'en',
         about: ['NEAR Intents', '1Click API', 'testnet'], isPartOf: { '@type': 'WebSite', '@id': `${SITE}/#website`, name: BRAND.name, url: SITE },
         publisher: { '@type': 'Organization', '@id': `${SITE}/#org`, name: BRAND.name, url: SITE, description: BRAND.affiliationLong, sameAs: [BRAND.xUrl] } },
     ],
@@ -77,10 +77,11 @@ export async function generateMetadata(props: PageProps<'/docs/[[...slug]]'>): P
   const description = describe(page.data.description);
   const title = page.slugs.length ? page.data.title : 'Docs: NEAR Intents 1Click sandbox, a testnet-compatible 1Click API';
   const full = `${title} · ${BRAND.name} (NEAR Intents testnet)`;
+  const image = { url: `${SITE}${getPageImageUrl(page).url}`, width: 1200, height: 630, alt: `${page.data.title}: ${BRAND.name}` };
   return {
     title, description,
     alternates: { canonical: page.url },
-    openGraph: { type: 'article', siteName: BRAND.name, title: full, description, url: page.url, images: [OG_IMAGE] },
-    twitter: { card: 'summary_large_image', site: BRAND.xHandle, creator: BRAND.xHandle, title: full, description, images: [OG_IMAGE.url] },
+    openGraph: { type: 'article', siteName: BRAND.name, title: full, description, url: page.url, images: [image] },
+    twitter: { card: 'summary_large_image', site: BRAND.xHandle, creator: BRAND.xHandle, title: full, description, images: [image.url] },
   };
 }
