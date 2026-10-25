@@ -29,7 +29,7 @@ export default function HomePage() {
     <main className="flex flex-1 flex-col">
       <section className="relative overflow-hidden border-b border-fd-border/60">
         <Aurora />
-        <div className="relative mx-auto max-w-6xl px-6 pb-36 pt-16 sm:pt-24">
+        <div className="relative mx-auto max-w-6xl px-6 pb-20 pt-16 sm:pt-24">
           <div className="grid items-center gap-12 lg:grid-cols-[1.15fr_1fr]">
             <div className="text-center lg:text-left">
               <span className="tp-pill tp-rise"><span className="tp-live" /> Live on NEAR testnet · defuse v0.4.2</span>

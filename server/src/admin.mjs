@@ -20,17 +20,18 @@ const fmtT = (t) => t ? new Date(t).toISOString().replace('T', ' ').slice(0, 16)
 const nb = (w) => `<a href="https://testnet.nearblocks.io/address/${encodeURIComponent(w)}" target="_blank" rel="noopener">${esc(w)}</a>`;
 const bySym = Object.fromEntries(TOKENS.map(t => [t.assetId, t]));
 
-const CSS = `:root{--abyss:#031a22;--deep:#062a35;--teal:#14b8a6;--glow:#5eead4;--cyan:#22d3ee;--coral:#fb7185;--amber:#fbbf24;--ink:#d7f3f1;--mute:#7fa9ad;--glass:hsl(196 60% 9% / .62);--line:hsl(192 45% 16%)}
-*{box-sizing:border-box}body{margin:0;min-height:100vh;color:var(--ink);font:14px/1.45 ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;background:radial-gradient(1200px 600px at 10% -10%,hsl(172 90% 45% / .18),transparent 60%),radial-gradient(900px 500px at 100% 0,hsl(192 95% 50% / .14),transparent 60%),linear-gradient(180deg,var(--deep),var(--abyss) 60%)}
-a{color:var(--glow);text-decoration:none}a:hover{text-decoration:underline}.wrap{max-width:1280px;margin:0 auto;padding:24px}
-header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}h1{font-size:22px;margin:0;letter-spacing:-.01em}h1 span{color:var(--glow)}h2{font-size:15px;margin:0 0 12px;color:var(--glow);font-weight:600}
-.card{background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:16px;backdrop-filter:blur(8px);box-shadow:0 24px 60px -30px hsl(176 90% 50% / .25);margin-bottom:16px;overflow:auto}
+const CSS = `:root{color-scheme:light;--bg:#f7f5f1;--card:#fcfbf9;--line:#e9e6e2;--line2:#dcd7cf;--ink:#1d1b18;--mute:#696660;--brand:#a65f0c;--gold:#ffad24;--wash:#fff1d6;--ok:#17633f;--bad:#b4383c;--warn:#a65f0c;--btn:linear-gradient(180deg,#3f3933,#211d19);--onbtn:#fff;--hover:#f3f1ec}
+@media (prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#12100e;--card:#191613;--line:#3a332c;--line2:#4a4037;--ink:#f3efe8;--mute:#a8a094;--brand:#ffc052;--wash:rgba(255,173,36,.14);--ok:#7fd1a6;--bad:#f2777b;--warn:#ffc052;--btn:linear-gradient(180deg,#ffd078,#ffad24);--onbtn:#1d1b18;--hover:#211d19}}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;color:var(--ink);font:14px/1.45 Geist,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg)}
+a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}.wrap{max-width:1280px;margin:0 auto;padding:24px}
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}h1{font-size:22px;margin:0;font-weight:600;letter-spacing:-.02em}h1 span{color:var(--brand)}h2{font-size:14px;margin:0 0 12px;color:var(--ink);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px;overflow:auto}
 .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}.stats{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:16px}
-.stat{background:var(--glass);border:1px solid var(--line);border-radius:12px;padding:12px 14px}.stat b{display:block;font-size:22px;color:#fff}.stat small{color:var(--mute)}
-table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}th{color:var(--mute);font-weight:500;position:sticky;top:0;background:var(--deep)}tr:hover td{background:hsl(190 60% 15% / .4)}
-.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.mute{color:var(--mute)}.ok{color:#34d399}.bad{color:var(--coral)}.warn{color:var(--amber)}
-.pill{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--line);font-size:11px}.btn,button{background:linear-gradient(135deg,var(--teal),var(--cyan));color:#012;border:0;border-radius:10px;padding:8px 14px;font-weight:600;cursor:pointer}
-.btn.ghost{background:transparent;color:var(--glow);border:1px solid var(--line)}input{background:var(--abyss);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:10px 12px;width:100%;font-size:15px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}.stat b{display:block;font-size:22px;color:var(--ink);font-weight:600}.stat small{color:var(--mute)}
+table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}th{color:var(--mute);font-weight:500;position:sticky;top:0;background:var(--card)}tr:hover td{background:var(--hover)}
+.mono{font-family:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,monospace}.mute{color:var(--mute)}.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:var(--wash);font-size:11px}.btn,button{background:var(--btn);color:var(--onbtn);border:0;border-radius:999px;padding:8px 16px;font-weight:600;cursor:pointer}
+.btn.ghost{background:var(--card);color:var(--ink);border:1px solid var(--line2)}input{background:var(--bg);border:1px solid var(--line2);color:var(--ink);border-radius:10px;padding:10px 12px;width:100%;font-size:15px}
 .legend span{margin-right:12px;font-size:12px}.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:middle}svg text{fill:var(--mute);font-size:10px}.scroll{max-height:520px;overflow:auto}`;
 const page = (title, body) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${esc(title)} · Tidepool admin</title><link rel="icon" href="/favicon.ico"><style>${CSS}</style></head><body><div class="wrap">${body}</div></body></html>`;
 
@@ -73,7 +74,7 @@ function daily(all) {
 }
 function bars(rows, series, h = 120) {
   const W = 640, pad = 22, bw = (W - pad) / rows.length; const max = Math.max(1, ...rows.map(r => series.reduce((a, s) => a + (r[s.k] || 0), 0)));
-  let g = `<svg viewBox="0 0 ${W} ${h + 18}" width="100%" preserveAspectRatio="none" role="img"><text x="0" y="10">${max}</text><line x1="${pad}" x2="${W}" y1="${h}" y2="${h}" stroke="hsl(192 45% 20%)"/>`;
+  let g = `<svg viewBox="0 0 ${W} ${h + 18}" width="100%" preserveAspectRatio="none" role="img"><text x="0" y="10">${max}</text><line x1="${pad}" x2="${W}" y1="${h}" y2="${h}" stroke="var(--line)"/>`;
   rows.forEach((r, i) => { let y = h; for (const s of series) { const v = r[s.k] || 0; if (!v) continue; const bh = v / max * (h - 6); y -= bh; g += `<rect x="${pad + i * bw + 1}" y="${y}" width="${Math.max(1, bw - 2)}" height="${bh}" fill="${s.c}" rx="1.5"><title>${r.day} ${s.n}: ${v}</title></rect>`; } if (i % 5 === 0 || i === rows.length - 1) g += `<text x="${pad + i * bw}" y="${h + 14}">${r.day.slice(5)}</text>`; });
   return g + '</svg>' + `<div class="legend">${series.map(s => `<span><i style="background:${s.c}"></i>${s.n} (${rows.reduce((a, r) => a + (r[s.k] || 0), 0)})</span>`).join('')}</div>`;
 }
@@ -92,12 +93,12 @@ function dashboard(all) {
   return page('Usage', `<header><h1>Tide<span>pool</span> usage</h1><div style="display:flex;gap:8px;align-items:center"><a class="btn ghost" href="/admin${all ? '' : '?all=1'}">${all ? 'Hide' : 'Show'} our wallets</a><form method="post" action="/admin/logout" style="margin:0"><button class="btn ghost" type="submit">Sign out</button></form></div></header>
 <p class="mute" style="margin-top:-8px">${all ? 'Showing <b>all</b> wallets, including ours.' : `Hiding our own wallets (${ourList().map(esc).join(', ')}).`} Request log since ${fmtT(Date.parse(log.since))}; swaps and faucet backfilled from the db.</p>
 <div class="stats">${stat(shown.length, 'wallets')}${stat(swaps.length, 'live quotes')}${stat(swaps.filter(s => s.status !== 'PENDING_DEPOSIT').length, 'swaps (deposit seen)')}${stat(`<span class="ok">${cnt('SUCCESS')}</span>`, 'success')}${stat(`<span class="warn">${cnt('REFUNDED')}</span>`, 'refunded')}${stat(`<span class="bad">${cnt('FAILED')}</span>`, 'failed')}${stat(shown.reduce((a, w) => a + w.faucet, 0), 'faucet claims')}${stat(reqTotal, 'logged requests')}</div>
-<div class="grid"><div class="card"><h2>Swaps by status (by quote day)</h2>${bars(D, [{ k: 'SUCCESS', n: 'success', c: '#34d399' }, { k: 'REFUNDED', n: 'refunded', c: '#fbbf24' }, { k: 'FAILED', n: 'failed', c: '#fb7185' }, { k: 'PENDING', n: 'pending/expired', c: '#2b5d66' }])}</div>
-<div class="card"><h2>Quotes</h2>${bars(D, [{ k: 'quotes', n: 'live', c: '#22d3ee' }, { k: 'dryQuotes', n: 'dry (logged)', c: '#14b8a6' }])}</div>
-<div class="card"><h2>Faucet claims</h2>${bars(D, [{ k: 'faucet', n: 'claims', c: '#5eead4' }])}</div>
-<div class="card"><h2>Unique wallets / day</h2>${bars(D, [{ k: 'wallets', n: 'wallets', c: '#7dd3fc' }])}</div>
-<div class="card"><h2>Requests / day</h2>${bars(D, [{ k: 'requests', n: 'requests', c: '#14b8a6' }])}</div>
-<div class="card"><h2>Unique IPs / day (all traffic)</h2>${bars(D, [{ k: 'ips', n: 'IPs', c: '#a78bfa' }])}</div></div>
+<div class="grid"><div class="card"><h2>Swaps by status (by quote day)</h2>${bars(D, [{ k: 'SUCCESS', n: 'success', c: '#2f9e6a' }, { k: 'REFUNDED', n: 'refunded', c: '#ffad24' }, { k: 'FAILED', n: 'failed', c: '#d9534f' }, { k: 'PENDING', n: 'pending/expired', c: '#8a8278' }])}</div>
+<div class="card"><h2>Quotes</h2>${bars(D, [{ k: 'quotes', n: 'live', c: '#a65f0c' }, { k: 'dryQuotes', n: 'dry (logged)', c: '#ffd078' }])}</div>
+<div class="card"><h2>Faucet claims</h2>${bars(D, [{ k: 'faucet', n: 'claims', c: '#ffad24' }])}</div>
+<div class="card"><h2>Unique wallets / day</h2>${bars(D, [{ k: 'wallets', n: 'wallets', c: '#b8691a' }])}</div>
+<div class="card"><h2>Requests / day</h2>${bars(D, [{ k: 'requests', n: 'requests', c: '#ffd078' }])}</div>
+<div class="card"><h2>Unique IPs / day (all traffic)</h2>${bars(D, [{ k: 'ips', n: 'IPs', c: '#8a8278' }])}</div></div>
 <div class="card"><h2>Wallets (${shown.length})</h2><div class="scroll"><table><tr><th>Wallet</th><th>First seen</th><th>Last seen</th><th>Live quotes</th><th>Dry quotes</th><th>Swaps</th><th>Success</th><th>Refunded</th><th>Failed</th><th>Faucet</th><th>Volume in (success)</th><th></th></tr>
 ${shown.map(w => `<tr><td class="mono">${nb(w.wallet)}${w.ours ? ' <span class="pill">ours</span>' : ''}</td><td>${fmtT(w.first)}</td><td>${fmtT(w.last)}</td><td>${w.quotes}</td><td>${w.dryQuotes}</td><td>${w.swaps}</td><td class="ok">${w.success || ''}</td><td class="warn">${w.refunded || ''}</td><td class="bad">${w.failed || ''}</td><td>${w.faucet}</td><td>${esc(w.volumeFmt)}</td><td><a href="/admin/wallet/${encodeURIComponent(w.wallet)}${q}">details →</a></td></tr>`).join('')}</table></div></div>
 <div class="grid"><div class="card"><h2>Top endpoints (all traffic)</h2><table><tr><th>Endpoint</th><th>Requests</th></tr>${Object.entries(ep).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<tr><td class="mono">${esc(k)}</td><td>${v}</td></tr>`).join('')}</table></div>

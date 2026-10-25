@@ -18,8 +18,30 @@ startWorker();
 
 const PUBLIC = new URL('../../site/public/', import.meta.url).pathname;
 const DOCS = new URL('../../docs/out/', import.meta.url).pathname;
-const TYPES = { '.html': 'text/html; charset=utf-8', '.xml': 'application/xml; charset=utf-8', '.webmanifest': 'application/manifest+json', '.txt': 'text/plain; charset=utf-8', '.md': 'text/markdown; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.css': 'text/css', '.js': 'text/javascript', '.mjs': 'text/javascript', '.png': 'image/png', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.webp': 'image/webp' };
-const sendFile = (res, file, code = 200) => { const immutable = file.includes('/_next/static/'); res.writeHead(code, { 'content-type': TYPES[path.extname(file)] || 'application/octet-stream', 'access-control-allow-origin': '*', 'cache-control': immutable ? 'public, max-age=31536000, immutable' : 'public, max-age=60' }); res.end(fs.readFileSync(file)); };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.xml': 'application/xml; charset=utf-8', '.webmanifest': 'application/manifest+json', '.txt': 'text/plain; charset=utf-8', '.md': 'text/markdown; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.css': 'text/css', '.js': 'text/javascript', '.mjs': 'text/javascript', '.png': 'image/png', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.webp': 'image/webp', '.mp4': 'video/mp4', '.webm': 'video/webm', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.vtt': 'text/vtt; charset=utf-8' };
+const sendFile = (res, file, code = 200, req = null) => {
+  const immutable = file.includes('/_next/static/');
+  const headers = { 'content-type': TYPES[path.extname(file)] || 'application/octet-stream', 'access-control-allow-origin': '*', 'cache-control': immutable ? 'public, max-age=31536000, immutable' : 'public, max-age=60' };
+  // Media: stream with byte-range support so <video> can seek without downloading the whole file.
+  if (/\.(mp4|webm)$/.test(file)) {
+    const size = fs.statSync(file).size;
+    headers['accept-ranges'] = 'bytes'; headers['cache-control'] = 'public, max-age=86400';
+    const m = /^bytes=(\d*)-(\d*)$/.exec(req?.headers.range || '');
+    if (m && code === 200) {
+      let start = m[1] === '' ? size - Number(m[2]) : Number(m[1]);
+      let end = m[1] !== '' && m[2] !== '' ? Math.min(Number(m[2]), size - 1) : size - 1;
+      if (m[1] === '') start = Math.max(0, start);
+      if (!(start >= 0 && start <= end && start < size)) { res.writeHead(416, { 'content-range': `bytes */${size}`, 'accept-ranges': 'bytes' }); return res.end(); }
+      res.writeHead(206, { ...headers, 'content-range': `bytes ${start}-${end}/${size}`, 'content-length': end - start + 1 });
+      if (req.method === 'HEAD') return res.end();
+      return fs.createReadStream(file, { start, end }).pipe(res);
+    }
+    res.writeHead(code, { ...headers, 'content-length': size });
+    if (req?.method === 'HEAD') return res.end();
+    return fs.createReadStream(file).pipe(res);
+  }
+  res.writeHead(code, headers); res.end(fs.readFileSync(file));
+};
 const LEGACY = { '/quickstart': '/docs/quickstart', '/faucet': '/docs/guides/faucet', '/status': '/docs/status', '/guides/first-swap': '/docs/guides/first-swap', '/guides/sdk': '/docs/guides/sdk', '/guides/agents': '/docs/guides/agents' };
 function serveDocs(req, res, p) {
   let rel = decodeURIComponent(p).replace(/\/+$/, '') || '/';
@@ -31,7 +53,7 @@ function serveDocs(req, res, p) {
   const safe = path.normalize(rel).replace(/^(\.\.[/\\])+/, '');
   for (const cand of [safe, safe + '.html', path.join(safe, 'index.html')]) {
     const file = path.join(DOCS, cand);
-    if (file.startsWith(DOCS) && fs.existsSync(file) && fs.statSync(file).isFile()) return sendFile(res, file);
+    if (file.startsWith(DOCS) && fs.existsSync(file) && fs.statSync(file).isFile()) return sendFile(res, file, 200, req);
   }
   return sendFile(res, DOCS + '404.html', 404);
 }

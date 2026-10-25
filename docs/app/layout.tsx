@@ -1,12 +1,13 @@
-import { Inter, JetBrains_Mono, Bricolage_Grotesque } from 'next/font/google';
+import localFont from 'next/font/local';
 import type { Metadata, Viewport } from 'next';
 import { Provider } from '@/components/provider';
 import { BRAND, OG_IMAGE, SITE } from '@/lib/seo';
 import './global.css';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
-const display = Bricolage_Grotesque({ subsets: ['latin'], variable: '--font-display', weight: ['500', '600', '700', '800'] });
-const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' });
+// Geist + Geist Mono (OFL), the same faces NEAR Private OTC uses.
+const inter = localFont({ src: './fonts/Geist-Variable.woff2', variable: '--font-sans', weight: '100 900', display: 'swap' });
+const display = localFont({ src: './fonts/Geist-Variable.woff2', variable: '--font-display', weight: '100 900', display: 'swap', preload: false });
+const mono = localFont({ src: './fonts/GeistMono-Variable.woff2', variable: '--font-mono', weight: '100 900', display: 'swap' });
 
 const defaultTitle = `${BRAND.name}: free 1Click API testnet sandbox for NEAR Intents (${BRAND.affiliationShort})`;
 
@@ -29,7 +30,12 @@ export const metadata: Metadata = {
   other: { 'llms-txt': `${SITE}/llms.txt` },
 };
 
-export const viewport: Viewport = { themeColor: BRAND.themeColor };
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: BRAND.themeColorLight },
+    { media: '(prefers-color-scheme: dark)', color: BRAND.themeColor },
+  ],
+};
 
 export default function Layout({ children }: LayoutProps<'/'>) {
   return (

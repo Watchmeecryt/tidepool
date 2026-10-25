@@ -46,3 +46,16 @@ export function DocsHero() {
     </div>
   );
 }
+
+/** Narrated product demo, served from /videos. Native controls, no autoplay. */
+export function DemoVideo() {
+  return (
+    <figure className="tp-video not-prose">
+      <video controls playsInline preload="metadata" poster="/videos/tidepool-demo-poster.jpg" aria-label="Tidepool demo video: faucet, a real testnet swap from quote to SUCCESS, switching to mainnet and agent-ready docs (narrated, about 1.5 minutes)" width={1280} height={800}>
+        <source src="/videos/tidepool-demo.mp4" type="video/mp4" />
+        <a href="/videos/tidepool-demo.mp4">Download the Tidepool demo video (MP4)</a>
+      </video>
+      <figcaption>Demo: faucet → live quote → deposit → SUCCESS on NEAR testnet, then mainnet switch and agent-ready docs. Narrated, with captions burned in.</figcaption>
+    </figure>
+  );
+}

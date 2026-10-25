@@ -49,7 +49,7 @@ export function StatusWidget() {
   }, []);
   if (err) return <p className="text-red-600">Could not reach the API: {err}</p>;
   if (!h) return <p className="text-fd-muted-foreground">Loading live status…</p>;
-  const Dot = ({ ok }: { ok: boolean }) => <span className={`inline-block size-2.5 rounded-full ${ok ? 'bg-emerald-500' : 'bg-amber-500'}`} />;
+  const Dot = ({ ok }: { ok: boolean }) => <span className={`inline-block size-2.5 rounded-full ${ok ? 'bg-[var(--otc-ok)]' : 'bg-[var(--otc-gold)]'}`} />;
   const c = h.checks;
   const cards: [string, boolean, string][] = [
     ['NEAR testnet RPC', c.rpc?.ok, c.rpc?.ok ? `block ${c.rpc.height} · ${c.rpc.ms} ms` : 'unreachable'],

@@ -20,9 +20,50 @@
     "NEAR testnet faucet",
     "1Click Swap API"
   ],
-  "themeColor": "#031a22",
-  "backgroundColor": "#031a22",
-  "accentColor": "#2dd4bf",
+  "themeColor": "#12100e",
+  "backgroundColor": "#f7f5f1",
+  "accentColor": "#a65f0c",
   "xHandle": "@priva_cie",
-  "xUrl": "https://x.com/priva_cie"
+  "xUrl": "https://x.com/priva_cie",
+  "themeColorLight": "#f7f5f1",
+  "accentColorDark": "#ffc052",
+  "palette": {
+    "_source": "NEAR Private OTC web/src/theme-quiet.css (surfaces from theme-glass.css)",
+    "light": {
+      "background": "#f7f5f1",
+      "backgroundSubtle": "#efece7",
+      "surface": "#ece9e3",
+      "card": "#fcfbf9",
+      "border": "#e9e6e2",
+      "borderStrong": "#dcd7cf",
+      "text": "#1d1b18",
+      "text2": "#3a3733",
+      "muted": "#696660",
+      "accent": "#a65f0c",
+      "gold": "#ffad24",
+      "goldWash": "#fff1d6",
+      "success": "#17633f",
+      "danger": "#b4383c"
+    },
+    "dark": {
+      "background": "#12100e",
+      "backgroundSubtle": "#191613",
+      "surface": "#211d19",
+      "card": "#191613",
+      "border": "#3a332c",
+      "borderStrong": "#4a4037",
+      "text": "#f3efe8",
+      "text2": "#d6d0c6",
+      "muted": "#a8a094",
+      "accent": "#ffc052",
+      "gold": "#ffad24",
+      "goldWash": "rgba(255,173,36,.14)",
+      "success": "#7fd1a6",
+      "danger": "#f2777b"
+    },
+    "fonts": {
+      "sans": "Geist",
+      "mono": "Geist Mono"
+    }
+  }
 }

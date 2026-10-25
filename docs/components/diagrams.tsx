@@ -1,10 +1,10 @@
-const teal = '#14a08f';
+const teal = 'var(--otc-brand)';
 function Box({ x, y, w, h, title, sub, solid }: { x: number; y: number; w: number; h: number; title: string; sub?: string; solid?: boolean }) {
   return (
     <g>
-      <rect x={x} y={y} width={w} height={h} rx={14} fill={solid ? '#0f766e' : 'var(--color-fd-card)'} stroke={solid ? '#0f766e' : 'var(--color-fd-border)'} />
-      <text x={x + w / 2} y={y + h / 2 - (sub ? 4 : -5)} textAnchor="middle" fontSize={15} fontWeight={600} fill={solid ? '#fff' : 'var(--color-fd-foreground)'}>{title}</text>
-      {sub && <text x={x + w / 2} y={y + h / 2 + 16} textAnchor="middle" fontSize={12} fill={solid ? '#ccfbf1' : 'var(--color-fd-muted-foreground)'}>{sub}</text>}
+      <rect x={x} y={y} width={w} height={h} rx={14} fill={solid ? 'var(--otc-text)' : 'var(--color-fd-card)'} stroke={solid ? 'var(--otc-text)' : 'var(--color-fd-border)'} />
+      <text x={x + w / 2} y={y + h / 2 - (sub ? 4 : -5)} textAnchor="middle" fontSize={15} fontWeight={600} fill={solid ? 'var(--otc-bg)' : 'var(--color-fd-foreground)'}>{title}</text>
+      {sub && <text x={x + w / 2} y={y + h / 2 + 16} textAnchor="middle" fontSize={12} fill={solid ? 'var(--otc-border-alt)' : 'var(--color-fd-muted-foreground)'}>{sub}</text>}
     </g>
   );
 }
@@ -59,10 +59,10 @@ export function StatusLifecycle() {
           <S x={10} y={40} t="PENDING_DEPOSIT" />
           <S x={240} y={40} t="KNOWN_DEPOSIT_TX" w={180} />
           <S x={480} y={40} t="PROCESSING" w={150} />
-          <S x={700} y={40} t="SUCCESS" w={150} c="#0f766e" f="#fff" />
+          <S x={700} y={40} t="SUCCESS" w={150} c="var(--otc-ok-wash)" f="var(--otc-ok)" />
           <S x={240} y={170} t="INCOMPLETE_DEPOSIT" w={200} />
-          <S x={500} y={170} t="REFUNDED" w={150} c="#fef3c7" f="#92400e" />
-          <S x={700} y={170} t="FAILED" w={150} c="#fee2e2" f="#991b1b" />
+          <S x={500} y={170} t="REFUNDED" w={150} c="var(--otc-gold-wash)" f="var(--otc-brand)" />
+          <S x={700} y={170} t="FAILED" w={150} c="var(--otc-bad-wash)" f="var(--otc-bad)" />
           <Arrow d="M180 61 L236 61" label="tx seen" lx={208} ly={30} />
           <Arrow d="M420 61 L476 61" label="full deposit" lx={448} ly={30} />
           <Arrow d="M630 61 L696 61" label="settled" lx={663} ly={30} />
