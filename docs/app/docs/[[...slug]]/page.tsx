@@ -65,7 +65,7 @@ function jsonLd(page: NonNullable<ReturnType<typeof source.getPage>>) {
       { '@type': 'TechArticle', headline: page.data.title, description: describe(page.data.description), url, mainEntityOfPage: url,
         image: `${SITE}${OG_IMAGE.url}`, dateModified: LASTMOD[page.slugs.join('/')] || undefined, inLanguage: 'en',
         about: ['NEAR Intents', '1Click API', 'testnet'], isPartOf: { '@type': 'WebSite', '@id': `${SITE}/#website`, name: BRAND.name, url: SITE },
-        publisher: { '@type': 'Organization', '@id': `${SITE}/#org`, name: BRAND.name, url: SITE, description: BRAND.affiliationLong } },
+        publisher: { '@type': 'Organization', '@id': `${SITE}/#org`, name: BRAND.name, url: SITE, description: BRAND.affiliationLong, sameAs: [BRAND.xUrl] } },
     ],
   };
 }
@@ -81,6 +81,6 @@ export async function generateMetadata(props: PageProps<'/docs/[[...slug]]'>): P
     title, description,
     alternates: { canonical: page.url },
     openGraph: { type: 'article', siteName: BRAND.name, title: full, description, url: page.url, images: [OG_IMAGE] },
-    twitter: { card: 'summary_large_image', title: full, description, images: [OG_IMAGE.url] },
+    twitter: { card: 'summary_large_image', site: BRAND.xHandle, creator: BRAND.xHandle, title: full, description, images: [OG_IMAGE.url] },
   };
 }

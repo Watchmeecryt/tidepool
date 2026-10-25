@@ -9,7 +9,7 @@ export const LASTMOD = lastmod as Record<string, string>;
 
 export const organization = {
   '@type': 'Organization', '@id': `${SITE}/#org`, name: brand.name, url: SITE,
-  logo: `${SITE}/icon-512.png`, description: `${brand.name} is a ${brand.affiliationShort} project. ${brand.affiliationLong}`,
+  logo: `${SITE}/icon-512.png`, sameAs: [brand.xUrl], description: `${brand.name} is a ${brand.affiliationShort} project. ${brand.affiliationLong}`,
 };
 export const website = {
   '@type': 'WebSite', '@id': `${SITE}/#website`, name: brand.name, url: SITE, description: brand.description,

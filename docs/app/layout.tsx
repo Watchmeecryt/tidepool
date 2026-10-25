@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     apple: [{ url: '/apple-touch-icon.png', sizes: '180x180' }],
   },
   openGraph: { type: 'website', siteName: BRAND.name, title: defaultTitle, description: BRAND.description, url: '/', locale: 'en_US', images: [OG_IMAGE] },
-  twitter: { card: 'summary_large_image', title: defaultTitle, description: BRAND.description, images: [OG_IMAGE.url] },
+  twitter: { card: 'summary_large_image', site: BRAND.xHandle, creator: BRAND.xHandle, title: defaultTitle, description: BRAND.description, images: [OG_IMAGE.url] },
   robots: { index: true, follow: true, googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1 } },
   other: { 'llms-txt': `${SITE}/llms.txt` },
 };
