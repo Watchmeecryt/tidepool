@@ -3,10 +3,10 @@ title: Roadmap
 description: 1Click features Tidepool does not have yet, what is planned once v1 sees traction, and what is not planned.
 ---
 
-Tidepool v1 covers the core 1Click swap loop on NEAR testnet: `EXACT_INPUT`, `EXACT_OUTPUT` and `FLEX_INPUT` quotes, `ORIGIN_CHAIN` and `INTENTS` deposits, status, refunds and the faucet. The features below exist on 1Click mainnet but **not** on Tidepool today. Requests that use them return 400 or 404.
+Tidepool v1 covers the core 1Click swap loop on NEAR testnet, plus test bridges to Base Sepolia, Arbitrum Sepolia and Ethereum Sepolia: `EXACT_INPUT`, `EXACT_OUTPUT` and `FLEX_INPUT` quotes, `ORIGIN_CHAIN` and `INTENTS` deposits, status, refunds and the faucet. The features below exist on 1Click mainnet but **not** on Tidepool today. Requests that use them return 400 or 404.
 
 <Callout title="Planned, pending v1 traction">
-Nothing on this page is being built yet. Work starts once v1 has real usage. If you need one of these features, say so. Demand decides the order.
+Nothing in the Planned table is being built yet. Work starts once v1 has real usage. If you need one of these features, say so. Demand decides the order.
 </Callout>
 
 ## Planned
@@ -16,8 +16,13 @@ Nothing on this page is being built yet. Work starts once v1 has real usage. If 
 | `appFees` | App fee splits: route a share of each swap to your fee recipient(s), in basis points | 400 | Mirrors 1Click's `appFees` array on `/v0/quote`. |
 | `ANY_INPUT` swap type | Collect any number of deposits and convert them to one destination asset | 400 | Needs streaming deposits. See [Swap types](/docs/concepts/swap-types). |
 | `depositMode: MEMO` | A shared deposit address plus a memo, instead of a unique address per quote | 400 | Lands with multi-chain support, since it only matters on chains that use memos. See [Deposits](/docs/concepts/deposits). |
-| Test bridges for Base Sepolia and Ethereum Sepolia | Swap between NEAR testnet and EVM testnets, with `ORIGIN_CHAIN` deposits on Sepolia chains | NEAR only (`blockchain: "near"`) | The first step toward multi-chain. |
 | `/v0/auth`-compatible endpoints | Auth routes shaped like 1Click's, so SDK code that calls them works unchanged | 404 | Mainly for SDK parity. Keys stay optional, and any `X-API-Key` or Bearer token keeps working. |
+
+## Shipped
+
+| Feature | Shipped | Notes |
+| --- | --- | --- |
+| Test bridges for Base Sepolia, Arbitrum Sepolia and Ethereum Sepolia | 2026-10-26 | `ORIGIN_CHAIN` deposits to `0x` addresses, EVM payouts and refunds, 1Click-style asset ids. A trusted relayer run by Tidepool, testnet only. See [Test bridges](/docs/guides/bridges). Arbitrum Sepolia was added beyond the original plan. |
 
 ## Not planned
 

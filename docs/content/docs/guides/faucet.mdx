@@ -1,6 +1,6 @@
 ---
 title: Faucet
-description: Free test tokens for any NEAR testnet account, with exact amounts and limits.
+description: Free test tokens for any NEAR testnet account or EVM testnet address, with exact amounts and limits.
 ---
 
 <FaucetWidget />
@@ -43,4 +43,15 @@ curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: applicatio
 
 See [POST /v0/faucet](/docs/api-reference/tidepool-faucet) for the full response.
 
-<Callout type="warn">Test tokens have **no value** and are not bridged. Do not list or trade them anywhere.</Callout>
+## EVM testnets
+
+Pass `chain` (`base`, `arb` or `eth`) and a `0x` `address` to mint test USDC and USDT on Base Sepolia, Arbitrum Sepolia or Ethereum Sepolia:
+
+```bash
+curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: application/json' \
+  -d '{"chain":"base","address":"0xYourAddress"}'
+```
+
+You get 100 USDC and 100 USDT (6 decimals) on that chain, with the same limits (one drip per address per chain per hour, six per IP per hour). Gas ETH is **not** included; use the chain's public faucet. You can also call `faucet()` on the token contracts directly. Addresses are in each route guide under [Test bridges](/docs/guides/bridges).
+
+<Callout type="warn">Test tokens have **no value**. The EVM test tokens are bridged only by Tidepool's own testnet relayer, not by any NEAR or 1Click bridge. Do not list or trade them anywhere.</Callout>

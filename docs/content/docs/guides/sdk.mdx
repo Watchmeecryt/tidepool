@@ -38,6 +38,32 @@ const status = await OneClickService.getExecutionStatus(quote.quote.depositAddre
 console.log(status.status); // PENDING_DEPOSIT → PROCESSING → SUCCESS | REFUNDED
 ```
 
+## Cross-chain quotes (EVM testnets)
+
+The same calls work for the [test bridges](/docs/guides/bridges). Pick a bridged asset from `getTokens()` by `blockchain` and use `0x` addresses for the EVM side:
+
+```ts
+const usdcBase = tokens.find(t => t.blockchain === 'base' && t.symbol === 'USDC')!;
+
+const q = await OneClickService.getQuote({
+  dry: false,
+  swapType: QuoteRequest.swapType.EXACT_INPUT,
+  slippageTolerance: 100,
+  originAsset: usdcBase.assetId,                 // nep141:base-0x….tp-omft.testnet
+  destinationAsset: 'nep141:wnear.tidepool-sandbox.testnet',
+  amount: '10000000',
+  depositType: QuoteRequest.depositType.ORIGIN_CHAIN,
+  refundTo: '0xYourAddress',
+  refundType: QuoteRequest.refundType.ORIGIN_CHAIN,
+  recipient: 'you.testnet',
+  recipientType: QuoteRequest.recipientType.DESTINATION_CHAIN,
+  deadline: new Date(Date.now() + 30 * 60_000).toISOString(),
+});
+// q.quote.depositAddress is a 0x address on Base Sepolia: send usdcBase.contractAddress tokens there with ERC-20 transfer.
+```
+
+For NEAR → EVM, swap the assets and set `recipient` to a `0x` address. The example script supports both: `FROM=USDC TO=USDC TO_CHAIN=base RECIPIENT=0x… node examples/swap.mjs --origin`.
+
 > Asset ids differ from mainnet: Tidepool tokens live under `tidepool-sandbox.testnet`. Read them from `getTokens()` instead of hardcoding mainnet ids.
 
 ## Other languages

@@ -48,4 +48,4 @@ curl -X POST https://www.usetidepool.tech/v0/deposit/submit -H 'content-type: ap
 
 ## Not supported
 
-`depositMode: "MEMO"` (shared address plus memo) and `CONFIDENTIAL_INTENTS` return 400. Only `blockchain: "near"` exists.
+`depositMode: "MEMO"` (shared address plus memo) and `CONFIDENTIAL_INTENTS` return 400. On NEAR, `ORIGIN_CHAIN` deposit addresses are implicit NEAR accounts. For bridged EVM assets they are `0x` addresses on the origin chain; see [Test bridges](/docs/guides/bridges).

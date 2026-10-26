@@ -224,20 +224,18 @@
           "Tidepool"
         ],
         "summary": "Get testnet tokens (Tidepool extension, not part of 1Click)",
-        "description": "Drips every Tidepool test token to a NEAR testnet account. mode=wallet mints NEP-141 tokens to the account; mode=intents credits the account inside the Tidepool verifier. One drip per account and mode per hour; 6 per IP per hour.",
+        "description": "Drips Tidepool test tokens. NEAR: pass accountId; mode=wallet mints NEP-141 tokens to the account; mode=intents credits the account inside the Tidepool verifier. EVM testnets: pass chain (base, arb or eth) and a 0x address to mint test USDC and USDT ERC-20s on Base Sepolia, Arbitrum Sepolia or Ethereum Sepolia (gas not included; bridged by Tidepool's own trusted testnet relayer). One drip per account (or address) and mode/chain per hour; 6 per IP per hour.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "accountId"
-                ],
                 "properties": {
                   "accountId": {
                     "type": "string",
-                    "example": "alice.testnet"
+                    "example": "alice.testnet",
+                    "description": "NEAR testnet account. Required unless chain/address are set."
                   },
                   "mode": {
                     "type": "string",
@@ -253,6 +251,20 @@
                       "type": "string"
                     },
                     "description": "Optional subset (assetId or symbol)"
+                  },
+                  "chain": {
+                    "type": "string",
+                    "enum": [
+                      "base",
+                      "arb",
+                      "eth"
+                    ],
+                    "description": "EVM testnet to drip on (Base Sepolia, Arbitrum Sepolia, Ethereum Sepolia)."
+                  },
+                  "address": {
+                    "type": "string",
+                    "example": "0x38A9D3dB2Daf0f623c0b9777B64d3Fbc42e444Ad",
+                    "description": "0x address on the EVM testnet. Required with chain."
                   }
                 }
               }
@@ -408,7 +420,7 @@
           },
           "swapType": {
             "type": "string",
-            "description": "How to interpret `amount` (and refunds) when performing the swap:\n\n- `EXACT_INPUT` — requests the output amount for an exact input.\n  - If deposit is less than `amountIn`, the deposit is refunded by deadline.\n  - If deposit is above than `amountIn`, the swap is processed and the excess is refunded to `refundTo` address after swap is complete.\n\n- `EXACT_OUTPUT` — requests the input amount for an exact output.\n  - The output amount (`amountOut`) is fixed; slippage is applied to the **input** side.\n  - The quote response includes `amountIn` (the proposed input with slippage tolerance baked in) and `minAmountIn` (the minimum input required).\n  - **Important**: `amountIn` will appear higher than `minAmountIn` by approximately your `slippageTolerance`. This is **not** price degradation—it is a buffer to ensure successful execution. Any input amount above what is actually needed for the swap is **refunded** to your `refundTo` address after the swap completes.\n  - If the deposit is above `amountIn`, the swap is processed and the excess is refunded to `refundTo` address after swap is complete.\n  - If the deposit is less than `minAmountIn`, the deposit is refunded by deadline.\n\n- `FLEX_INPUT` — a flexible input amount that allows for partial deposits and variable amounts.\n  - `slippage` applies both to `amountOut` and `amountIn` and defines an acceptable range (`minAmountIn` and `minAmountOut`).\n  - Any amount higher than `minAmountIn` is accepted and converted to the output asset as long as `minAmountOut` is met.\n  - The deposit must be at least `minAmountIn`, after applying the slippage constraint to the quoted amount. Deposits below `minAmountIn` are refunded if the total received by the deadline is below this amount.\n  - If deposits exceed the upper bound, the swap is still processed\n\n- `ANY_INPUT` — collects deposits and converts them to a destination asset. Used for fee aggregation and similar use cases. Only available for authorized partners.",
+            "description": "How to interpret `amount` (and refunds) when performing the swap:\n\n- `EXACT_INPUT` \u2014 requests the output amount for an exact input.\n  - If deposit is less than `amountIn`, the deposit is refunded by deadline.\n  - If deposit is above than `amountIn`, the swap is processed and the excess is refunded to `refundTo` address after swap is complete.\n\n- `EXACT_OUTPUT` \u2014 requests the input amount for an exact output.\n  - The output amount (`amountOut`) is fixed; slippage is applied to the **input** side.\n  - The quote response includes `amountIn` (the proposed input with slippage tolerance baked in) and `minAmountIn` (the minimum input required).\n  - **Important**: `amountIn` will appear higher than `minAmountIn` by approximately your `slippageTolerance`. This is **not** price degradation\u2014it is a buffer to ensure successful execution. Any input amount above what is actually needed for the swap is **refunded** to your `refundTo` address after the swap completes.\n  - If the deposit is above `amountIn`, the swap is processed and the excess is refunded to `refundTo` address after swap is complete.\n  - If the deposit is less than `minAmountIn`, the deposit is refunded by deadline.\n\n- `FLEX_INPUT` \u2014 a flexible input amount that allows for partial deposits and variable amounts.\n  - `slippage` applies both to `amountOut` and `amountIn` and defines an acceptable range (`minAmountIn` and `minAmountOut`).\n  - Any amount higher than `minAmountIn` is accepted and converted to the output asset as long as `minAmountOut` is met.\n  - The deposit must be at least `minAmountIn`, after applying the slippage constraint to the quoted amount. Deposits below `minAmountIn` are refunded if the total received by the deadline is below this amount.\n  - If deposits exceed the upper bound, the swap is still processed\n\n- `ANY_INPUT` \u2014 collects deposits and converts them to a destination asset. Used for fee aggregation and similar use cases. Only available for authorized partners.",
             "enum": [
               "EXACT_INPUT",
               "EXACT_OUTPUT",
@@ -442,7 +454,7 @@
           },
           "amount": {
             "type": "string",
-            "description": "Amount to swap as the base amount. It is interpreted as the input or output amount based on the `swapType` flag and is specified in the smallest unit of the currency (e.g., wei for ETH). Must be an integer string; decimal values like \"0.01\" are invalid—use base units (e.g. \"10000000000000000\" for 0.01 with 18 decimals).",
+            "description": "Amount to swap as the base amount. It is interpreted as the input or output amount based on the `swapType` flag and is specified in the smallest unit of the currency (e.g., wei for ETH). Must be an integer string; decimal values like \"0.01\" are invalid\u2014use base units (e.g. \"10000000000000000\" for 0.01 with 18 decimals).",
             "example": "1000"
           },
           "refundTo": {

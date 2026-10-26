@@ -1,0 +1,41 @@
+---
+title: Test bridges (EVM testnets)
+description: How Tidepool's testnet bridges to Base Sepolia, Arbitrum Sepolia and Ethereum Sepolia work, and exactly what you trust when you use them.
+---
+
+<Callout type="warn">**These bridges are a trusted relayer run by Tidepool, on testnets only.** Tidepool runs them as its own testnet service. They are not NEAR's Omni Bridge, not POA bridge and not 1Click infrastructure. The tokens on both sides are Tidepool test tokens with no value.</Callout>
+
+Tidepool can swap between NEAR testnet and three EVM testnets, with the same API shape as 1Click mainnet cross-chain swaps:
+
+| Chain | `blockchain` | Chain id | Route guide |
+| --- | --- | --- | --- |
+| Base Sepolia | `base` | 84532 | [Base Sepolia bridge](/docs/guides/bridge-base-sepolia) |
+| Arbitrum Sepolia | `arb` | 421614 | [Arbitrum Sepolia bridge](/docs/guides/bridge-arbitrum-sepolia) |
+| Ethereum Sepolia | `eth` | 11155111 | [Ethereum Sepolia bridge](/docs/guides/bridge-ethereum-sepolia) |
+
+## What matches 1Click
+
+- **Asset ids.** Bridged tokens look like 1Click's omft ids: `nep141:<chain>-<erc20 address>.tp-omft.testnet`. `/v0/tokens` lists them with `blockchain` and `contractAddress`.
+- **Deposit addresses.** A live quote with an EVM `originAsset` and `depositType: "ORIGIN_CHAIN"` returns a unique `0x` deposit address. You send the ERC-20 with a plain `transfer`.
+- **Addresses.** `refundTo` and `recipient` must be `0x` addresses for EVM legs, and NEAR accounts for NEAR legs.
+- **Status and refunds.** The same lifecycle and refund reasons. EVM transactions are listed in `originChainTxHashes` / `destinationChainTxHashes` with explorer links.
+
+## How it works
+
+1. **Deposit.** Each quote's deposit address is a CREATE2 address of the chain's `TidepoolVault` (salt = `keccak256("tidepool-deposit:" + correlationId)`). Nothing is deployed there until funds arrive.
+2. **Sweep.** The relayer calls `vault.sweep(salt, token)`. This deploys a tiny forwarder at the deposit address that sends the tokens to the vault and self-destructs in the same transaction.
+3. **Credit.** The relayer mints the matching NEP-141 on NEAR and credits it into the verifier with a normal `ft_transfer_call`, to the quote's intents account. The swap settles with `execute_intents`, as on NEAR-only routes.
+4. **Payout.** For an EVM destination (or an EVM refund), the verifier `ft_withdraw`s the bridged token to the relayer with memo `WITHDRAW_TO:0x…`. The relayer then calls `vault.release(id, token, to, amount)`. `id` is derived from the quote, and the vault refuses to release the same `id` twice.
+
+## What you trust
+
+- **The relayer key.** One key (`0x55F2c8044D790e1b8369508c31c756c0c2Ca0E93`) can sweep deposits and release any vault balance. If it is lost or misused, bridged balances are gone. There are no light clients, proofs or multisigs.
+- **Minting.** Bridged NEP-141s are minted by the Tidepool root account. Supply on NEAR is not enforced against vault balances on-chain.
+- **Liveness.** If the relayer is down, deposits wait in their deposit addresses and payouts wait as `PROCESSING`. Both resume when it restarts.
+- **Testnet RPCs.** The relayer uses public RPCs. Congestion or reorgs can delay a swap.
+
+Do not send mainnet assets to any of these addresses. Contracts on these chains do not accept real USDC or USDT; only the Tidepool test tokens listed in each route guide are credited.
+
+## Gas and faucets
+
+`POST /v0/faucet` with `{"chain":"base","address":"0x…"}` mints test USDC and USDT on that chain. It does not send gas: get testnet ETH from each chain's public faucet. See [Faucet](/docs/guides/faucet).

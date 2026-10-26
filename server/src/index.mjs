@@ -7,6 +7,7 @@ import { ROOT, VERIFIER, MAKER, TOKENS, VERIFIER_WASM_SHA256, VERIFIER_RELEASE, 
 import { quote, tokens, statusOf, submitDeposit, startWorker, initEngine, BadRequest, makerBalance } from './engine.mjs';
 import { drip } from './faucet.mjs';
 import { prices } from './prices.mjs';
+import { evmHealth } from './evm.mjs';
 import { db } from './store.mjs';
 import { record } from './analytics.mjs';
 import { admin } from './admin.mjs';
@@ -70,10 +71,12 @@ async function health() {
   try { const a = await viewAccount(VERIFIER); const code = Buffer.from(a.code_hash ? (await import('bs58')).default.decode(a.code_hash) : []).toString('hex'); out.checks.verifier = { ok: code === VERIFIER_WASM_SHA256, codeHashHex: code }; } catch (e) { out.checks.verifier = { ok: false, error: e.message }; }
   const p = await prices(); out.checks.prices = { ok: p.source === 'coingecko', source: p.source, updatedAt: new Date(p.at).toISOString(), error: p.error };
   try { out.checks.makerInventory = { ok: true, balances: Object.fromEntries(await Promise.all(TOKENS.map(async t => [t.symbol, fromUnits(await makerBalance(t.assetId), t.decimals)]))) }; } catch (e) { out.checks.makerInventory = { ok: false, error: e.message }; }
+  out.bridges = { note: 'Testnet EVM bridges: trusted relayer run by Tidepool, testnet only.', chains: await evmHealth() };
   const all = Object.values(db.swaps);
   const count = (s) => all.filter(x => x.status === s).length;
   out.swaps = { total: all.length, success: count('SUCCESS'), refunded: count('REFUNDED'), failed: count('FAILED'), active: all.filter(x => ['PENDING_DEPOSIT', 'KNOWN_DEPOSIT_TX', 'INCOMPLETE_DEPOSIT', 'PROCESSING'].includes(x.status)).length };
   out.recent = all.filter(x => ['SUCCESS', 'REFUNDED'].includes(x.status)).slice(-5).reverse().map(x => ({ status: x.status, pair: `${x.quoteResponse.quoteRequest.originAsset.split(':')[1].split('.')[0]} → ${x.quoteResponse.quoteRequest.destinationAsset.split(':')[1].split('.')[0]}`, updatedAt: x.updatedAt, tx: x.txs.at(-1) && `https://testnet.nearblocks.io/txns/${x.txs.at(-1).hash}` }));
+  out.recent.forEach(r => { if (r.tx?.includes('/txns/0x')) r.tx = undefined; });
   out.ok = Object.values(out.checks).every(c => c.ok || c.source === 'fallback' || c.source === 'coingecko-stale');
   return out;
 }

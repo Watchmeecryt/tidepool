@@ -19,9 +19,11 @@ description: Exactly what you are trusting when you use Tidepool, and what it do
 - **Token admin.** The six token contracts are owned by `privacei.testnet`, which can mint any amount and change minters. The root and maker accounts are minters.
 - **Contract keys.** The token accounts still hold full-access keys controlled by the Tidepool deployer, so their code could be upgraded. Treat balances as test data.
 
+- **The test bridges.** EVM routes go through a trusted relayer run by Tidepool, testnet only. One relayer key sweeps EVM deposits, mints the bridged NEP-141s (through the root account) and releases EVM payouts from the vault. There are no proofs or light clients. See [Test bridges](/docs/guides/bridges).
+
 ## Limitations (v1)
 
-- NEAR testnet only; `blockchain: "near"` only.
+- Testnets only: NEAR testnet, plus Base Sepolia, Arbitrum Sepolia and Ethereum Sepolia through the test bridges.
 - No `ANY_INPUT`, `depositMode: MEMO`, `appFees`, `CONFIDENTIAL_INTENTS` or `/v0/auth/*`. See the [Roadmap](/docs/resources/roadmap).
 - Single maker with finite inventory. Large quotes fail with `Not enough maker liquidity`.
 - Faucet: one drip per account per mode per hour, six per IP per hour.

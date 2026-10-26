@@ -1,7 +1,8 @@
 // Faucet: drips every test token to a testnet account, either to the wallet (mint) or straight into
 // the account's balance inside the Tidepool verifier (transfer from maker inventory).
 import { call, viewAccount, TGAS } from './near.mjs';
-import { ROOT, VERIFIER, MAKER, TOKENS, toUnits } from './config.mjs';
+import { ROOT, VERIFIER, MAKER, TOKENS, NEAR_TOKENS, EVM_CHAINS, chainOf, isEvmAddress, toUnits } from './config.mjs';
+import { mintErc20, evmTxUrl } from './evm.mjs';
 import { db, save } from './store.mjs';
 import { withSigner, BadRequest } from './engine.mjs';
 
@@ -9,10 +10,39 @@ const ACCOUNT_COOLDOWN_MS = 60 * 60_000; // one drip per account per hour
 const IP_LIMIT = 6; // drips per IP per hour
 const ipHits = new Map();
 
-export async function drip({ accountId, mode = 'wallet', assets }, ip) {
+export async function drip(body, ip) {
+  if (body.chain || isEvmAddress(body.accountId) || isEvmAddress(body.address)) return evmDrip(body, ip);
+  return nearDrip(body, ip);
+}
+
+// Per-chain EVM faucet: the relayer mints the test ERC-20s (USDC, USDT) on that chain to an address.
+// Gas (testnet ETH) is not dripped: use the chain's public faucet.
+async function evmDrip({ chain = 'base', address, accountId, assets }, ip) {
+  const to = address || accountId;
+  const c = chainOf(chain);
+  if (!c || !c.deployed) throw new BadRequest(`chain must be one of: ${EVM_CHAINS.filter(c => c.deployed).map(c => c.key).join(', ')}`);
+  if (!isEvmAddress(to)) throw new BadRequest(`address must be a ${c.name} address (0x...)`);
+  const list = assets?.length ? c.tokens.filter(t => assets.includes(t.assetId) || assets.includes(t.symbol)) : c.tokens;
+  if (!list.length) throw new BadRequest('no matching assets');
+  const key = `${c.key}:${to.toLowerCase()}`;
+  const last = db.faucet[key] || 0;
+  if (Date.now() - last < ACCOUNT_COOLDOWN_MS) throw new BadRequest(`Rate limited: ${to} can use the ${c.name} faucet again after ${new Date(last + ACCOUNT_COOLDOWN_MS).toISOString()}`, 429);
+  const hits = (ipHits.get(ip) || []).filter(t => Date.now() - t < 3600_000);
+  if (hits.length >= IP_LIMIT) throw new BadRequest('Rate limited: too many faucet requests from this IP, try again within the hour', 429);
+  db.faucet[key] = Date.now(); hits.push(Date.now()); ipHits.set(ip, hits); save();
+  const out = [];
+  try {
+    for (const t of list) out.push({ assetId: t.assetId, symbol: t.symbol, token: t.evmAddress, amount: t.drip, txHash: await mintErc20(c.key, t.evmAddress, to, toUnits(t.drip, t.decimals)) });
+  } catch (e) { delete db.faucet[key]; save(); throw new Error('faucet transfer failed: ' + String(e.message).slice(0, 200)); }
+  return { chain: c.key, address: to, mode: 'wallet', drips: list.map(t => ({ assetId: t.assetId, symbol: t.symbol, token: t.evmAddress, amount: t.drip })), transactions: out.map(o => ({ ...o, explorerUrl: evmTxUrl(c.key, o.txHash) })), note: `Gas is not included: get ${c.name} ETH from a public faucet.` };
+}
+
+async function nearDrip({ accountId, mode = 'wallet', assets }, ip) {
   if (typeof accountId !== 'string' || !/^[a-z0-9._-]{2,64}$/.test(accountId)) throw new BadRequest('accountId must be a NEAR testnet account id');
   if (!['wallet', 'intents'].includes(mode)) throw new BadRequest('mode must be "wallet" or "intents"');
-  const list = assets?.length ? TOKENS.filter(t => assets.includes(t.assetId) || assets.includes(t.symbol)) : TOKENS;
+  // NEAR faucet: native Tidepool tokens by default; bridged assets only into the verifier (intents mode) on request.
+  const pool = mode === 'intents' ? TOKENS : NEAR_TOKENS;
+  const list = assets?.length ? pool.filter(t => assets.includes(t.assetId) || (t.blockchain === 'near' && assets.includes(t.symbol))) : NEAR_TOKENS;
   if (!list.length) throw new BadRequest('no matching assets');
   const key = `${accountId}:${mode}`;
   const last = db.faucet[key] || 0;
@@ -30,7 +60,7 @@ export async function drip({ accountId, mode = 'wallet', assets }, ip) {
       out.push({ assets: list.map(t => t.assetId), txHash: r.txHash });
     } else {
       for (const t of list) {
-        const r = await withSigner(ROOT, () => call(ROOT, t.contractAddress, 'mint', { account_id: accountId, amount: toUnits(t.drip, t.decimals).toString() }));
+        const r = await withSigner(ROOT, () => call(ROOT, t.nearContract, 'mint', { account_id: accountId, amount: toUnits(t.drip, t.decimals).toString() }));
         if (!r.ok) throw new Error(r.failures.join('; '));
         out.push({ assetId: t.assetId, amount: t.drip, txHash: r.txHash });
       }

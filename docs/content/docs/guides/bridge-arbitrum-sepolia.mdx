@@ -1,0 +1,70 @@
+---
+title: Arbitrum Sepolia bridge
+description: Swap between Arbitrum Sepolia (chain id 421614) and NEAR testnet through Tidepool's testnet relayer, with 1Click-style deposit addresses, status and refunds.
+---
+
+<Callout type="warn">**Trusted relayer, testnet only.** This route is run by Tidepool as its own testnet service. It is not a NEAR, Omni Bridge or 1Click bridge, and the tokens have no value. Read [Test bridges](/docs/guides/bridges) for what you are trusting.</Callout>
+
+## Contracts
+
+| What | Address |
+| --- | --- |
+| Chain | Arbitrum Sepolia, chain id `421614`, `blockchain: "arb"` |
+| Vault | [`0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2`](https://sepolia.arbiscan.io/address/0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2) |
+| Test USDC (6 decimals) | [`0x38d81431B9f76d9699AF7517040D5221D9dEA252`](https://sepolia.arbiscan.io/address/0x38d81431B9f76d9699AF7517040D5221D9dEA252) |
+| Test USDT (6 decimals) | [`0xC15Cf5600225302675604310094f134e88705E62`](https://sepolia.arbiscan.io/address/0xC15Cf5600225302675604310094f134e88705E62) |
+| Relayer | `0x55F2c8044D790e1b8369508c31c756c0c2Ca0E93` |
+
+| Asset id | NEP-141 on NEAR testnet |
+| --- | --- |
+| `nep141:arb-0x38d81431b9f76d9699af7517040d5221d9dea252.tp-omft.testnet` | USDC on Arbitrum Sepolia |
+| `nep141:arb-0xc15cf5600225302675604310094f134e88705e62.tp-omft.testnet` | USDT on Arbitrum Sepolia |
+
+Both appear in [`GET /v0/tokens`](/docs/api-reference/get-tokens) with `blockchain: "arb"` and `contractAddress` set to the ERC-20.
+
+## 1. Get tokens and gas
+
+```bash
+curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: application/json' \
+  -d '{"chain":"arb","address":"0xYourAddress"}'
+```
+
+This mints 100 test USDC and 100 test USDT on Arbitrum Sepolia. You can also call `faucet()` on either token contract yourself (once per hour per address). Gas is **not** included: get Arbitrum Sepolia ETH from a [public faucet](https://docs.arbitrum.io/for-devs/dev-tools-and-resources/chain-info#faucets).
+
+## 2. Arbitrum Sepolia → NEAR
+
+```ts
+const quote = await OneClickService.getQuote({
+  dry: false, swapType: 'EXACT_INPUT', slippageTolerance: 100,
+  originAsset: 'nep141:arb-0x38d81431b9f76d9699af7517040d5221d9dea252.tp-omft.testnet',
+  destinationAsset: 'nep141:wnear.tidepool-sandbox.testnet',
+  amount: '10000000',                       // 10 USDC
+  depositType: 'ORIGIN_CHAIN', refundTo: '0xYourAddress', refundType: 'ORIGIN_CHAIN',
+  recipient: 'you.testnet', recipientType: 'DESTINATION_CHAIN',
+  deadline: new Date(Date.now() + 30 * 60_000).toISOString(),
+});
+// quote.quote.depositAddress is a 0x address on Arbitrum Sepolia. Send the ERC-20 there:
+// usdc.transfer(quote.quote.depositAddress, 10_000000n)
+await OneClickService.submitDepositTx({ txHash: '0x…', depositAddress: quote.quote.depositAddress });
+```
+
+The relayer sweeps the deposit into the vault, mints the bridged NEP-141 and credits it to the verifier with a normal `ft_transfer_call`. The swap then settles exactly like a NEAR-only swap. Status goes `PENDING_DEPOSIT → KNOWN_DEPOSIT_TX → PROCESSING → SUCCESS`, usually within a minute.
+
+## 3. NEAR → Arbitrum Sepolia
+
+Quote with `destinationAsset: 'nep141:arb-0x38d81431b9f76d9699af7517040d5221d9dea252.tp-omft.testnet'`, `recipient: '0xYourAddress'` and `recipientType: 'DESTINATION_CHAIN'`, then deposit on NEAR as usual. The verifier `ft_withdraw`s the bridged token to the relayer, which calls `release` on the vault. Status stays `PROCESSING` until the Arbitrum Sepolia payout confirms, then turns `SUCCESS` with the payout in `destinationChainTxHashes`.
+
+```bash
+cd examples && FROM=USDC TO=USDC TO_CHAIN=arb RECIPIENT=0xYourAddress AMOUNT=4 node swap.mjs --origin
+```
+
+## Refunds
+
+Refunds follow the same rules as NEAR-only swaps (`DEADLINE_PASSED`, `PARTIAL_DEPOSIT`, overpay). A refund of an EVM deposit with `refundType: "ORIGIN_CHAIN"` is paid back from the vault to `refundTo` on Arbitrum Sepolia.
+
+## Tested round trips
+
+| Route | Transaction |
+| --- | --- |
+| Arbitrum Sepolia USDC → NEAR USDC | [0x3fa18e5f…](https://sepolia.arbiscan.io/tx/0x3fa18e5f19bad362256c2ccd0450483fe7614ba0d9cdc67160bdf7f26f44eda8) |
+| NEAR USDC → Arbitrum Sepolia USDC | [0xf65c276f…](https://sepolia.arbiscan.io/tx/0xf65c276ffca917b516120d91c76218ffd9edbd94f5629acad83cabacdbf713b6) |

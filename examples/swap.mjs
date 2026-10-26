@@ -40,7 +40,11 @@ const me = await near.account(accountId);
 say('account', accountId);
 
 const tokens = await api('GET', '/v0/tokens');
-const tIn = tokens.find(t => t.symbol === FROM), tOut = tokens.find(t => t.symbol === TO);
+// FROM_CHAIN / TO_CHAIN pick a chain for the symbol: near (default), base, arb or eth.
+const pick = (sym, chain = 'near') => tokens.find(t => t.symbol === sym && t.blockchain === chain);
+const tIn = pick(FROM, process.env.FROM_CHAIN), tOut = pick(TO, process.env.TO_CHAIN);
+// RECIPIENT: an EVM 0x address when TO_CHAIN is an EVM chain.
+const RECIPIENT = process.env.RECIPIENT;
 const verifier = (await api('GET', '/v0/health')).verifier;
 const units = (s, d) => { const [i, f = ''] = String(s).split('.'); return (BigInt(i + (f + '0'.repeat(d)).slice(0, d))).toString(); };
 
@@ -54,7 +58,7 @@ try {
 const base = {
   swapType: 'EXACT_INPUT', slippageTolerance: 100, originAsset: tIn.assetId, destinationAsset: tOut.assetId, amount: units(AMOUNT, tIn.decimals),
   depositType: MODE === 'origin' ? 'ORIGIN_CHAIN' : 'INTENTS', refundTo: accountId, refundType: MODE === 'origin' ? 'ORIGIN_CHAIN' : 'INTENTS',
-  recipient: accountId, recipientType: MODE === 'origin' ? 'INTENTS' : 'DESTINATION_CHAIN',
+  recipient: RECIPIENT || accountId, recipientType: RECIPIENT ? 'DESTINATION_CHAIN' : MODE === 'origin' ? 'INTENTS' : 'DESTINATION_CHAIN',
 };
 const dry = await api('POST', '/v0/quote', { ...base, dry: true, deadline: new Date(Date.now() + 600_000).toISOString() });
 say(`dry quote: ${dry.quote.amountInFormatted} ${FROM} -> ${dry.quote.amountOutFormatted} ${TO} (min ${dry.quote.minAmountOut})`);
