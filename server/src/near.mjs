@@ -2,12 +2,54 @@
 // gitignored .secrets dir during bootstrap. Keys are never logged.
 import fs from 'node:fs';
 import crypto from 'node:crypto';
-import { connect, keyStores, KeyPair, transactions, utils } from 'near-api-js';
+import { connect, keyStores, KeyPair, transactions, utils, providers } from 'near-api-js';
 import bs58 from 'bs58';
 import nacl from 'tweetnacl';
 
 export const NETWORK = 'testnet';
-export const RPC = process.env.NEAR_RPC || 'https://test.rpc.fastnear.com';
+// Ordered NEAR RPC failover list. NEAR_RPC_URLS (comma separated) overrides; NEAR_RPC (legacy) stays first.
+const DEFAULT_RPCS = ['https://test.rpc.fastnear.com', 'https://near-testnet.drpc.org', 'https://testnet-rpc.intea.rs', 'https://rpc.testnet.near.org'];
+export const RPC_URLS = [...new Set([process.env.NEAR_RPC, ...(process.env.NEAR_RPC_URLS ? process.env.NEAR_RPC_URLS.split(',') : DEFAULT_RPCS)].map(u => u?.trim()).filter(Boolean))];
+export const RPC = RPC_URLS[0];
+const COOLDOWN_429_MS = Number(process.env.NEAR_RPC_COOLDOWN_MS || 30_000);
+const cooldown = new Map(); // url -> until (ms)
+const isTxMethod = (m) => /^(broadcast_tx|send_tx|tx$|EXPERIMENTAL_tx)/.test(m);
+// Transient = provider problem (rate limit, 5xx, timeout, network), safe to retry on another node.
+// Note: retrying broadcast of the SAME signed tx is idempotent (same hash); we never re-sign here.
+function transient(e, status) {
+  if (status === 429 || status === 408 || (status >= 500 && status < 600)) return true;
+  const s = String(e?.message || e) + ' ' + String(e?.type || '') + ' ' + JSON.stringify(e?.rpc || '');
+  return /429|rate.?limit|too many requests|timeout|timed out|fetch failed|failed to fetch|ECONNRESET|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|socket|network|unavailable|Internal server error|bad gateway|RetriesExceeded|Unexpected token|invalid json/i.test(s)
+    && !/InvalidNonce|InvalidTransaction|InvalidSignature|NotEnoughBalance|AccountDoesNotExist|UNKNOWN_ACCOUNT|MethodNotFound|CodeDoesNotExist|FunctionCallError|ActionError/i.test(s);
+}
+function orderedUrls() {
+  const now = Date.now();
+  const ok = RPC_URLS.filter(u => !(cooldown.get(u) > now));
+  return ok.length ? [...ok, ...RPC_URLS.filter(u => !ok.includes(u))] : [...RPC_URLS];
+}
+/** Runs fn(url) against each provider in order until one doesn't fail transiently. */
+async function withFailover(method, fn) {
+  let last;
+  for (const url of orderedUrls()) {
+    const timeoutMs = isTxMethod(method) ? 60_000 : 15_000;
+    let timer;
+    try {
+      return await Promise.race([fn(url), new Promise((_, rej) => { timer = setTimeout(() => rej(Object.assign(new Error(`timeout after ${timeoutMs}ms`), { status: 408 })), timeoutMs); })]);
+    } catch (e) {
+      const status = e?.status ?? (typeof e?.cause === 'number' ? e.cause : undefined);
+      if (!transient(e, status)) throw e;
+      if (status === 429 || /429|rate.?limit|too many/i.test(String(e?.message) + JSON.stringify(e?.rpc || ''))) cooldown.set(url, Date.now() + COOLDOWN_429_MS);
+      console.warn(`[near-rpc] ${method} via ${new URL(url).host} failed (${String(e?.message || e).slice(0, 120)}); trying next provider`);
+      last = e;
+    } finally { clearTimeout(timer); }
+  }
+  throw last;
+}
+class FailoverJsonRpcProvider extends providers.JsonRpcProvider {
+  constructor(urls) { super({ url: urls[0] }, { retries: 1 }); this.pool = Object.fromEntries(urls.map(u => [u, new providers.JsonRpcProvider({ url: u }, { retries: 1 })])); }
+  sendJsonRpc(method, params) { return withFailover(method, (url) => this.pool[url].sendJsonRpc(method, params)); }
+}
+export const nearProvider = new FailoverJsonRpcProvider(RPC_URLS);
 export const EXPLORER = 'https://testnet.nearblocks.io';
 export const TGAS = 10n ** 12n;
 export const keyStore = new keyStores.InMemoryKeyStore();
@@ -20,16 +62,20 @@ export async function loadKeys({ dir, env } = {}) {
     await keyStore.setKey(NETWORK, k.account_id, KeyPair.fromString(k.private_key));
   }
 }
-async function conn() { return near ||= await connect({ networkId: NETWORK, nodeUrl: RPC, keyStore }); }
+async function conn() { return near ||= await connect({ networkId: NETWORK, nodeUrl: RPC, provider: nearProvider, keyStore }); }
 export async function account(id) { return (await conn()).account(id); }
 
 export async function rpc(method, params) {
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 3; i++) {
     try {
-      const r = await fetch(RPC, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) }).then(r => r.json());
-      if (r.error) { const e = new Error(JSON.stringify(r.error).slice(0, 300)); e.rpc = r.error; throw e; }
-      return r.result;
-    } catch (e) { if (e.rpc || i === 3) throw e; await new Promise(r => setTimeout(r, 500 * (i + 1))); }
+      return await withFailover(method, async (url) => {
+        const res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) });
+        if (!res.ok) throw Object.assign(new Error(`HTTP ${res.status}`), { status: res.status });
+        const r = await res.json();
+        if (r.error) { const e = new Error(JSON.stringify(r.error).slice(0, 300)); e.rpc = r.error; if (r.error.code === -429) e.status = 429; throw e; }
+        return r.result;
+      });
+    } catch (e) { if (i === 2 || !transient(e, e.status)) throw e; await new Promise(r => setTimeout(r, 1000 * (i + 1))); }
   }
 }
 export async function view(contract, method, args = {}) {

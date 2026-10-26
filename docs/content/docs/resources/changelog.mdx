@@ -3,6 +3,10 @@ title: Changelog
 description: What changed in Tidepool and when.
 ---
 
+## 2026-10-26 · NEAR RPC failover
+
+- The server now fails over between NEAR testnet RPC providers (FastNEAR → dRPC → Intea → rpc.testnet.near.org) on rate limits (429), 5xx, timeouts and network errors, with a short cooldown for rate-limited providers. Configure with `NEAR_RPC_URLS` (comma separated); `NEAR_RPC` still sets the first provider. Signed transactions are re-broadcast unchanged, never re-signed, so retries are safe.
+
 ## 2026-10-26 · Refund USD values fixed
 
 - `depositedAmountUsd` / `refundedAmountUsd` in `/v0/status` are no longer `"0.0000"` on refunded swaps (NEAR-only and bridged). They now fall back to the quote's unit prices. Covered by new tests (`npm test` in `server/`).
