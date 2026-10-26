@@ -27,6 +27,13 @@ export function feeBps(inT, outT, authed) {
   return authed ? 20 : 45; // 20 bps (+25 without key)
 }
 
+// USD unit prices for /v0/status. Settled swaps store the settlement prices; refunds never settle, so
+// fall back to the unit prices implied by the signed quote (amount*Usd / amount*Formatted).
+export function statusPrices(s) {
+  const q = s.quoteResponse?.quote || {};
+  const unit = (usdV, f) => { const a = Number(f), u = Number(usdV); return a > 0 && Number.isFinite(u) ? u / a : 0; };
+  return { in: s.prices?.in || unit(q.amountInUsd, q.amountInFormatted), out: s.prices?.out || unit(q.amountOutUsd, q.amountOutFormatted) };
+}
 function usd(units, t, p) { return (Number(fromUnits(units, t.decimals)) * p).toFixed(4); }
 const ratio = (pIn, pOut) => BigInt(Math.round((pIn / pOut) * 1e18));
 function convert(amountIn, inT, outT, px, fee) { // exact input -> output
@@ -133,7 +140,7 @@ export function statusOf(depositAddress) {
   const { quoteResponse: qr } = s;
   const inT = byAsset[qr.quoteRequest.originAsset], outT = byAsset[qr.quoteRequest.destinationAsset];
   const d = { intentHashes: [...new Set(s.intentHashes)], nearTxHashes: s.txs.map(t => t.hash).filter(h => !s.evmTxs?.[h]), originChainTxHashes: s.originTxs.map(h => ({ hash: h, explorerUrl: urlOf(s, h) })), destinationChainTxHashes: s.destTxs.map(h => ({ hash: h, explorerUrl: urlOf(s, h) })) };
-  const px = s.prices || {};
+  const px = statusPrices(s);
   if (s.amountIn) Object.assign(d, { amountIn: s.amountIn, amountInFormatted: fromUnits(s.amountIn, inT.decimals), amountInUsd: usd(s.amountIn, inT, px.in || 0) });
   if (s.amountOut) Object.assign(d, { amountOut: s.amountOut, amountOutFormatted: fromUnits(s.amountOut, outT.decimals), amountOutUsd: usd(s.amountOut, outT, px.out || 0) });
   if (s.slippage !== undefined) d.slippage = s.slippage;
