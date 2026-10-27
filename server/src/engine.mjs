@@ -4,7 +4,7 @@
 import crypto from 'node:crypto';
 import { KeyPair } from 'near-api-js';
 import bs58 from 'bs58';
-import { call, view, viewAccount, sendNear, signIntents, deriveDepositKey, keyStore, NETWORK, TGAS, parseNear, txUrl } from './near.mjs';
+import { rpc, call, view, viewAccount, sendNear, signIntents, deriveDepositKey, keyStore, NETWORK, TGAS, parseNear, txUrl } from './near.mjs';
 import { ROOT, VERIFIER, MAKER, TOKENS, fromUnits, chainOf, isEvmAddress, BRIDGE_ACCOUNT } from './config.mjs';
 import * as evm from './evm.mjs';
 import { prices } from './prices.mjs';
@@ -60,18 +60,21 @@ function signQuote(obj) {
 let _mk; function makerKey() { return _mk; }
 export async function initEngine() { _mk = await keyStore.getKey(NETWORK, MAKER); if (!MASTER) console.warn('DEPOSIT_MASTER_SEED missing: non-dry quotes disabled'); }
 
-export async function quote(req, { authed }) {
+export async function quote(req, { authed, maxDeadlineMs = 24 * 3600_000 } = {}) {
   const need = ['dry', 'swapType', 'slippageTolerance', 'originAsset', 'depositType', 'destinationAsset', 'amount', 'refundTo', 'refundType', 'recipient', 'recipientType', 'deadline'];
   for (const k of need) if (req[k] === undefined || req[k] === null || req[k] === '') throw new BadRequest(`${k} is required`);
   const inT = byAsset[req.originAsset], outT = byAsset[req.destinationAsset];
   if (!inT) throw new BadRequest(`originAsset ${req.originAsset} is not supported. See GET /v0/tokens`);
   if (!outT) throw new BadRequest(`destinationAsset ${req.destinationAsset} is not supported. See GET /v0/tokens`);
   if (inT === outT) throw new BadRequest('originAsset and destinationAsset must differ');
-  if (!['EXACT_INPUT', 'EXACT_OUTPUT', 'FLEX_INPUT'].includes(req.swapType)) throw new BadRequest(`swapType ${req.swapType} is not supported by Tidepool v1 (supported: EXACT_INPUT, EXACT_OUTPUT, FLEX_INPUT)`);
+  if (!SWAP_TYPES.includes(req.swapType)) throw new BadRequest(`swapType ${req.swapType} is not supported (supported: ${SWAP_TYPES.join(', ')})`);
   if (!['ORIGIN_CHAIN', 'INTENTS'].includes(req.depositType)) throw new BadRequest(`depositType ${req.depositType} is not supported by Tidepool v1 (supported: ORIGIN_CHAIN, INTENTS)`);
   if (!['ORIGIN_CHAIN', 'INTENTS'].includes(req.refundType)) throw new BadRequest(`refundType ${req.refundType} is not supported by Tidepool v1`);
   if (!['DESTINATION_CHAIN', 'INTENTS'].includes(req.recipientType)) throw new BadRequest(`recipientType ${req.recipientType} is not supported by Tidepool v1`);
-  if (req.depositMode && req.depositMode !== 'SIMPLE') throw new BadRequest('depositMode MEMO is not used on NEAR; use SIMPLE');
+  if (req.depositMode && !['SIMPLE', 'MEMO'].includes(req.depositMode)) throw new BadRequest('depositMode must be SIMPLE or MEMO');
+  const memoMode = req.depositMode === 'MEMO';
+  if (memoMode && (inT.chain || req.depositType !== 'ORIGIN_CHAIN')) throw new BadRequest('depositMode MEMO is supported for ORIGIN_CHAIN deposits of NEAR-native tokens (shared address + ft_transfer memo); use SIMPLE otherwise');
+  if (req.swapType === 'ANY_INPUT' && memoMode) throw new BadRequest('ANY_INPUT quotes use depositMode SIMPLE');
   // Address formats follow 1Click: chain-native addresses for *_CHAIN types, NEAR accounts for INTENTS.
   const addrOk = (t, onChain, v) => (onChain && t.chain ? isEvmAddress(v) : isAccount(v));
   const what = (t, onChain) => (onChain && t.chain ? `a ${chainOf(t.chain).name} address (0x...)` : 'a NEAR testnet account id');
@@ -83,22 +86,24 @@ export async function quote(req, { authed }) {
   const deadline = new Date(req.deadline);
   if (isNaN(deadline)) throw new BadRequest('deadline must be an ISO 8601 date');
   if (!req.dry && deadline.getTime() < Date.now() + 60_000) throw new BadRequest('deadline must be at least 60 seconds in the future');
-  if (!req.dry && deadline.getTime() > Date.now() + 24 * 3600_000) throw new BadRequest('deadline must be within 24 hours');
-  if (req.appFees?.length) throw new BadRequest('appFees are not supported by Tidepool v1');
+  if (!req.dry && deadline.getTime() > Date.now() + maxDeadlineMs) throw new BadRequest(`deadline must be within ${maxDeadlineMs / 3600_000} hours`);
+  const appFees = validateAppFees(req.appFees);
+  const A = BigInt(appFees.reduce((a, f) => a + f.fee, 0));
 
   const p = await prices();
   const fee = feeBps(inT, outT, authed);
   const amt = BigInt(req.amount);
   const s = BigInt(Math.round(slip));
   let amountIn, minAmountIn, amountOut, minAmountOut;
+  // appFees (bps of amountIn) are taken from the input before conversion, like 1Click mainnet.
   if (req.swapType === 'EXACT_OUTPUT') {
     amountOut = amt; minAmountOut = amt;
-    minAmountIn = invert(amt, inT, outT, p.prices, fee);
+    minAmountIn = grossUp(invert(amt, inT, outT, p.prices, fee), A);
     amountIn = minAmountIn * (10000n + s) / 10000n; // deposit this; any excess is refunded
   } else {
     amountIn = amt;
-    minAmountIn = req.swapType === 'FLEX_INPUT' ? amt * (10000n - s) / 10000n : amt;
-    amountOut = convert(amt, inT, outT, p.prices, fee);
+    minAmountIn = req.swapType === 'FLEX_INPUT' ? amt * (10000n - s) / 10000n : req.swapType === 'ANY_INPUT' ? 1n : amt;
+    amountOut = convert(amt - amt * A / 10000n, inT, outT, p.prices, fee);
     minAmountOut = amountOut * (10000n - s) / 10000n;
   }
   if (amountOut <= 0n) throw new BadRequest('amount is too low for this pair');
@@ -116,27 +121,60 @@ export async function quote(req, { authed }) {
     const { accountId } = deriveDepositKey(MASTER, correlationId);
     // EVM origin: a CREATE2 address of the chain's Tidepool vault; the funds are credited to the
     // per-quote NEAR intents account (accountId) once the relayer sweeps them.
-    const depositAddress = inT.chain && req.depositType === 'ORIGIN_CHAIN' ? evm.depositAddressFor(inT.chain, correlationId) : accountId;
+    let depositAddress = inT.chain && req.depositType === 'ORIGIN_CHAIN' ? evm.depositAddressFor(inT.chain, correlationId) : accountId;
+    if (memoMode) { depositAddress = await memoAccount(inT); q.depositAddress = depositAddress; q.depositMemo = newMemo(); }
     Object.assign(q, { depositAddress, deadline: deadline.toISOString(), timeWhenInactive: deadline.toISOString() });
+    if (q.depositMemo) { const { depositMemo } = q; delete q.depositMemo; Object.assign(q, { depositAddress, depositMemo }); }
+    if (req.swapType === 'ANY_INPUT' && req.depositType === 'INTENTS') q.chainDepositAddresses = [{ blockchain: 'near', address: accountId }];
   }
   const body = { correlationId, timestamp: new Date().toISOString(), quoteRequest: req, quote: q };
   const quoteResponse = { ...body, signature: signQuote(body) };
   if (!req.dry) {
-    db.swaps[keyOf(q.depositAddress)] = { quoteResponse, intentsAccount: deriveDepositKey(MASTER, correlationId).accountId, status: 'PENDING_DEPOSIT', updatedAt: new Date().toISOString(), feeBps: fee, priceSource: p.source, txs: [], intentHashes: [], originTxs: [], destTxs: [] };
+    db.swaps[keyOf(q.depositAddress, q.depositMemo)] = { quoteResponse, appFees, depositMemo: q.depositMemo, intentsAccount: deriveDepositKey(MASTER, correlationId).accountId, status: 'PENDING_DEPOSIT', updatedAt: new Date().toISOString(), feeBps: fee, priceSource: p.source, txs: [], intentHashes: [], originTxs: [], destTxs: [] };
     save();
   }
   return quoteResponse;
 }
 
-const keyOf = (a) => (isEvmAddress(a) ? a.toLowerCase() : a);
+export const keyOf = (a, memo) => (isEvmAddress(a) ? a.toLowerCase() : a) + (memo ? `#${memo}` : '');
+export const SWAP_TYPES = ['EXACT_INPUT', 'EXACT_OUTPUT', 'FLEX_INPUT', 'ANY_INPUT'];
+const grossUp = (net, A) => (net * 10000n + (10000n - A) - 1n) / (10000n - A); // smallest gross with gross - fee >= net
+export function validateAppFees(list) {
+  if (list === undefined || list === null) return [];
+  if (!Array.isArray(list)) throw new BadRequest('appFees must be an array');
+  if (list.length > 10) throw new BadRequest('appFees: at most 10 recipients');
+  const out = list.map((f, i) => {
+    if (!f || !isAccount(f.recipient)) throw new BadRequest(`appFees[${i}].recipient must be a NEAR (Intents) account id`);
+    if (!Number.isInteger(f.fee) || f.fee < 0) throw new BadRequest(`appFees[${i}].fee must be a non-negative integer (basis points)`);
+    return { recipient: f.recipient, fee: f.fee };
+  });
+  if (out.reduce((a, f) => a + f.fee, 0) >= 10000) throw new BadRequest('appFees total must be below 10000 bps');
+  return out;
+}
+// Split the app fee out of a gross input amount: [{recipient, amount}], total
+export function appFeeSplit(gross, appFees = []) {
+  const parts = appFees.map(f => ({ recipient: f.recipient, amount: gross * BigInt(f.fee) / 10000n })).filter(x => x.amount > 0n);
+  return { parts, total: parts.reduce((a, x) => a + x.amount, 0n) };
+}
+// ---- depositMode MEMO: one shared NEAR address, deposits matched by ft_transfer memo ----
+export const memoKey = () => deriveDepositKey(MASTER, 'tidepool-memo-shared');
+async function memoAccount(inT) {
+  const { accountId, keyPair } = memoKey();
+  await keyStore.setKey(NETWORK, accountId, keyPair);
+  const a = await viewAccount(accountId);
+  if (!a || BigInt(a.amount) < parseNear(0.2)) await withSigner(ROOT, () => sendNear(ROOT, accountId, parseNear(0.3)));
+  await ensureStorage(inT.nearContract, accountId);
+  return accountId;
+}
+const newMemo = () => String(crypto.randomInt(100000000, 999999999)) + String(crypto.randomInt(100, 999));
 const acctOf = (addr, s) => s.intentsAccount || addr;
 // explorer link for a tx hash recorded on a swap (NEAR by default, EVM when tagged)
 const urlOf = (s, h) => (s.evmTxs?.[h] ? evm.evmTxUrl(s.evmTxs[h], h) : txUrl(h));
 const tagEvm = (s, chain, h) => { (s.evmTxs ||= {})[h] = chain; return h; };
 
-export function statusOf(depositAddress) {
-  const s = db.swaps[keyOf(depositAddress)];
-  if (!s) return null;
+export function statusOf(depositAddress, depositMemo) {
+  const s = db.swaps[keyOf(depositAddress, depositMemo)];
+  if (!s) { if (!depositMemo && depositAddress && depositAddress === (MASTER && memoKey().accountId)) throw new BadRequest('depositMemo is required for this depositAddress (depositMode MEMO)'); return null; }
   const { quoteResponse: qr } = s;
   const inT = byAsset[qr.quoteRequest.originAsset], outT = byAsset[qr.quoteRequest.destinationAsset];
   const d = { intentHashes: [...new Set(s.intentHashes)], nearTxHashes: s.txs.map(t => t.hash).filter(h => !s.evmTxs?.[h]), originChainTxHashes: s.originTxs.map(h => ({ hash: h, explorerUrl: urlOf(s, h) })), destinationChainTxHashes: s.destTxs.map(h => ({ hash: h, explorerUrl: urlOf(s, h) })) };
@@ -147,20 +185,32 @@ export function statusOf(depositAddress) {
   if (s.deposited) Object.assign(d, { depositedAmount: s.deposited, depositedAmountFormatted: fromUnits(s.deposited, inT.decimals), depositedAmountUsd: usd(s.deposited, inT, px.in || 0) });
   if (s.refunded) Object.assign(d, { refundedAmount: s.refunded, refundedAmountFormatted: fromUnits(s.refunded, inT.decimals), refundedAmountUsd: usd(s.refunded, inT, px.in || 0) });
   if (s.refundReason) d.refundReason = s.refundReason;
-  return { correlationId: qr.correlationId, quoteResponse: qr, status: s.status, updatedAt: s.updatedAt, swapDetails: d, tidepool: { explorer: s.txs.map(t => ({ label: t.label, url: urlOf(s, t.hash) })), intentsAccount: acctOf(depositAddress, s), note: s.note } };
+  if (qr.quoteRequest.referral) d.referral = qr.quoteRequest.referral;
+  d.withdrawFee = '0';
+  const tp = { explorer: s.txs.map(t => ({ label: t.label, url: urlOf(s, t.hash) })), intentsAccount: acctOf(depositAddress, s), note: s.note };
+  if (s.appFeePaid?.length) tp.appFees = s.appFeePaid;
+  if (s.withdrawals?.length) tp.anyInputWithdrawals = s.withdrawals.length;
+  return { correlationId: qr.correlationId, quoteResponse: qr, status: s.status, updatedAt: s.updatedAt, swapDetails: d, tidepool: tp };
 }
 
-export function submitDeposit({ txHash, depositAddress, nearSenderAccount }) {
+export function submitDeposit({ txHash, depositAddress, nearSenderAccount, memo }) {
   if (!txHash || !depositAddress) throw new BadRequest('txHash and depositAddress are required');
-  const s = db.swaps[keyOf(depositAddress)];
-  if (!s) throw new BadRequest('Unknown depositAddress', 404);
+  const s = db.swaps[keyOf(depositAddress, memo)];
+  if (!s) throw new BadRequest(memo ? 'Unknown depositAddress/memo' : (MASTER && depositAddress === memoKey().accountId ? 'memo is required for depositMode MEMO deposits' : 'Unknown depositAddress'), 404);
+  if (s.depositMemo) {
+    if (!nearSenderAccount) throw new BadRequest('nearSenderAccount is required for depositMode MEMO deposits (used to look the transaction up)');
+    (s.memoTxs ||= []).find(t => t.hash === txHash) || s.memoTxs.push({ hash: txHash, sender: nearSenderAccount, stage: 'submitted' });
+  }
+  return submitDepositCommon(s, depositAddress, memo, txHash, nearSenderAccount);
+}
+function submitDepositCommon(s, depositAddress, memo, txHash, nearSenderAccount) {
   if (!s.originTxs.includes(txHash)) s.originTxs.push(txHash);
   const inT = byAsset[s.quoteResponse.quoteRequest.originAsset];
   if (inT.chain && /^0x[0-9a-fA-F]{64}$/.test(txHash)) tagEvm(s, inT.chain, txHash);
   if (nearSenderAccount) s.sender = nearSenderAccount;
   if (s.status === 'PENDING_DEPOSIT') { s.status = 'KNOWN_DEPOSIT_TX'; s.updatedAt = new Date().toISOString(); }
   save();
-  return statusOf(depositAddress);
+  return statusOf(depositAddress, memo);
 }
 
 // ---------- settlement worker ----------
@@ -278,13 +328,14 @@ async function settle(addr, s, inT, outT, deposited) {
   const p = await prices();
   const fee = s.feeBps;
   let swapIn, out;
+  const A = BigInt((s.appFees || []).reduce((a, f) => a + f.fee, 0));
   if (req.swapType === 'EXACT_OUTPUT') {
     out = BigInt(q.amountOut);
-    swapIn = invert(out, inT, outT, p.prices, fee);
+    swapIn = grossUp(invert(out, inT, outT, p.prices, fee), A);
     if (swapIn > deposited) return refund(addr, s, inT, deposited, 'PRICE_MOVED');
   } else {
     swapIn = deposited < BigInt(q.amountIn) ? deposited : BigInt(q.amountIn);
-    out = convert(swapIn, inT, outT, p.prices, fee);
+    out = convert(swapIn - swapIn * A / 10000n, inT, outT, p.prices, fee);
     const minOut = BigInt(q.minAmountOut) * swapIn / BigInt(q.amountIn);
     if (out < minOut) return refund(addr, s, inT, deposited, 'SLIPPAGE_EXCEEDED');
     if (out > BigInt(q.amountOut) * swapIn / BigInt(q.amountIn)) out = BigInt(q.amountOut) * swapIn / BigInt(q.amountIn); // never pay above the quote
@@ -295,15 +346,19 @@ async function settle(addr, s, inT, outT, deposited) {
   const excess = deposited - swapIn;
   if (excess > 0n && req.refundType === 'ORIGIN_CHAIN') await ensureStorage(inT.nearContract, inT.chain ? BRIDGE_ACCOUNT : req.refundTo);
   const kp = await depositKey(addr, s);
+  const af = appFeeSplit(swapIn, s.appFees);
+  const tradeIn = swapIn - af.total;
   const userIntents = [
-    { intent: 'token_diff', diff: { [inT.assetId]: (-swapIn).toString(), [outT.assetId]: out.toString() } },
+    ...af.parts.map(x => ({ intent: 'transfer', receiver_id: x.recipient, tokens: { [inT.assetId]: x.amount.toString() }, memo: 'appFee' })),
+    { intent: 'token_diff', diff: { [inT.assetId]: (-tradeIn).toString(), [outT.assetId]: out.toString() } },
     outIntent(req.recipientType, req.recipient, outT, out),
   ];
   if (excess > 0n) userIntents.push(outIntent(req.refundType === 'INTENTS' ? 'INTENTS' : 'NEAR', req.refundTo, inT, excess));
   const user = signIntents({ signerId: acctOf(addr, s), verifier: VERIFIER, keyPair: kp, intents: userIntents });
-  const maker = signIntents({ signerId: MAKER, verifier: VERIFIER, keyPair: makerKey(), intents: [{ intent: 'token_diff', diff: { [inT.assetId]: swapIn.toString(), [outT.assetId]: (-out).toString() } }] });
+  const maker = signIntents({ signerId: MAKER, verifier: VERIFIER, keyPair: makerKey(), intents: [{ intent: 'token_diff', diff: { [inT.assetId]: tradeIn.toString(), [outT.assetId]: (-out).toString() } }] });
   const r = await execute([maker, user]);
-  s.txs.push({ label: 'swap (execute_intents)', hash: r.txHash });
+  s.txs.push({ label: af.parts.length ? 'swap + appFees (execute_intents)' : 'swap (execute_intents)', hash: r.txHash });
+  if (r.ok && af.parts.length) s.appFeePaid = af.parts.map(x => ({ recipient: x.recipient, asset: inT.assetId, amount: x.amount.toString(), amountFormatted: fromUnits(x.amount, inT.decimals), txHash: r.txHash }));
   s.intentHashes.push(...hashesFrom(r.logs));
   if (!r.ok) { s.note = 'settlement failed: ' + r.failures.join('; ').slice(0, 300); save(); return refund(addr, s, inT, await intentsBal(acctOf(addr, s), inT.assetId), 'SWAP_FAILED'); }
   s.destTxs.push(r.txHash);
@@ -319,7 +374,10 @@ async function tick(addr, s) {
   const inT = byAsset[req.originAsset], outT = byAsset[req.destinationAsset];
   const deadline = new Date(q.deadline).getTime();
   if (s.releases?.some(r => !r.done) || s.final) return processReleases(s); // settled on NEAR, EVM payout pending
-  if (req.depositType === 'ORIGIN_CHAIN') await sweepOrigin(addr, s, inT);
+  if (s.depositMemo) await sweepMemo(addr, s, inT);
+  else if (req.depositType === 'ORIGIN_CHAIN') await sweepOrigin(addr, s, inT);
+  if (s.order) return hooks.tickOrder(addr, s, inT, outT);
+  if (req.swapType === 'ANY_INPUT') return tickAnyInput(addr, s, inT, outT, deadline);
   const bal = await intentsBal(acctOf(addr, s), inT.assetId);
   if (bal > 0n) s.deposited = bal.toString();
   if (bal >= BigInt(q.minAmountIn) && Date.now() < deadline) return settle(addr, s, inT, outT, bal);
@@ -327,13 +385,90 @@ async function tick(addr, s) {
   if (bal > 0n && s.status !== 'INCOMPLETE_DEPOSIT') set(s, 'INCOMPLETE_DEPOSIT');
 }
 
+// ---- MEMO deposits: verify the user's ft_transfer to the shared address carried our memo, then forward ----
+async function sweepMemo(addr, s, inT) {
+  const { accountId: shared, keyPair } = memoKey();
+  db.memoTxs ||= {};
+  for (const t of (s.memoTxs || []).filter(t => t.stage === 'submitted')) {
+    if (db.memoTxs[t.hash] && db.memoTxs[t.hash] !== addr) { t.stage = 'rejected'; t.reason = 'tx already credited to another memo'; save(); continue; }
+    let tx;
+    try { tx = await rpc('tx', { tx_hash: t.hash, sender_account_id: t.sender, wait_until: 'FINAL' }); } catch (e) { t.tries = (t.tries || 0) + 1; if (t.tries > 30) { t.stage = 'rejected'; t.reason = 'tx not found'; } save(); continue; }
+    const ok = !tx.status?.Failure && !tx.receipts_outcome.some(r => r.outcome.status.Failure);
+    let amount = 0n;
+    if (ok && tx.transaction.receiver_id === inT.nearContract) for (const a of tx.transaction.actions) {
+      const fc = a.FunctionCall; if (!fc || fc.method_name !== 'ft_transfer') continue;
+      try { const args = JSON.parse(Buffer.from(fc.args, 'base64').toString()); if (args.receiver_id === shared && String(args.memo) === s.depositMemo) amount += BigInt(args.amount); } catch {}
+    }
+    if (amount === 0n) { t.stage = 'rejected'; t.reason = `no successful ft_transfer of ${inT.symbol} to ${shared} with memo ${s.depositMemo}`; save(); continue; }
+    db.memoTxs[t.hash] = addr; t.amount = amount.toString(); t.stage = 'matched'; save();
+  }
+  for (const t of (s.memoTxs || []).filter(t => t.stage === 'matched')) {
+    await keyStore.setKey(NETWORK, shared, keyPair);
+    const r = await withSigner(shared, () => call(shared, inT.nearContract, 'ft_transfer_call', { receiver_id: VERIFIER, amount: t.amount, msg: acctOf(addr, s) }, { deposit: 1n, gas: 60n * TGAS }));
+    s.txs.push({ label: `forward memo ${s.depositMemo} deposit into verifier`, hash: r.txHash });
+    t.stage = r.ok ? 'credited' : 'matched'; save();
+    if (!r.ok) throw new Error('memo forward failed: ' + r.failures.join('; '));
+  }
+}
+
+// ---- ANY_INPUT: every deposit (any amount) is converted at the live price and sent to the recipient ----
+async function tickAnyInput(addr, s, inT, outT, deadline) {
+  const req = s.quoteResponse.quoteRequest;
+  const bal = await intentsBal(acctOf(addr, s), inT.assetId);
+  if (bal === 0n) return;
+  if (Date.now() >= deadline) return refund(addr, s, inT, bal, 'DEADLINE_PASSED', s.withdrawals?.length ? 'SUCCESS' : 'REFUNDED');
+  const p = await prices();
+  const af = appFeeSplit(bal, s.appFees);
+  const tradeIn = bal - af.total;
+  const out = convert(tradeIn, inT, outT, p.prices, s.feeBps);
+  if (out <= 0n) return; // dust: wait for more
+  if ((await makerBalance(outT.assetId)) < out) { s.note = 'waiting for maker liquidity'; save(); return; }
+  set(s, 'PROCESSING', { deposited: ((BigInt(s.deposited || 0)) + bal).toString() });
+  if (req.recipientType === 'DESTINATION_CHAIN') await ensureStorage(outT.nearContract, outT.chain ? BRIDGE_ACCOUNT : req.recipient);
+  const kp = await depositKey(addr, s);
+  const user = signIntents({ signerId: acctOf(addr, s), verifier: VERIFIER, keyPair: kp, intents: [
+    ...af.parts.map(x => ({ intent: 'transfer', receiver_id: x.recipient, tokens: { [inT.assetId]: x.amount.toString() }, memo: 'appFee' })),
+    { intent: 'token_diff', diff: { [inT.assetId]: (-tradeIn).toString(), [outT.assetId]: out.toString() } },
+    outIntent(req.recipientType, req.recipient, outT, out),
+  ] });
+  const maker = signIntents({ signerId: MAKER, verifier: VERIFIER, keyPair: makerKey(), intents: [{ intent: 'token_diff', diff: { [inT.assetId]: tradeIn.toString(), [outT.assetId]: (-out).toString() } }] });
+  const r = await execute([maker, user]);
+  s.txs.push({ label: 'ANY_INPUT conversion (execute_intents)', hash: r.txHash });
+  s.intentHashes.push(...hashesFrom(r.logs));
+  (s.withdrawals ||= []).push({ status: r.ok ? 'SUCCESS' : 'FAILED', amountOutFormatted: fromUnits(r.ok ? out : 0n, outT.decimals), amountOutUsd: usd(r.ok ? out : 0n, outT, p.prices[outT.assetId]), amountOut: (r.ok ? out : 0n).toString(), withdrawFeeFormatted: '0', withdrawFee: '0', withdrawFeeUsd: '0', timestamp: new Date().toISOString(), hash: r.txHash, amountIn: bal.toString() });
+  if (!r.ok) { set(s, 'FAILED', { note: 'ANY_INPUT conversion failed: ' + r.failures.join('; ').slice(0, 300) }); return; }
+  s.destTxs.push(r.txHash);
+  if (af.parts.length) (s.appFeePaid ||= []).push(...af.parts.map(x => ({ recipient: x.recipient, asset: inT.assetId, amount: x.amount.toString(), amountFormatted: fromUnits(x.amount, inT.decimals), txHash: r.txHash })));
+  if (req.recipientType === 'DESTINATION_CHAIN') queueRelease(s, `any-input ${s.withdrawals.length}`, outT, req.recipient, out);
+  if (s.releases?.length) await processReleases(s).catch(e => { s.note = 'payout pending: ' + String(e.message).slice(0, 200); save(); });
+  const sum = (k) => s.withdrawals.filter(w => w.status === 'SUCCESS').reduce((a, w) => a + BigInt(w[k]), 0n);
+  finish(s, 'SUCCESS', { amountIn: sum('amountIn').toString(), amountOut: sum('amountOut').toString(), prices: { in: p.prices[inT.assetId], out: p.prices[outT.assetId] } });
+}
+export function anyInputWithdrawals(depositAddress, depositMemo, { timestampFrom, page = 1, limit = 50, sortOrder = 'desc' } = {}) {
+  const s = db.swaps[keyOf(depositAddress, depositMemo)];
+  if (!s) return null;
+  const req = s.quoteResponse.quoteRequest;
+  if (req.swapType !== 'ANY_INPUT') throw new BadRequest('depositAddress does not belong to an ANY_INPUT quote');
+  let w = (s.withdrawals || []).map(({ amountIn, ...x }) => x);
+  if (timestampFrom) { const t = new Date(timestampFrom).getTime(); if (isNaN(t)) throw new BadRequest('timestampFrom must be an ISO date'); w = w.filter(x => new Date(x.timestamp).getTime() >= t); }
+  if (sortOrder === 'desc') w.reverse();
+  limit = Math.min(Math.max(1, Number(limit) || 50), 50); page = Math.max(1, Number(page) || 1);
+  return { asset: req.destinationAsset, recipient: req.recipient, affiliateRecipient: s.appFees?.[0]?.recipient || '', withdrawals: w.slice((page - 1) * limit, page * limit) };
+}
+
+// internals shared with orders.mjs / intents.mjs
+export const hooks = { tickOrder: async () => {} };
+export const internals = { convert, invert, grossUp, settle: (...a) => settle(...a), refund: (...a) => refund(...a), intentsBal, deriveDepositKey: (id) => deriveDepositKey(MASTER, id), execute, hashesFrom, byAsset, isAccount, set, MASTER: () => MASTER, feeBps, usd };
+
 const ACTIVE = ['PENDING_DEPOSIT', 'KNOWN_DEPOSIT_TX', 'INCOMPLETE_DEPOSIT', 'PROCESSING'];
 export function startWorker() {
   const busy = new Set();
   setInterval(() => {
     if (!MASTER) return;
     for (const [addr, s] of Object.entries(db.swaps)) {
-      if (!ACTIVE.includes(s.status) || busy.has(addr)) continue;
+      const anyLive = s.quoteResponse.quoteRequest.swapType === 'ANY_INPUT' && s.status === 'SUCCESS' && Date.now() < new Date(s.quoteResponse.quote.deadline).getTime() + 60_000;
+      const orderLive = s.order && !['FILLED', 'CANCELED', 'EXPIRED'].includes(s.order.fillStatus);
+      if (!(ACTIVE.includes(s.status) || anyLive || orderLive) || busy.has(addr)) continue;
       if (Date.now() > new Date(s.quoteResponse.quote.deadline).getTime() + 24 * 3600_000) continue; // stop watching stale quotes
       busy.add(addr);
       tick(addr, s).catch(e => { s.note = String(e.message).slice(0, 300); save(); console.error('tick', addr, e.message); }).finally(() => busy.delete(addr));

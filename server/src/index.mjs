@@ -4,7 +4,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { loadKeys, view, viewAccount, rpc } from './near.mjs';
 import { ROOT, VERIFIER, MAKER, TOKENS, VERIFIER_WASM_SHA256, VERIFIER_RELEASE, fromUnits } from './config.mjs';
-import { quote, tokens, statusOf, submitDeposit, startWorker, initEngine, BadRequest, makerBalance } from './engine.mjs';
+import { quote, tokens, statusOf, submitDeposit, startWorker, initEngine, BadRequest, makerBalance, anyInputWithdrawals } from './engine.mjs';
+import { generateIntent, submitIntent } from './intents.mjs';
+import { authenticate, refresh, balances, history, sessionOf } from './auth.mjs';
+import { createOrder, getOrder, listOrders, cancelOrder, ApiError, errorDoc } from './orders.mjs';
+import crypto from 'node:crypto';
 import { drip } from './faucet.mjs';
 import { prices } from './prices.mjs';
 import { evmHealth } from './evm.mjs';
@@ -61,7 +65,7 @@ function serveDocs(req, res, p) {
 const json = (res, code, body) => { res.writeHead(code, { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'cache-control': 'no-store' }); res.end(JSON.stringify(body)); };
 const text = (res, body, type = 'text/plain; charset=utf-8') => { res.writeHead(200, { 'content-type': type, 'access-control-allow-origin': '*' }); res.end(body); };
 const readBody = (req) => new Promise((ok, bad) => { let b = ''; req.on('data', c => { b += c; if (b.length > 1e5) req.destroy(); }); req.on('end', () => { try { ok(req._body = b ? JSON.parse(b) : {}); } catch { bad(new BadRequest('Body must be JSON')); } }); });
-const authed = (req) => Boolean(req.headers['x-api-key'] || /^Bearer\s+\S+/i.test(req.headers.authorization || ''));
+const authed = (req) => Boolean(req.headers['x-api-key'] || /^Bearer\s+\S+/i.test(req.headers.authorization || '')); // any key/JWT gets the lower fee on testnet
 const ip = (req) => String(req.headers['x-forwarded-for'] || req.socket.remoteAddress).split(',')[0].trim();
 
 async function health() {
@@ -93,10 +97,37 @@ const server = http.createServer(async (req, res) => {
     if (p === '/v0/tokens' && req.method === 'GET') return json(res, 200, await tokens());
     if (p === '/v0/quote' && req.method === 'POST') return json(res, 200, await quote(await readBody(req), { authed: authed(req) }));
     if (p === '/v0/deposit/submit' && req.method === 'POST') return json(res, 200, submitDeposit(await readBody(req)));
-    if (p === '/v0/status' && req.method === 'GET') { const s = statusOf(url.searchParams.get('depositAddress')); return s ? json(res, 200, s) : json(res, 404, { message: 'Deposit address not found' }); }
+    if (p === '/v0/status' && req.method === 'GET') { const s = statusOf(url.searchParams.get('depositAddress'), url.searchParams.get('depositMemo')); return s ? json(res, 200, s) : json(res, 404, { message: 'Deposit address not found' }); }
     // ---- Tidepool extensions ----
     if (p === '/v0/faucet' && req.method === 'POST') return json(res, 200, await drip(await readBody(req), ip(req)));
     if (p === '/v0/health') { if (Date.now() - healthCache.at > 10_000) healthCache = { at: Date.now(), body: await health() }; return json(res, 200, healthCache.body); }
+    if (p === '/v0/any-input/withdrawals' && req.method === 'GET') { const q = url.searchParams; if (!q.get('depositAddress')) throw new BadRequest('depositAddress is required'); const w = anyInputWithdrawals(q.get('depositAddress'), q.get('depositMemo'), { timestampFrom: q.get('timestampFrom'), page: q.get('page'), limit: q.get('limit'), sortOrder: q.get('sortOrder') || 'desc' }); return w ? json(res, 200, w) : json(res, 404, { message: 'Deposit address not found' }); }
+    if (p === '/v0/generate-intent' && req.method === 'POST') return json(res, 200, generateIntent(await readBody(req)));
+    if (p === '/v0/submit-intent' && req.method === 'POST') return json(res, 200, await submitIntent(await readBody(req)));
+    if (p === '/v0/auth/authenticate' && req.method === 'POST') return json(res, 200, await authenticate(await readBody(req)));
+    if (p === '/v0/auth/refresh' && req.method === 'POST') return json(res, 200, refresh(await readBody(req)));
+    if (p.startsWith('/v0/account/')) {
+      const sess = sessionOf(req);
+      if (!sess) return json(res, 401, { message: 'Unauthorized: send Authorization: Bearer <accessToken> from /v0/auth/authenticate' });
+      if (p === '/v0/account/balances' && req.method === 'GET') return json(res, 200, await balances(sess.sub, url.searchParams.get('tokenIds')?.split(',').filter(Boolean)));
+      if (p === '/v0/account/history' && req.method === 'GET') return json(res, 200, history(sess.sub, url.searchParams));
+    }
+    if (p === '/v0/orders' || p.startsWith('/v0/orders/')) {
+      try {
+        const sess = sessionOf(req), key = req.headers['x-api-key'];
+        const owner = sess ? sess.sub : key ? 'key:' + crypto.createHash('sha256').update(String(key)).digest('hex').slice(0, 32) : null;
+        if (!owner) throw new ApiError(401, 'authentication-required', 'Authentication required', 'Send Authorization: Bearer <accessToken> (from /v0/auth/authenticate) or x-api-key');
+        const m = /^\/v0\/orders(?:\/([^/]+))?(\/cancel)?$/.exec(p);
+        if (m && !m[1] && req.method === 'POST') return json(res, 201, await createOrder(owner, await readBody(req).catch(() => { throw new ApiError(400, 'malformed-request', 'Malformed request', 'Body must be JSON'); })));
+        if (m && !m[1] && req.method === 'GET') return json(res, 200, listOrders(owner, url.searchParams));
+        if (m && m[1] && m[2] && req.method === 'POST') return json(res, 201, cancelOrder(owner, m[1]));
+        if (m && m[1] && !m[2] && req.method === 'GET') return json(res, 200, getOrder(owner, m[1]));
+        throw new ApiError(404, 'not-found', 'Not found', 'No such route');
+      } catch (e) {
+        if (e instanceof ApiError) return json(res, e.status, errorDoc(e));
+        console.error(p, e); return json(res, 500, errorDoc(new ApiError(500, 'internal-error', 'Internal error', 'Internal error')));
+      }
+    }
     if (p.startsWith('/v0/')) return json(res, 404, { message: 'Not found' });
     // ---- site ----
     if (p === '/openapi.json') return text(res, fs.readFileSync(PUBLIC + 'openapi.json'), 'application/json');
