@@ -41,7 +41,7 @@ Checked against the official 1Click OpenAPI (`https://1click.chaindefuser.com/do
 
 | Feature | Behaviour on Tidepool |
 | --- | --- |
-| `confidentiality` (`CONFIDENTIAL_INTENTS`) | Accepted and ignored; swaps settle publicly (see the settlement distinction below) |
+| `confidentiality` | Accepted and ignored; swaps settle publicly (see the [settlement distinction](#settlement-distinction) below and [NEAR's Oct 27, 2026 update](https://docs.near-intents.org/changelog/entries/2026-10-27-1click-confidential.md)). The `CONFIDENTIAL_INTENTS` deposit, refund and recipient types are not supported and return 400. |
 | `referral`, `rebates`, `insured`, `virtualChain*`, `connectedWallets`, `sessionId`, `quoteWaitingTimeMs` | Accepted and echoed, no effect |
 
 ## Settlement distinction

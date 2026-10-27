@@ -25,6 +25,6 @@ Nothing is in progress. If you need something, say so. Demand decides the order.
 
 | Feature | Why |
 | --- | --- |
-| `CONFIDENTIAL_INTENTS` (deposit, refund and recipient type) | It depends on NEAR's private Confidential Intents infrastructure, which is not available on testnet. The field is accepted and ignored. Since [Oct 27, 2026](https://docs.near-intents.org/changelog/entries/2026-10-27-1click-confidential.md) mainnet 1Click settles every swap confidentially (`nearTxHashes` lists only shield/unshield); Tidepool swaps settle publicly and include the swap hash. Rely on `status`, not on a swap hash. Test it on mainnet with small amounts. |
+| `CONFIDENTIAL_INTENTS` (deposit, refund and recipient type) | It depends on NEAR's private Confidential Intents infrastructure, which is not available on testnet. These types return 400 on Tidepool; the separate `confidentiality` parameter is accepted and ignored. Since [Oct 27, 2026](https://docs.near-intents.org/changelog/entries/2026-10-27-1click-confidential.md) mainnet 1Click settles every swap confidentially (`nearTxHashes` lists only shield/unshield); Tidepool swaps settle publicly and include the swap hash. Rely on `status`, not on a swap hash. Test it on mainnet with small amounts. |
 
 Shipped work is recorded in the [Changelog](/docs/resources/changelog).

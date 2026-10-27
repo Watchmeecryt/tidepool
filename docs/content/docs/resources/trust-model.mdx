@@ -24,7 +24,7 @@ description: Exactly what you are trusting when you use Tidepool, and what it do
 ## Limitations (v1)
 
 - Testnets only: NEAR testnet, plus Base Sepolia, Arbitrum Sepolia and Ethereum Sepolia through the test bridges.
-- No `ANY_INPUT`, `depositMode: MEMO`, `appFees`, `CONFIDENTIAL_INTENTS` or `/v0/auth/*`. See the [Roadmap](/docs/resources/roadmap).
+- No confidential settlement: `CONFIDENTIAL_INTENTS` types return 400 and `confidentiality` is ignored, because it runs on NEAR's private infrastructure, which isn't exposed to outside builders ([NEAR's Oct 27, 2026 update](https://docs.near-intents.org/changelog/entries/2026-10-27-1click-confidential.md)). See the [Roadmap](/docs/resources/roadmap).
 - Single maker with finite inventory. Large quotes fail with `Not enough maker liquidity`.
 - Faucet: one drip per account per mode per hour, six per IP per hour.
 - Live quotes need a deadline between 60 seconds and 24 hours ahead.
