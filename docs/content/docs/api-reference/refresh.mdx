@@ -1,0 +1,69 @@
+---
+title: "Refresh access token"
+description: "POST /v0/auth/refresh · 1Click-compatible"
+---
+
+<p><span className="tp-method tp-post">POST</span><code>{"/v0/auth/refresh"}</code></p>
+
+Exchange refresh token for a new access token Tidepool: exchanges a refresh token for a new access token.
+
+**Operation id:** `refresh`
+
+## Request
+
+<Tabs items={['curl', 'JavaScript']}>
+<Tab value="curl">
+
+```bash
+curl -X POST "https://www.usetidepool.tech/v0/auth/refresh" \
+  -H 'content-type: application/json' \
+  -d '{
+  "refreshToken": "string"
+}'
+```
+
+</Tab>
+<Tab value="JavaScript">
+
+```ts
+const res = await fetch('https://www.usetidepool.tech/v0/auth/refresh', {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({
+    "refreshToken": "string"
+  }),
+});
+const data = await res.json();
+```
+
+</Tab>
+</Tabs>
+
+### Body
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `refreshToken` | string | yes | Refresh token obtained from authenticate endpoint |
+
+## Responses
+
+### 200 
+
+```json
+{
+  "accessToken": "string",
+  "expiresIn": 0
+}
+```
+
+<Accordions><Accordion title="Response fields">
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `accessToken` | string | yes | New JWT access token |
+| `expiresIn` | number | yes | Access token expiration time in seconds |
+
+</Accordion></Accordions>
+
+### 401 Invalid or expired refresh token
+

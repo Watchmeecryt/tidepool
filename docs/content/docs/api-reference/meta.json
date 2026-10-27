@@ -2,10 +2,21 @@
   "title": "API reference",
   "pages": [
     "index",
+    "authenticate",
+    "refresh",
+    "get-balances",
+    "get-history",
     "get-tokens",
     "get-quote",
     "get-execution-status",
+    "get-any-input-quote-withdrawals",
     "submit-deposit-tx",
+    "generate-intent",
+    "submit-intent",
+    "create-order",
+    "list-orders",
+    "cancel-order",
+    "get-order",
     "tidepool-faucet",
     "tidepool-health"
   ]

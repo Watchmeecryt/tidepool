@@ -1,0 +1,88 @@
+---
+title: "Generate an intent for signing"
+description: "POST /v0/generate-intent · 1Click-compatible"
+---
+
+<p><span className="tp-method tp-post">POST</span><code>{"/v0/generate-intent"}</code></p>
+
+Generates an unsigned intent payload that needs to be signed by the user.   This endpoint takes a quote or limit-order deposit address, validates the target state and caller ownership when required, and returns an intent payload formatted according to the specified signing standard (e.g., NEP413, ERC191).   The generated intent must be signed by the user's wallet and then submitted via the `/submit-intent` endpoint to complete the action (e.g. swap).   **Request Type Variants:**   - `swap_transfer`: Generate an intent for a swap operation (requires depositAddress, signerId, standard) Tidepool: only quotes with depositType INTENTS can be funded this way. Supports nep413, raw_ed25519, erc191, tip191 and sep53. webauthn and ton_connect are accepted by submit-intent but cannot be generated.
+
+**Operation id:** `generateIntent` · **Auth:** optional (`X-API-Key` or `Authorization: Bearer`, any value)
+
+## Request
+
+<Tabs items={['curl', 'JavaScript']}>
+<Tab value="curl">
+
+```bash
+curl -X POST "https://www.usetidepool.tech/v0/generate-intent" \
+  -H 'content-type: application/json' \
+  -d '{
+  "type": "swap_transfer",
+  "standard": "nep413",
+  "signerId": "user.near",
+  "depositAddress": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0"
+}'
+```
+
+</Tab>
+<Tab value="JavaScript">
+
+```ts
+const res = await fetch('https://www.usetidepool.tech/v0/generate-intent', {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({
+    "type": "swap_transfer",
+    "standard": "nep413",
+    "signerId": "user.near",
+    "depositAddress": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0"
+  }),
+});
+const data = await res.json();
+```
+
+</Tab>
+</Tabs>
+
+### Body
+
+
+## Responses
+
+### 200 Successfully generated intent payload
+
+```json
+{
+  "intent": {
+    "standard": "nep413",
+    "payload": {
+      "callbackUrl": "string",
+      "message": "string",
+      "nonce": "string",
+      "recipient": "string"
+    }
+  },
+  "correlationId": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+<Accordions><Accordion title="Response fields">
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `intent` | MultiPayloadNarrowed | yes |  |
+| `correlationId` | string | yes | Unique identifier for tracing this request |
+
+</Accordion></Accordions>
+
+### 400 Bad Request - Invalid input or quote state
+
+```json
+{
+  "message": "error message"
+}
+```
+
+### 401 Unauthorized - API key or JWT token is invalid
+

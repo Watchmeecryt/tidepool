@@ -1,0 +1,359 @@
+---
+title: "Cancel an order"
+description: "POST /v0/orders/{orderId}/cancel · 1Click-compatible"
+---
+
+<p><span className="tp-method tp-post">POST</span><code>{"/v0/orders/{orderId}/cancel"}</code></p>
+
+Requests asynchronous cancellation. Unspent input is refunded and successfully filled output is withdrawn. **Errors.** Branch on `code`, never on `title` or `detail`. New codes arrive without a major version, so treat an unrecognized code as the HTTP status alone. \| Status \| Codes \| \| --- \| --- \| \| 400 \| `order-rejected` \| \| 401 \| `authentication-required` \| \| 404 \| `order-not-found` \| \| 429 \| `rate-limit-exceeded` \| \| 500 \| `internal-error` \| \| 503 \| `service-unavailable` \| Tidepool: returns 201 with PENDING_CANCEL; the deposit is refunded, then the order becomes CANCELED.
+
+**Operation id:** `cancelOrder` · **Auth:** optional (`X-API-Key` or `Authorization: Bearer`, any value)
+
+## Request
+
+<Tabs items={['curl', 'JavaScript']}>
+<Tab value="curl">
+
+```bash
+curl -X POST "https://www.usetidepool.tech/v0/orders/{orderId}/cancel"
+```
+
+</Tab>
+<Tab value="JavaScript">
+
+```ts
+const res = await fetch('https://www.usetidepool.tech/v0/orders/{orderId}/cancel', { method: 'POST' });
+const data = await res.json();
+```
+
+</Tab>
+</Tabs>
+
+## Responses
+
+### 201 Cancellation requested.
+
+```json
+{
+  "data": {
+    "type": "orders",
+    "id": "string",
+    "attributes": {
+      "orderType": {
+        "0": "L",
+        "1": "I",
+        "2": "M",
+        "3": "I",
+        "4": "T"
+      },
+      "depositAddress": "0x2527D...a0f10D",
+      "depositMemo": "123456",
+      "depositMode": {
+        "0": "S",
+        "1": "I",
+        "2": "M",
+        "3": "P",
+        "4": "L",
+        "5": "E"
+      },
+      "depositType": {
+        "0": "O",
+        "1": "R",
+        "2": "I",
+        "3": "G",
+        "4": "I",
+        "5": "N",
+        "6": "_",
+        "7": "C",
+        "8": "H",
+        "9": "A",
+        "10": "I",
+        "11": "N"
+      },
+      "fillStatus": {
+        "0": "A",
+        "1": "W",
+        "2": "A",
+        "3": "I",
+        "4": "T",
+        "5": "I",
+        "6": "N",
+        "7": "G",
+        "8": "_",
+        "9": "D",
+        "10": "E",
+        "11": "P",
+        "12": "O",
+        "13": "S",
+        "14": "I",
+        "15": "T"
+      },
+      "payoutStatus": {
+        "0": "N",
+        "1": "O",
+        "2": "T",
+        "3": "_",
+        "4": "S",
+        "5": "T",
+        "6": "A",
+        "7": "R",
+        "8": "T",
+        "9": "E",
+        "10": "D"
+      },
+      "isPayoutStatusFinal": true,
+      "payouts": {
+        "withdrawal": null,
+        "allWithdrawals": [
+          null
+        ],
+        "refund": null
+      },
+      "depositedAmount": "1000000000",
+      "depositedAmountFormatted": "1.0",
+      "baseAsset": "string",
+      "quoteAsset": "string",
+      "quantity": "string",
+      "swapView": {
+        "swapType": "EXACT_INPUT",
+        "originAsset": "string",
+        "destinationAsset": "string",
+        "amountIn": "string",
+        "minAmountOut": "string"
+      },
+      "side": {
+        "0": "S",
+        "1": "E",
+        "2": "L",
+        "3": "L"
+      },
+      "price": "string",
+      "appFees": [
+        {
+          "recipient": "recipient.near",
+          "fee": 100
+        }
+      ],
+      "recipient": "string",
+      "recipientType": {
+        "0": "D",
+        "1": "E",
+        "2": "S",
+        "3": "T",
+        "4": "I",
+        "5": "N",
+        "6": "A",
+        "7": "T",
+        "8": "I",
+        "9": "O",
+        "10": "N",
+        "11": "_",
+        "12": "C",
+        "13": "H",
+        "14": "A",
+        "15": "I",
+        "16": "N"
+      },
+      "refundTo": "string",
+      "refundType": {
+        "0": "O",
+        "1": "R",
+        "2": "I",
+        "3": "G",
+        "4": "I",
+        "5": "N",
+        "6": "_",
+        "7": "C",
+        "8": "H",
+        "9": "A",
+        "10": "I",
+        "11": "N"
+      },
+      "estimatedWithdrawFee": "string",
+      "estimatedWithdrawFeeFormatted": "string",
+      "estimatedRefundFee": "string",
+      "estimatedRefundFeeFormatted": "string",
+      "confidentiality": {
+        "0": "p",
+        "1": "u",
+        "2": "b",
+        "3": "l",
+        "4": "i",
+        "5": "c"
+      },
+      "timeInForce": {
+        "0": "G",
+        "1": "T",
+        "2": "C"
+      },
+      "deadline": "2019-08-24T14:15:22Z",
+      "createdAt": "2019-08-24T14:15:22Z",
+      "partialFills": [
+        {
+          "id": "string",
+          "amountIn": "string",
+          "amountOut": "string",
+          "createdAt": "string",
+          "updatedAt": "string"
+        }
+      ]
+    },
+    "links": {
+      "self": "string"
+    }
+  },
+  "meta": {
+    "correlationId": "550e8400-e29b-41d4-a716-446655440000",
+    "timestamp": "2019-08-24T14:15:22Z"
+  }
+}
+```
+
+<Accordions><Accordion title="Response fields">
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `data` | object | yes |  |
+| `data.type` | "orders" | yes |  |
+| `data.id` | string | yes | Opaque resource identifier. Clients should treat IDs as opaque and not rely on the prefix or length. |
+| `data.attributes` | LimitOrderAttributes | yes |  |
+| `data.links` | object | yes |  |
+| `data.links.self` | string | yes |  |
+| `meta` | JsonApiMeta | yes |  |
+| `meta.correlationId` | string | yes | Unique identifier for request tracing and debugging. |
+| `meta.timestamp` | string | yes | Timestamp in ISO format when the response was generated. |
+
+</Accordion></Accordions>
+
+### 400 Order rejected
+
+```json
+{
+  "errors": [
+    {
+      "status": "400",
+      "code": "validation-failed",
+      "title": "Validation failed",
+      "detail": "Must be a positive decimal string.",
+      "source": {
+        "pointer": "/data/attributes/price"
+      }
+    }
+  ],
+  "meta": {
+    "correlationId": "550e8400-e29b-41d4-a716-446655440000",
+    "timestamp": "2019-08-24T14:15:22Z"
+  }
+}
+```
+
+### 401 Authentication required
+
+```json
+{
+  "errors": [
+    {
+      "status": "400",
+      "code": "validation-failed",
+      "title": "Validation failed",
+      "detail": "Must be a positive decimal string.",
+      "source": {
+        "pointer": "/data/attributes/price"
+      }
+    }
+  ],
+  "meta": {
+    "correlationId": "550e8400-e29b-41d4-a716-446655440000",
+    "timestamp": "2019-08-24T14:15:22Z"
+  }
+}
+```
+
+### 404 Order not found
+
+```json
+{
+  "errors": [
+    {
+      "status": "400",
+      "code": "validation-failed",
+      "title": "Validation failed",
+      "detail": "Must be a positive decimal string.",
+      "source": {
+        "pointer": "/data/attributes/price"
+      }
+    }
+  ],
+  "meta": {
+    "correlationId": "550e8400-e29b-41d4-a716-446655440000",
+    "timestamp": "2019-08-24T14:15:22Z"
+  }
+}
+```
+
+### 429 Rate limit exceeded
+
+```json
+{
+  "errors": [
+    {
+      "status": "400",
+      "code": "validation-failed",
+      "title": "Validation failed",
+      "detail": "Must be a positive decimal string.",
+      "source": {
+        "pointer": "/data/attributes/price"
+      }
+    }
+  ],
+  "meta": {
+    "correlationId": "550e8400-e29b-41d4-a716-446655440000",
+    "timestamp": "2019-08-24T14:15:22Z"
+  }
+}
+```
+
+### 500 Internal error
+
+```json
+{
+  "errors": [
+    {
+      "status": "400",
+      "code": "validation-failed",
+      "title": "Validation failed",
+      "detail": "Must be a positive decimal string.",
+      "source": {
+        "pointer": "/data/attributes/price"
+      }
+    }
+  ],
+  "meta": {
+    "correlationId": "550e8400-e29b-41d4-a716-446655440000",
+    "timestamp": "2019-08-24T14:15:22Z"
+  }
+}
+```
+
+### 503 Service unavailable
+
+```json
+{
+  "errors": [
+    {
+      "status": "400",
+      "code": "validation-failed",
+      "title": "Validation failed",
+      "detail": "Must be a positive decimal string.",
+      "source": {
+        "pointer": "/data/attributes/price"
+      }
+    }
+  ],
+  "meta": {
+    "correlationId": "550e8400-e29b-41d4-a716-446655440000",
+    "timestamp": "2019-08-24T14:15:22Z"
+  }
+}
+```
+

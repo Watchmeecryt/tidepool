@@ -1,0 +1,66 @@
+---
+title: "Get user token balances"
+description: "GET /v0/account/balances · 1Click-compatible"
+---
+
+<p><span className="tp-method tp-get">GET</span><code>{"/v0/account/balances"}</code></p>
+
+Returns token balances for the authenticated user from private balance sources Tidepool: needs a Tidepool JWT (401 without). Balances come from the testnet verifier; source is `private`.
+
+**Operation id:** `getBalances` · **Auth:** optional (`X-API-Key` or `Authorization: Bearer`, any value)
+
+## Request
+
+<Tabs items={['curl', 'JavaScript']}>
+<Tab value="curl">
+
+```bash
+curl "https://www.usetidepool.tech/v0/account/balances"
+```
+
+</Tab>
+<Tab value="JavaScript">
+
+```ts
+const res = await fetch('https://www.usetidepool.tech/v0/account/balances');
+const data = await res.json();
+```
+
+</Tab>
+</Tabs>
+
+### Query parameters
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| `tokenIds` | string[] |  | Comma-separated list of token IDs to query. If empty, returns all non-zero balances. |
+
+## Responses
+
+### 200 
+
+```json
+{
+  "balances": [
+    {
+      "tokenId": "nep141:wrap.near",
+      "available": "1000000000000000000000000",
+      "source": "private"
+    }
+  ]
+}
+```
+
+<Accordions><Accordion title="Response fields">
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `balances` | BalanceEntry[] | yes | List of token balances |
+| `balances[].[]tokenId` | string | yes | Token identifier |
+| `balances[].[]available` | string | yes | Available balance (as string to preserve precision) |
+| `balances[].[]source` | "private" | yes | Balance source |
+
+</Accordion></Accordions>
+
+### 401 Unauthorized - User session token is invalid or expired
+

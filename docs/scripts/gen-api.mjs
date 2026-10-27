@@ -59,9 +59,9 @@ for (const [p, ops] of Object.entries(spec.paths)) for (const [method, op] of Ob
   const auth = op.security?.length || spec.security?.length;
   let curl = `curl${M === 'GET' ? '' : ` -X ${M}`} "${ORIGIN}${p}${qs}"`;
   if (body) curl += ` \\\n  -H 'content-type: application/json' \\\n  -d '${JSON.stringify(reqEx, null, 2).replace(/'/g, "'\\''")}'`;
-  const fetchJs = `const res = await fetch('${ORIGIN}${p}${qs}'${body ? `, {\n  method: '${M}',\n  headers: { 'content-type': 'application/json' },\n  body: JSON.stringify(${JSON.stringify(reqEx, null, 2).replace(/\n/g, '\n  ')}),\n}` : ''});\nconst data = await res.json();`;
+  const fetchJs = `const res = await fetch('${ORIGIN}${p}${qs}'${body ? `, {\n  method: '${M}',\n  headers: { 'content-type': 'application/json' },\n  body: JSON.stringify(${JSON.stringify(reqEx, null, 2).replace(/\n/g, '\n  ')}),\n}` : (M !== 'GET' ? `, { method: '${M}' }` : '')});\nconst data = await res.json();`;
   let md = `---\ntitle: ${JSON.stringify((op.summary || op.operationId).replace(/ \(.*\)$/, ""))}\ndescription: ${JSON.stringify(`${M} ${p}${tidepoolOnly ? ' · Tidepool extension' : ' · 1Click-compatible'}`)}\n---\n\n`;
-  md += `<p><span className="tp-method tp-${method}">${M}</span><code>${p}</code></p>\n\n`;
+  md += `<p><span className="tp-method tp-${method}">${M}</span><code>{${JSON.stringify(p)}}</code></p>\n\n`;
   if (tidepoolOnly) md += `<Callout title="Tidepool extension">This endpoint is not part of the 1Click API. Do not call it on mainnet.</Callout>\n\n`;
   if (ex.notes) md += ex.notes + '\n\n';
   if (op.description) md += esc(op.description).replace(/&#96;/g, '`') + '\n\n';
@@ -82,8 +82,8 @@ for (const [p, ops] of Object.entries(spec.paths)) for (const [method, op] of Ob
   pages.push({ slug, M, p, summary: op.summary, tidepoolOnly });
 }
 
-let idx = `---\ntitle: API reference\ndescription: Every Tidepool endpoint, generated from openapi.json.\n---\n\nBase URL: \`${ORIGIN}\` · Spec: [\`/openapi.json\`](/openapi.json) (1Click Swap API v0.1.10 shapes plus two Tidepool extensions).\n\nAll amounts are strings in the token's base units. Errors return \`{ "message": "…" }\` with HTTP 400, 404 or 429. CORS is open (\`*\`).\n\n| Method | Path | What it does | |\n| --- | --- | --- | --- |\n`;
-idx += pages.map(x => `| <span className="tp-method tp-${x.M.toLowerCase()}">${x.M}</span> | [\`${x.p}\`](/docs/api-reference/${x.slug}) | ${x.summary.replace(/ \(.*\)$/, "")} | ${x.tidepoolOnly ? 'Tidepool only' : '1Click'} |`).join('\n') + '\n\n## Authentication\n\nOptional. Send any `X-API-Key: <anything>` or `Authorization: Bearer <anything>` to get the lower fee tier. See [Quotes](/docs/concepts/quotes#fees).\n';
+let idx = `---\ntitle: API reference\ndescription: Every Tidepool endpoint, generated from openapi.json.\n---\n\nBase URL: \`${ORIGIN}\` · Spec: [\`/openapi.json\`](/openapi.json) (1Click Swap API v0.1.10 shapes the full 1Click v0 surface plus two Tidepool extensions).\n\nAll amounts are strings in the token's base units. Errors return \`{ "message": "…" }\` with HTTP 400, 404 or 429. CORS is open (\`*\`).\n\n| Method | Path | What it does | |\n| --- | --- | --- | --- |\n`;
+idx += pages.map(x => `| <span className="tp-method tp-${x.M.toLowerCase()}">${x.M}</span> | [\`${x.p}\`](/docs/api-reference/${x.slug}) | ${x.summary.replace(/ \(.*\)$/, "")} | ${x.tidepoolOnly ? 'Tidepool only' : '1Click'} |`).join('\n') + '\n\n## Authentication\n\nOptional for swaps. Send any `X-API-Key: <anything>` or `Authorization: Bearer <anything>` to get the lower fee tier. See [Quotes](/docs/concepts/quotes#fees). `/v0/account/*` needs a free JWT from [`/v0/auth/authenticate`](/docs/api-reference/authenticate); `/v0/orders` needs a JWT or any `X-API-Key`.\n';
 fs.writeFileSync(path.join(out, 'index.mdx'), idx);
 fs.writeFileSync(path.join(out, 'meta.json'), JSON.stringify({ title: 'API reference', pages: ['index', ...pages.map(x => x.slug)] }, null, 2));
 console.log(`generated ${pages.length} endpoint pages`);

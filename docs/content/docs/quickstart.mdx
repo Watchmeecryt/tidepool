@@ -93,8 +93,8 @@ Auth is optional. Any `X-API-Key` header or `Authorization: Bearer <token>` valu
 ## Differences from mainnet 1Click
 
 - Tokens are Tidepool test tokens with no value. Most live on NEAR testnet (`blockchain: "near"`). Test USDC and USDT also exist on Base Sepolia (`base`), Arbitrum Sepolia (`arb`) and Ethereum Sepolia (`eth`) through Tidepool's [test bridges](/docs/guides/bridges), a trusted relayer run by Tidepool on testnets only.
-- Supported: `EXACT_INPUT`, `EXACT_OUTPUT`, `FLEX_INPUT`; deposit and refund types `ORIGIN_CHAIN` and `INTENTS`; recipient types `DESTINATION_CHAIN` and `INTENTS`.
-- `ANY_INPUT`, `CONFIDENTIAL_INTENTS`, `appFees`, `depositMode: MEMO` and `/v0/auth/*` return 400 or 404. See the [Roadmap](/docs/resources/roadmap).
+- Supported: `EXACT_INPUT`, `EXACT_OUTPUT`, `FLEX_INPUT`, `ANY_INPUT`; `appFees`; `depositMode` `SIMPLE` and `MEMO` (MEMO for NEAR-native `ORIGIN_CHAIN` only); deposit and refund types `ORIGIN_CHAIN` and `INTENTS`; recipient types `DESTINATION_CHAIN` and `INTENTS`; signed intents (`/v0/generate-intent`, `/v0/submit-intent`), limit orders (`/v0/orders`), free JWTs (`/v0/auth/*`) and `/v0/account/*`.
+- Not covered: `CONFIDENTIAL_INTENTS` / `confidentiality` is accepted but ignored, so every swap settles publicly. See the [Compatibility](/docs/resources/compatibility) page.
 - One maker (Tidepool's) fills every quote. There is no solver competition.
 - The quote `signature` is Tidepool's maker key over the quote body, not 1Click's.
 

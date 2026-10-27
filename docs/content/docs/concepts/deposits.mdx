@@ -48,4 +48,4 @@ curl -X POST https://www.usetidepool.tech/v0/deposit/submit -H 'content-type: ap
 
 ## Not supported
 
-`depositMode: "MEMO"` (shared address plus memo) and `CONFIDENTIAL_INTENTS` return 400. On NEAR, `ORIGIN_CHAIN` deposit addresses are implicit NEAR accounts. For bridged EVM assets they are `0x` addresses on the origin chain; see [Test bridges](/docs/guides/bridges).
+`depositMode: "MEMO"` works for NEAR-native `ORIGIN_CHAIN` deposits: the quote returns a shared `depositAddress` plus a `depositMemo`. Send `ft_transfer` to that address with the memo, then pass `depositMemo` (and `nearSenderAccount`) to `/v0/deposit/submit` and `/v0/status`. `CONFIDENTIAL_INTENTS` is accepted but ignored. On NEAR, `ORIGIN_CHAIN` deposit addresses are implicit NEAR accounts. For bridged EVM assets they are `0x` addresses on the origin chain; see [Test bridges](/docs/guides/bridges).

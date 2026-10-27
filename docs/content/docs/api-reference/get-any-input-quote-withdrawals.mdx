@@ -1,0 +1,95 @@
+---
+title: "Get ANY_INPUT withdrawals"
+description: "GET /v0/any-input/withdrawals · 1Click-compatible"
+---
+
+<p><span className="tp-method tp-get">GET</span><code>{"/v0/any-input/withdrawals"}</code></p>
+
+Retrieves all withdrawals by ANY_INPUT quote with filtering, pagination and sorting Tidepool: `withdrawals` is the spec's single object (the newest on the page). The full page is also returned as `tidepool.withdrawals` with `total`, `page` and `limit`.
+
+**Operation id:** `getAnyInputQuoteWithdrawals` · **Auth:** optional (`X-API-Key` or `Authorization: Bearer`, any value)
+
+## Request
+
+<Tabs items={['curl', 'JavaScript']}>
+<Tab value="curl">
+
+```bash
+curl "https://www.usetidepool.tech/v0/any-input/withdrawals"
+```
+
+</Tab>
+<Tab value="JavaScript">
+
+```ts
+const res = await fetch('https://www.usetidepool.tech/v0/any-input/withdrawals');
+const data = await res.json();
+```
+
+</Tab>
+</Tabs>
+
+### Query parameters
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| `depositAddress` | string | yes |  |
+| `depositMemo` | string |  |  |
+| `timestampFrom` | string |  | Filter withdrawals from this timestamp (ISO string) |
+| `page` | number |  | Page number for pagination (default: 1) |
+| `limit` | number |  | Number of withdrawals per page (max: 50, default: 50) |
+| `sortOrder` | "asc" \| "desc" |  | Sort order |
+
+## Responses
+
+### 200 
+
+```json
+{
+  "asset": "nep141:sol-5ce3bf3a31af18be40ba30f721101b4341690186.omft.near",
+  "recipient": "0x2527d02599ba641c19fea793cd0f167589a0f10d",
+  "affiliateRecipient": "0x2527d02599ba641c19fea793cd0f167589a0f10d",
+  "withdrawals": {
+    "status": "SUCCESS",
+    "amountOutFormatted": "9.95",
+    "amountOutUsd": "9.95",
+    "amountOut": "9950000",
+    "withdrawFeeFormatted": "0.01",
+    "withdrawFee": "10000",
+    "withdrawFeeUsd": "0.01",
+    "timestamp": "2019-08-24T14:15:22Z",
+    "hash": "0x123abc456def789"
+  }
+}
+```
+
+<Accordions><Accordion title="Response fields">
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `asset` | string | yes | ID of the destination asset. |
+| `recipient` | string | yes | Recipient address |
+| `affiliateRecipient` | string | yes | Affiliate recipient address |
+| `withdrawals` | object |  | Details of withdrawals |
+| `withdrawals.status` | "SUCCESS" \\| "FAILED" | yes | Withdrawal status |
+| `withdrawals.amountOutFormatted` | string | yes | Amount out in readable format |
+| `withdrawals.amountOutUsd` | string | yes | Amount out in USD |
+| `withdrawals.amountOut` | string | yes | Amount out in smallest unit |
+| `withdrawals.withdrawFeeFormatted` | string | yes | Withdrawal fee in readable format |
+| `withdrawals.withdrawFee` | string | yes | Withdrawal fee in smallest unit |
+| `withdrawals.withdrawFeeUsd` | string | yes | Withdrawal fee in USD |
+| `withdrawals.timestamp` | string | yes | Timestamp of withdrawal |
+| `withdrawals.hash` | string | yes | Transaction hash |
+
+</Accordion></Accordions>
+
+### 401 Unauthorized - API key or JWT token is invalid
+
+### 404 Deposit address not found
+
+```json
+{
+  "message": "error message"
+}
+```
+

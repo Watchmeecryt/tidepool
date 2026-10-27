@@ -38,7 +38,7 @@ Here any deposit of at least 9.9 USDC is swapped.
 </Tabs>
 
 <Callout title="Not supported">
-`ANY_INPUT` returns 400. It needs streaming deposits, which Tidepool v1 does not implement.
+`ANY_INPUT`: the deposit address accepts any number of deposits, of any size (`minAmountIn` is `1`), until the deadline. Each deposit is converted and paid out on its own. List the payouts with [`GET /v0/any-input/withdrawals`](/docs/api-reference/get-any-input-quote-withdrawals).
 </Callout>
 
 ## Recipient and refund types

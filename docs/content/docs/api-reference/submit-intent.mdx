@@ -1,0 +1,96 @@
+---
+title: "Submit a signed intent"
+description: "POST /v0/submit-intent · 1Click-compatible"
+---
+
+<p><span className="tp-method tp-post">POST</span><code>{"/v0/submit-intent"}</code></p>
+
+Submits a signed intent to execute.   After generating an intent for a quote or limit order via `/generate-intent` and having the user sign it with their wallet, submit the signed intent through this endpoint.   The system validates the signature, processes the intent, and returns the intent hash upon successful submission.   **Request Type Variants:**   - `swap_transfer`: Submit a signed swap intent (requires signedData object) Tidepool: relays the signed intent to the testnet verifier with execute_intents. The response adds `tidepool.txHash` and `tidepool.explorerUrl`.
+
+**Operation id:** `submitIntent` · **Auth:** optional (`X-API-Key` or `Authorization: Bearer`, any value)
+
+## Request
+
+<Tabs items={['curl', 'JavaScript']}>
+<Tab value="curl">
+
+```bash
+curl -X POST "https://www.usetidepool.tech/v0/submit-intent" \
+  -H 'content-type: application/json' \
+  -d '{
+  "type": "swap_transfer",
+  "signedData": {
+    "payload": {
+      "callbackUrl": "string",
+      "message": "string",
+      "nonce": "string",
+      "recipient": "string"
+    },
+    "public_key": "string",
+    "signature": "string",
+    "standard": "nep413"
+  }
+}'
+```
+
+</Tab>
+<Tab value="JavaScript">
+
+```ts
+const res = await fetch('https://www.usetidepool.tech/v0/submit-intent', {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({
+    "type": "swap_transfer",
+    "signedData": {
+      "payload": {
+        "callbackUrl": "string",
+        "message": "string",
+        "nonce": "string",
+        "recipient": "string"
+      },
+      "public_key": "string",
+      "signature": "string",
+      "standard": "nep413"
+    }
+  }),
+});
+const data = await res.json();
+```
+
+</Tab>
+</Tabs>
+
+### Body
+
+
+## Responses
+
+### 200 Successfully submitted intent
+
+```json
+{
+  "intentHash": "44XpLRAuZKoVGs9T4qbSNv33MDKMePPAibA52geVLWFw",
+  "correlationId": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+<Accordions><Accordion title="Response fields">
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `intentHash` | string | yes | The hash of the submitted intent |
+| `correlationId` | string | yes | Unique identifier for tracing this request |
+
+</Accordion></Accordions>
+
+### 400 Bad Request - Invalid signature or intent data
+
+```json
+{
+  "message": "error message"
+}
+```
+
+### 401 Unauthorized - API key or JWT token is invalid
+

@@ -1,0 +1,95 @@
+---
+title: "Authenticate user with signed data"
+description: "POST /v0/auth/authenticate · 1Click-compatible"
+---
+
+<p><span className="tp-method tp-post">POST</span><code>{"/v0/auth/authenticate"}</code></p>
+
+Verifies wallet signature and issues session tokens Tidepool: free JWTs (HS256, access 1 h, refresh 30 d), valid on Tidepool only. Supported standards: nep413, raw_ed25519, erc191. The key must belong to the signer (NEAR implicit account, a NEAR access key, or a key registered on the verifier).
+
+**Operation id:** `authenticate`
+
+## Request
+
+<Tabs items={['curl', 'JavaScript']}>
+<Tab value="curl">
+
+```bash
+curl -X POST "https://www.usetidepool.tech/v0/auth/authenticate" \
+  -H 'content-type: application/json' \
+  -d '{
+  "signedData": {
+    "payload": {
+      "callbackUrl": "string",
+      "message": "string",
+      "nonce": "string",
+      "recipient": "string"
+    },
+    "public_key": "string",
+    "signature": "string",
+    "standard": "nep413"
+  }
+}'
+```
+
+</Tab>
+<Tab value="JavaScript">
+
+```ts
+const res = await fetch('https://www.usetidepool.tech/v0/auth/authenticate', {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({
+    "signedData": {
+      "payload": {
+        "callbackUrl": "string",
+        "message": "string",
+        "nonce": "string",
+        "recipient": "string"
+      },
+      "public_key": "string",
+      "signature": "string",
+      "standard": "nep413"
+    }
+  }),
+});
+const data = await res.json();
+```
+
+</Tab>
+</Tabs>
+
+### Body
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `signedData` | MultiPayload | yes |  |
+
+## Responses
+
+### 200 
+
+```json
+{
+  "accessToken": "string",
+  "refreshToken": "string",
+  "expiresIn": 0,
+  "refreshExpiresIn": 0
+}
+```
+
+<Accordions><Accordion title="Response fields">
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `accessToken` | string | yes | JWT access token for API calls |
+| `refreshToken` | string | yes | JWT refresh token for getting new access tokens |
+| `expiresIn` | number | yes | Access token expiration time in seconds |
+| `refreshExpiresIn` | number | yes | Refresh token expiration time in seconds |
+
+</Accordion></Accordions>
+
+### 400 Invalid signed data
+
+### 401 Signature verification failed
+

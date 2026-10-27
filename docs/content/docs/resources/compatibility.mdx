@@ -9,11 +9,12 @@ Checked against the official 1Click OpenAPI (`https://1click.chaindefuser.com/do
 
 | Area | Detail |
 | --- | --- |
-| Endpoints | `GET /v0/tokens`, `POST /v0/quote`, `POST /v0/deposit/submit`, `GET /v0/status` |
+| Endpoints | `GET /v0/tokens`, `POST /v0/quote`, `POST /v0/deposit/submit`, `GET /v0/status`, `GET /v0/any-input/withdrawals`, `POST /v0/generate-intent`, `POST /v0/submit-intent`, `/v0/orders` (create, list, get, cancel), `POST /v0/auth/authenticate`, `POST /v0/auth/refresh`, `GET /v0/account/balances`, `GET /v0/account/history` |
 | Status codes | `200` on success for all four (quote and deposit/submit return `200`, as in the spec), `400` on bad input, `404` for an unknown deposit address |
 | Request fields | `dry`, `swapType`, `slippageTolerance`, `originAsset`, `depositType`, `destinationAsset`, `amount`, `refundTo`, `refundType`, `recipient`, `recipientType`, `deadline` (same required set) |
 | Response shapes | `QuoteResponse` (`correlationId`, `timestamp`, `signature`, `quoteRequest`, `quote`), `GetExecutionStatusResponse` with `swapDetails`, `TokenResponse` |
-| Swap types | `EXACT_INPUT`, `EXACT_OUTPUT`, `FLEX_INPUT` |
+| Swap types | `EXACT_INPUT`, `EXACT_OUTPUT`, `FLEX_INPUT`, `ANY_INPUT` |
+| Quote options | `appFees` (bps, settled in the same `execute_intents`), `depositMode` `SIMPLE` / `MEMO` |
 | Deposit / refund / recipient types | `ORIGIN_CHAIN`, `INTENTS` / `ORIGIN_CHAIN`, `INTENTS` / `DESTINATION_CHAIN`, `INTENTS` |
 | Status lifecycle | `PENDING_DEPOSIT`, `KNOWN_DEPOSIT_TX`, `INCOMPLETE_DEPOSIT`, `PROCESSING`, `SUCCESS`, `REFUNDED`, `FAILED` |
 | SDK | `@defuse-protocol/one-click-sdk-typescript` works by changing `OpenAPI.BASE` |
@@ -28,19 +29,17 @@ Checked against the official 1Click OpenAPI (`https://1click.chaindefuser.com/do
 | Cross-chain | Production bridges | Tidepool-run trusted relayer bridges to Base / Arbitrum / Ethereum Sepolia |
 | Tokens | Real assets | Six test tokens (+ bridged USDC/USDT) from a public faucet; no value |
 | Deposit addresses | Run by 1Click | Keys derived by the Tidepool server (custodial, testnet) |
-| Auth | JWT required for fee-free quotes | Any `x-api-key` / Bearer value is accepted; no key needed |
+| Auth | JWT required for fee-free quotes | Free JWTs from `/v0/auth/authenticate` (`nep413`, `raw_ed25519`, `erc191`); for swaps any `x-api-key` / Bearer value gets the lower fee |
+| `depositMode: MEMO` | Memo chains | NEAR-native `ORIGIN_CHAIN` tokens only; submit needs `nearSenderAccount` |
+| `ANY_INPUT` withdrawals | `withdrawals` object | Spec's single object (newest), plus the full page in `tidepool.withdrawals` |
+| Orders | Solver-filled | Tidepool maker fills once (no partial fills); deadline 7d default, 30d max |
+| generate-intent | All standards | `INTENTS`-deposit quotes only; `webauthn`/`ton_connect` submit-only |
+| `/v0/account/balances` | Private + public | Verifier balances, `source: private` |
 | Extras | — | `POST /v0/faucet`, `GET /v0/health` |
 
-## Not supported yet
-
-Requests using these return `400` (or `404` for endpoints). See the [Roadmap](/docs/resources/roadmap).
+## Accepted but no effect
 
 | Feature | Behaviour on Tidepool |
 | --- | --- |
-| `depositMode: MEMO` | `400`; only `SIMPLE` |
-| `swapType: ANY_INPUT` and `GET /v0/any-input/withdrawals` | `400` / `404` |
-| `appFees` | `400` when non-empty |
 | `confidentiality` (`CONFIDENTIAL_INTENTS`) | Ignored; all swaps are public |
-| `/v0/auth/*`, `/v0/account/*` | `404` |
-| `/v0/generate-intent`, `/v0/submit-intent`, `/v0/orders` (limit orders) | `404` |
 | `referral`, `rebates`, `insured`, `virtualChain*`, `connectedWallets`, `sessionId`, `quoteWaitingTimeMs` | Accepted and echoed, no effect |

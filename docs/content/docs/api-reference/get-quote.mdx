@@ -3,11 +3,11 @@ title: "Request a swap quote"
 description: "POST /v0/quote · 1Click-compatible"
 ---
 
-<p><span className="tp-method tp-post">POST</span><code>/v0/quote</code></p>
+<p><span className="tp-method tp-post">POST</span><code>{"/v0/quote"}</code></p>
 
 Returns **HTTP 201** on success (the spec lists 200, matching 1Click). With `dry: false` the response adds `quote.depositAddress`, `deadline` and `timeWhenInactive`. See [Quotes and pricing](/docs/concepts/quotes) and [Swap types](/docs/concepts/swap-types).
 
-Generates a swap quote based on input parameters such as the assets, amount, slippage tolerance, and recipient/refund information. Returns pricing details, estimated time, and a unique **deposit address** to which tokens must be transferred to initiate the swap. You can set the `dry` parameter to `true` to simulate the quote request **without generating a deposit address** or initiating the swap process. This is useful for previewing swap parameters or validating input data without committing to an actual swap. This endpoint is the first required step in the swap process. Tidepool v1 supports EXACT_INPUT, EXACT_OUTPUT and FLEX_INPUT; ORIGIN_CHAIN and INTENTS deposit/refund types; DESTINATION_CHAIN and INTENTS recipient types. Other values return 400.
+Generates a swap quote based on input parameters such as the assets, amount, slippage tolerance, and recipient/refund information. Returns pricing details, estimated time, and a unique **deposit address** to which tokens must be transferred to initiate the swap. You can set the `dry` parameter to `true` to simulate the quote request **without generating a deposit address** or initiating the swap process. This is useful for previewing swap parameters or validating input data without committing to an actual swap. This endpoint is the first required step in the swap process. Tidepool supports EXACT_INPUT, EXACT_OUTPUT, FLEX_INPUT and ANY_INPUT; appFees; depositMode SIMPLE and MEMO (MEMO for NEAR-native ORIGIN_CHAIN only); ORIGIN_CHAIN and INTENTS deposit/refund types; DESTINATION_CHAIN and INTENTS recipient types. CONFIDENTIAL_INTENTS / confidentiality is accepted but ignored.
 
 **Operation id:** `getQuote` · **Auth:** optional (`X-API-Key` or `Authorization: Bearer`, any value)
 
