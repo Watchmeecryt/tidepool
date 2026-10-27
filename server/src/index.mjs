@@ -124,8 +124,8 @@ const server = http.createServer(async (req, res) => {
         if (m && m[1] && !m[2] && req.method === 'GET') return json(res, 200, getOrder(owner, m[1]));
         throw new ApiError(404, 'not-found', 'Not found', 'No such route');
       } catch (e) {
-        if (e instanceof ApiError) return json(res, e.status, errorDoc(e));
-        console.error(p, e); return json(res, 500, errorDoc(new ApiError(500, 'internal-error', 'Internal error', 'Internal error')));
+        if (e instanceof ApiError) { res._err = e.message; return json(res, e.status, errorDoc(e)); }
+        console.error(p, e); res._err = 'Internal error'; return json(res, 500, errorDoc(new ApiError(500, 'internal-error', 'Internal error', 'Internal error')));
       }
     }
     if (p.startsWith('/v0/')) return json(res, 404, { message: 'Not found' });
@@ -146,7 +146,8 @@ const server = http.createServer(async (req, res) => {
   } catch (e) {
     const code = e.code && Number.isInteger(e.code) ? e.code : 500;
     if (code >= 500) console.error(p, e);
-    json(res, code, { message: e.message });
+    res._err = e.message;
+    json(res, code, { message: e.message, ...(code < 500 && e.extra ? e.extra : {}) });
   }
 });
 const origin = (req) => process.env.PUBLIC_URL || `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}`;

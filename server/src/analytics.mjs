@@ -35,6 +35,7 @@ export function record(req, res, path, body, url) {
   if (path === '/v0/status') { const s = db.swaps[url.searchParams.get('depositAddress')]; if (s) wallets.add(s.quoteResponse.quoteRequest.refundTo); }
   const ev = { t: Date.now(), ep, m: req.method, s: res.statusCode, ip: crypto.createHash('sha256').update(log.salt + (String(req.headers['x-forwarded-for'] || req.socket.remoteAddress).split(',')[0].trim())).digest('hex').slice(0, 12), ua: String(req.headers['user-agent'] || '').slice(0, 160) };
   if (wallets.size) ev.w = [...wallets];
+  if (res.statusCode >= 400 && res._err) ev.err = String(res._err).slice(0, 300);
   if (path === '/v0/quote' && body) ev.dry = Boolean(body.dry);
   log.raw.push(ev); if (log.raw.length > MAX_RAW) log.raw.splice(0, log.raw.length - MAX_RAW);
   const ext = !ev.w || ev.w.some(w => !isOurs(w));

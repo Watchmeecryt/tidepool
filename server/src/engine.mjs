@@ -13,7 +13,53 @@ import { db, save } from './store.mjs';
 const MASTER = process.env.DEPOSIT_MASTER_SEED;
 const byAsset = Object.fromEntries(TOKENS.map(t => [t.assetId, t]));
 const STABLE = new Set(['USDC', 'USDT']);
-export class BadRequest extends Error { constructor(m, code = 400) { super(m); this.code = code; } }
+export class BadRequest extends Error { constructor(m, code = 400, extra) { super(m); this.code = code; if (extra) this.extra = extra; } }
+
+// ---- First-call hints: extra fields on 400s (the spec's `message` field is kept) ----
+const DOCS_QUICKSTART = 'https://www.usetidepool.tech/docs/quickstart';
+const tp = (sub) => `nep141:${sub}.${ROOT}`;
+const evmTp = (chain, sym) => TOKENS.find(t => t.chain === chain && t.symbol === sym)?.assetId;
+const MAINNET_MAP = {
+  'nep141:wrap.near': tp('wnear'),
+  'nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1': tp('usdc'),
+  'nep141:a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near': tp('usdc'),
+  'nep141:usdt.tether-token.near': tp('usdt'),
+  'nep141:dac17f958d2ee523a2206206994597c13d831ec7.factory.bridge.near': tp('usdt'),
+  'nep141:eth.omft.near': tp('eth'), 'nep141:aurora': tp('eth'), 'nep141:eth.bridge.near': tp('eth'),
+  'nep141:btc.omft.near': tp('wbtc'), 'nep141:nbtc.bridge.near': tp('wbtc'),
+  'nep141:2260fac5e5542a773aa44fbcfedf7c193bc2c599.factory.bridge.near': tp('wbtc'),
+  'nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near': evmTp('base', 'USDC'),
+  'nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near': evmTp('arb', 'USDC'),
+  'nep141:arb-0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9.omft.near': evmTp('arb', 'USDT'),
+  'nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near': evmTp('eth', 'USDC'),
+  'nep141:eth-0xdac17f958d2ee523a2206206994597c13d831ec7.omft.near': evmTp('eth', 'USDT'),
+};
+export function suggestAsset(id) {
+  const s = String(id || '').toLowerCase();
+  if (MAINNET_MAP[s]) return MAINNET_MAP[s];
+  const chain = /^nep141:(base|arb|eth)-0x/.exec(s)?.[1];
+  const pick = (sym) => (chain && evmTp(chain, sym)) || tp(sym.toLowerCase());
+  if (/usdc|17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1/.test(s)) return pick('USDC');
+  if (/usdt|tether/.test(s)) return pick('USDT');
+  if (/wrap\.|wnear/.test(s)) return tp('wnear');
+  if (/btc/.test(s)) return tp('wbtc');
+  if (/xaut|gold/.test(s)) return tp('xaut');
+  if (/eth|aurora/.test(s)) return tp('eth');
+  return null;
+}
+const testnetAcct = (v) => (typeof v === 'string' && /\.testnet$/.test(v) ? v : 'alice.testnet');
+export function exampleQuote(req = {}) {
+  return { dry: true, swapType: 'EXACT_INPUT', slippageTolerance: 100, originAsset: tp('usdc'), depositType: 'INTENTS', destinationAsset: tp('wnear'), amount: '10000000', refundTo: testnetAcct(req.refundTo), refundType: 'INTENTS', recipient: testnetAcct(req.recipient), recipientType: 'DESTINATION_CHAIN', deadline: new Date(Date.now() + 15 * 60_000).toISOString() };
+}
+const hint = (h, req, more = {}) => ({ hint: h, ...more, docs: DOCS_QUICKSTART, exampleRequest: exampleQuote(req) });
+const SUPPORTED_SHORT = () => TOKENS.filter(t => !t.chain).map(t => t.assetId);
+function assetError(field, id, req) {
+  const sug = suggestAsset(id);
+  const mainnet = /\.near$/.test(String(id)) || /^nep141:[0-9a-f]{64}$/.test(String(id));
+  const msg = `${field} ${id} is not supported${mainnet ? ' (mainnet asset ids do not exist on Tidepool testnet)' : ''}.${sug ? ` Did you mean ${sug}?` : ''} See GET /v0/tokens`;
+  return new BadRequest(msg, 400, hint(`Tidepool is testnet only and uses its own test tokens. Use asset ids from GET /v0/tokens${sug ? `, e.g. ${sug}` : ''}.`, req, { field, ...(sug ? { suggestedAssetId: sug } : {}), supportedAssetIds: SUPPORTED_SHORT() }));
+}
+const isMainnetAcct = (v) => typeof v === 'string' && /\.near$/.test(v);
 
 // serialize transactions per signer so nonces never collide
 const locks = {};
@@ -62,10 +108,11 @@ export async function initEngine() { _mk = await keyStore.getKey(NETWORK, MAKER)
 
 export async function quote(req, { authed, maxDeadlineMs = 24 * 3600_000 } = {}) {
   const need = ['dry', 'swapType', 'slippageTolerance', 'originAsset', 'depositType', 'destinationAsset', 'amount', 'refundTo', 'refundType', 'recipient', 'recipientType', 'deadline'];
-  for (const k of need) if (req[k] === undefined || req[k] === null || req[k] === '') throw new BadRequest(`${k} is required`);
+  const missing = need.filter(k => req[k] === undefined || req[k] === null || req[k] === '');
+  if (missing.length) throw new BadRequest(`${missing[0]} is required${missing.length > 1 ? ` (missing: ${missing.join(', ')})` : ''}`, 400, hint('A quote needs all of these fields. Copy exampleRequest and adjust it.', req, { missingFields: missing }));
   const inT = byAsset[req.originAsset], outT = byAsset[req.destinationAsset];
-  if (!inT) throw new BadRequest(`originAsset ${req.originAsset} is not supported. See GET /v0/tokens`);
-  if (!outT) throw new BadRequest(`destinationAsset ${req.destinationAsset} is not supported. See GET /v0/tokens`);
+  if (!inT) throw assetError('originAsset', req.originAsset, req);
+  if (!outT) throw assetError('destinationAsset', req.destinationAsset, req);
   if (inT === outT) throw new BadRequest('originAsset and destinationAsset must differ');
   if (!SWAP_TYPES.includes(req.swapType)) throw new BadRequest(`swapType ${req.swapType} is not supported (supported: ${SWAP_TYPES.join(', ')})`);
   if (!['ORIGIN_CHAIN', 'INTENTS'].includes(req.depositType)) throw new BadRequest(`depositType ${req.depositType} is not supported by Tidepool v1 (supported: ORIGIN_CHAIN, INTENTS)`);
@@ -78,14 +125,15 @@ export async function quote(req, { authed, maxDeadlineMs = 24 * 3600_000 } = {})
   // Address formats follow 1Click: chain-native addresses for *_CHAIN types, NEAR accounts for INTENTS.
   const addrOk = (t, onChain, v) => (onChain && t.chain ? isEvmAddress(v) : isAccount(v));
   const what = (t, onChain) => (onChain && t.chain ? `a ${chainOf(t.chain).name} address (0x...)` : 'a NEAR testnet account id');
+  for (const f of ['recipient', 'refundTo']) if (isMainnetAcct(req[f])) throw new BadRequest(`${f} ${req[f]} is a mainnet account; Tidepool runs on NEAR testnet. Use a .testnet account such as alice.testnet`, 400, hint('Use a NEAR testnet account (ending in .testnet), or an implicit testnet account. Create one free at https://testnet.mynearwallet.com.', req, { field: f }));
   if (!addrOk(outT, req.recipientType === 'DESTINATION_CHAIN', req.recipient)) throw new BadRequest(`recipient must be ${what(outT, req.recipientType === 'DESTINATION_CHAIN')}`);
   if (!addrOk(inT, req.refundType === 'ORIGIN_CHAIN', req.refundTo)) throw new BadRequest(`refundTo must be ${what(inT, req.refundType === 'ORIGIN_CHAIN')}`);
   const slip = Number(req.slippageTolerance);
   if (!(slip >= 0 && slip <= 5000)) throw new BadRequest('slippageTolerance is in basis points, 0..5000');
   if (!/^\d+$/.test(String(req.amount)) || BigInt(req.amount) === 0n) throw new BadRequest('amount must be a positive integer string in base units');
   const deadline = new Date(req.deadline);
-  if (isNaN(deadline)) throw new BadRequest('deadline must be an ISO 8601 date');
-  if (!req.dry && deadline.getTime() < Date.now() + 60_000) throw new BadRequest('deadline must be at least 60 seconds in the future');
+  if (isNaN(deadline)) throw new BadRequest('deadline must be an ISO 8601 date', 400, hint('Use an ISO 8601 UTC timestamp, e.g. the deadline in exampleRequest.', req, { field: 'deadline' }));
+  if (!req.dry && deadline.getTime() < Date.now() + 60_000) throw new BadRequest(`deadline must be at least 60 seconds in the future${deadline.getTime() < Date.now() ? ' (it is in the past)' : ''}`, 400, hint('Set deadline 5-30 minutes ahead, e.g. new Date(Date.now() + 15*60e3).toISOString().', req, { field: 'deadline', serverTime: new Date().toISOString() }));
   if (!req.dry && deadline.getTime() > Date.now() + maxDeadlineMs) throw new BadRequest(`deadline must be within ${maxDeadlineMs / 3600_000} hours`);
   const appFees = validateAppFees(req.appFees);
   const A = BigInt(appFees.reduce((a, f) => a + f.fee, 0));
