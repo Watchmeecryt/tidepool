@@ -3,6 +3,12 @@ title: Changelog
 description: What changed in Tidepool and when.
 ---
 
+## 2026-10-27 · Settlement distinction: mainnet 1Click is confidential-only
+
+- NEAR [rolled out 1Click swaps as confidential only](https://docs.near-intents.org/changelog/entries/2026-10-27-1click-confidential.md) on mainnet: the API shape is unchanged, the swap settles on the NEAR Private Shard with no public hash, and `swapDetails.nearTxHashes` lists only the public shield and unshield transactions.
+- Tidepool's API is unchanged. Testnet swaps settle publicly on the testnet verifier, so `nearTxHashes` includes the swap's own hash; `confidentiality` stays accepted and ignored. This is not a choice by Tidepool: confidential settlement (NEAR Private Shard / Confidential Intents) runs on NEAR's private infrastructure, which isn't exposed to outside builders.
+- Rely on `status` (`SUCCESS` means delivered), not on the presence of a swap hash, so your code works on both. Notes added to [Compatibility](/docs/resources/compatibility), [Status lifecycle](/docs/concepts/status-lifecycle), [`/v0/status`](/docs/api-reference/get-execution-status), [`/v0/deposit/submit`](/docs/api-reference/submit-deposit-tx), Quickstart, Roadmap, Mainnet migration and `AGENTS.md`.
+
 ## 2026-10-27 · No sign-up, no API key
 
 - Clarified on the landing page, Introduction, Quickstart, `llms.txt` and `AGENTS.md`: No sign-up, no API key. Call the API directly; any `X-API-Key` or `Bearer` value is accepted (it just selects the lower fee tier). Only `/v0/account/*` needs a token, which you get instantly by signing a message with your own wallet via `POST /v0/auth/authenticate`. It only ever shows that wallet's own data.

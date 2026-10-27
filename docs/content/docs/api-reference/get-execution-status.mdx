@@ -7,6 +7,8 @@ description: "GET /v0/status · 1Click-compatible"
 
 The example below is a real `SUCCESS` swap (5 USDC → wNEAR). See [Status lifecycle](/docs/concepts/status-lifecycle).
 
+**Settlement distinction.** On mainnet, 1Click now settles every swap confidentially on the NEAR Private Shard, so `swapDetails.nearTxHashes` lists only the public shield and unshield transactions ([NEAR changelog, Oct 27, 2026](https://docs.near-intents.org/changelog/entries/2026-10-27-1click-confidential.md)). Tidepool testnet swaps settle publicly on the testnet verifier, so `nearTxHashes` also includes the swap's own hash. This is not a choice by Tidepool: confidential settlement (NEAR Private Shard / Confidential Intents) runs on NEAR's private infrastructure, which isn't exposed to outside builders. Rely on `status` (`SUCCESS` means delivered), not on the presence of a swap hash, so the same code works on both.
+
 Retrieves the current status of a swap using the unique deposit address from the quote, if quote response included deposit memo, it is required as well. The response includes the state of the swap (e.g., pending, processing, success, refunded) and any associated swap and transaction details.
 
 **Operation id:** `getExecutionStatus` · **Auth:** optional (`X-API-Key` or `Authorization: Bearer`, any value)

@@ -7,6 +7,8 @@ description: "POST /v0/deposit/submit · 1Click-compatible"
 
 Optional. Returns **HTTP 201** and the current status object. Moves `PENDING_DEPOSIT` to `KNOWN_DEPOSIT_TX`; the worker detects deposits on its own either way.
 
+**Settlement distinction.** On mainnet, 1Click now settles every swap confidentially on the NEAR Private Shard, so `swapDetails.nearTxHashes` lists only the public shield and unshield transactions ([NEAR changelog, Oct 27, 2026](https://docs.near-intents.org/changelog/entries/2026-10-27-1click-confidential.md)). Tidepool testnet swaps settle publicly on the testnet verifier, so `nearTxHashes` also includes the swap's own hash. This is not a choice by Tidepool: confidential settlement (NEAR Private Shard / Confidential Intents) runs on NEAR's private infrastructure, which isn't exposed to outside builders. Rely on `status` (`SUCCESS` means delivered), not on the presence of a swap hash, so the same code works on both.
+
 Optionally notifies the 1Click service that a deposit has been sent to the specified address, using the blockchain transaction hash. This step can speed up swap processing by allowing the system to preemptively verify the deposit.
 
 **Operation id:** `submitDepositTx` · **Auth:** optional (`X-API-Key` or `Authorization: Bearer`, any value)

@@ -19,7 +19,7 @@ Tidepool mirrors the 1Click request and response shapes, so most code moves unch
 **Real chains.** Mainnet supports many `blockchain` values and deposit addresses on other chains (EVM, Solana, Bitcoin…). Your deposit code must send on the origin chain, not with `ft_transfer` on NEAR. `refundTo` and `recipient` must be valid addresses on their chains.
 </Step>
 <Step>
-**Features Tidepool lacks.** `CONFIDENTIAL_INTENTS` is accepted but ignored on Tidepool; test it on mainnet with small amounts. JWTs from Tidepool's `/v0/auth` do not work on mainnet, so get a mainnet key. What is planned for Tidepool is on the [Roadmap](/docs/resources/roadmap).
+**Features Tidepool lacks.** `CONFIDENTIAL_INTENTS` is accepted but ignored on Tidepool; test it on mainnet with small amounts. Mainnet 1Click now settles every swap confidentially, so `nearTxHashes` lists only the shield and unshield transactions, while Tidepool includes the swap's own hash; confidential settlement runs on NEAR's private infrastructure, which isn't exposed to outside builders. Key your code on `status`, not on a swap hash. JWTs from Tidepool's `/v0/auth` do not work on mainnet, so get a mainnet key. What is planned for Tidepool is on the [Roadmap](/docs/resources/roadmap).
 </Step>
 <Step>
 **Prices and timing.** Mainnet quotes come from competing solvers and settle cross-chain, so `timeEstimate` can be minutes. Keep your polling loop tolerant of long `PROCESSING` periods.

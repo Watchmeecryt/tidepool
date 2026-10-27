@@ -167,7 +167,7 @@
         "message": "Deposit address not found"
       }
     },
-    "notes": "The example below is a real `SUCCESS` swap (5 USDC → wNEAR). See [Status lifecycle](/docs/concepts/status-lifecycle)."
+    "notes": "The example below is a real `SUCCESS` swap (5 USDC → wNEAR). See [Status lifecycle](/docs/concepts/status-lifecycle).\n\n**Settlement distinction.** On mainnet, 1Click now settles every swap confidentially on the NEAR Private Shard, so `swapDetails.nearTxHashes` lists only the public shield and unshield transactions ([NEAR changelog, Oct 27, 2026](https://docs.near-intents.org/changelog/entries/2026-10-27-1click-confidential.md)). Tidepool testnet swaps settle publicly on the testnet verifier, so `nearTxHashes` also includes the swap's own hash. This is not a choice by Tidepool: confidential settlement (NEAR Private Shard / Confidential Intents) runs on NEAR's private infrastructure, which isn't exposed to outside builders. Rely on `status` (`SUCCESS` means delivered), not on the presence of a swap hash, so the same code works on both."
   },
   "submitDepositTx": {
     "request": {
@@ -256,7 +256,7 @@
         "message": "txHash and depositAddress are required"
       }
     },
-    "notes": "Optional. Returns **HTTP 201** and the current status object. Moves `PENDING_DEPOSIT` to `KNOWN_DEPOSIT_TX`; the worker detects deposits on its own either way."
+    "notes": "Optional. Returns **HTTP 201** and the current status object. Moves `PENDING_DEPOSIT` to `KNOWN_DEPOSIT_TX`; the worker detects deposits on its own either way.\n\n**Settlement distinction.** On mainnet, 1Click now settles every swap confidentially on the NEAR Private Shard, so `swapDetails.nearTxHashes` lists only the public shield and unshield transactions ([NEAR changelog, Oct 27, 2026](https://docs.near-intents.org/changelog/entries/2026-10-27-1click-confidential.md)). Tidepool testnet swaps settle publicly on the testnet verifier, so `nearTxHashes` also includes the swap's own hash. This is not a choice by Tidepool: confidential settlement (NEAR Private Shard / Confidential Intents) runs on NEAR's private infrastructure, which isn't exposed to outside builders. Rely on `status` (`SUCCESS` means delivered), not on the presence of a swap hash, so the same code works on both."
   },
   "TidepoolFaucet": {
     "request": {
