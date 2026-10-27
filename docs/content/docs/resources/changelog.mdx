@@ -3,6 +3,10 @@ title: Changelog
 description: What changed in Tidepool and when.
 ---
 
+## 2026-10-27 · No sign-up, no API key
+
+- Clarified on the landing page, Introduction, Quickstart, `llms.txt` and `AGENTS.md`: No sign-up, no API key. Call the API directly; any `X-API-Key` or `Bearer` value is accepted (it just selects the lower fee tier). Only `/v0/account/*` needs a token, which you get instantly by signing a message with your own wallet via `POST /v0/auth/authenticate`. It only ever shows that wallet's own data.
+
 ## 2026-10-27 · Signed intents, orders, appFees, ANY_INPUT, auth, MEMO
 
 - **New:** [`/v0/generate-intent`](/docs/api-reference/generate-intent) and [`/v0/submit-intent`](/docs/api-reference/submit-intent). Fund an `INTENTS` quote with a signed NEP-413 transfer ([submit tx](https://testnet.nearblocks.io/txns/CstqKiww5T6pAWrnX8wYuYaH2BrCL1oMnvsbbDidpC5W)).

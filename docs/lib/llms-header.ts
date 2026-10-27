@@ -5,6 +5,7 @@ export const llmsHeader = `# ${BRAND.name}: ${BRAND.tagline}
 
 > ${BRAND.description} ${BRAND.affiliationLong} Testnet only: tokens have no value.
 
+- No sign-up, no API key. Call the API directly; any X-API-Key or Bearer value is accepted (it just selects the lower fee tier). Only /v0/account/* needs a token, which you get instantly by signing a message with your own wallet via POST /v0/auth/authenticate. It only ever shows that wallet's own data.
 - What: a NEAR Intents 1Click sandbox, a testnet-compatible version of the 1Click API. Use it as a free 1Click testnet endpoint and a 1Click API alternative for development, CI and agents, then switch the base URL to mainnet 1Click for production.
 - Status: ${BRAND.affiliation}.
 - Base URL: ${SITE} (drop-in for the 1Click API base URL; same 1Click v0 endpoints and field names: tokens, quote, deposit/submit, status, generate-intent, submit-intent, orders, any-input/withdrawals, auth, account)

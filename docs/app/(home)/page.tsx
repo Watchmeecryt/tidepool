@@ -36,6 +36,7 @@ export default function HomePage() {
               <h1 className="tp-display tp-rise tp-d1 mt-6 text-[2.6rem] sm:text-7xl">
                 Test NEAR Intents<br />swaps <span className="tp-gradient-text">before they<br className="hidden sm:block" /> cost anything.</span>
               </h1>
+              <p className="tp-rise tp-d2 mx-auto mt-4 max-w-xl text-base font-semibold lg:mx-0">No sign-up, no API key. Just call the API.</p>
               <p className="tp-rise tp-d2 mx-auto mt-4 max-w-xl rounded-lg border border-fd-border/60 px-3 py-2 text-sm text-fd-muted-foreground lg:mx-0"><strong>Trust model:</strong> a community-operated testnet environment. Tidepool runs the maker and derives the deposit-address keys. Testnet only; never send real assets. <Link href="/docs/resources/trust-model" className="underline">Details</Link></p>
               <p className="tp-rise tp-d2 mx-auto mt-6 max-w-xl text-lg text-fd-muted-foreground lg:mx-0">
                 Tidepool is a free, community-built testnet version of the 1Click API: NEAR's unmodified verifier, test tokens, a live maker and the same Swap API endpoints. Point your app or agent at one free 1Click testnet endpoint and run the full flow end to end.

@@ -3,6 +3,10 @@ title: Quickstart
 description: List tokens, price a swap and create a live quote with plain curl.
 ---
 
+<Callout type="success" title="No sign-up, no API key">
+No sign-up, no API key. Call the API directly; any `X-API-Key` or `Bearer` value is accepted (it just selects the lower fee tier). Only `/v0/account/*` needs a token, which you get instantly by signing a message with your own wallet via `POST /v0/auth/authenticate`. It only ever shows that wallet's own data.
+</Callout>
+
 <Callout title="Using a coding agent (Cursor, Claude Code, Codex)?">
 Paste the **[dev prompt](/docs/guides/agents#prompt-snippet)** into your agent, or point it at [`/llms-full.txt`](/llms-full.txt). Prefer runnable code? Clone **[tidepool-examples](https://github.com/zer0plugyut-afk/tidepool-examples)** and run `npm run first-swap`.
 </Callout>
