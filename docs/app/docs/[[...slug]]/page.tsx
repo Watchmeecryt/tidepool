@@ -45,7 +45,7 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
           })}
         />
       </DocsBody>
-      <p className="mt-10 border-t pt-4 text-xs text-fd-muted-foreground">{BRAND.affiliation}. {BRAND.affiliationLong} Testnet only; test tokens have no value.</p>
+      <p className="mt-10 border-t pt-4 text-xs text-fd-muted-foreground">{BRAND.affiliation}. {BRAND.affiliationLong} Testnet only; test tokens have no value. Built by <a href={BRAND.builderUrl} target="_blank" rel="noopener" className="font-medium underline underline-offset-2">{BRAND.builderHandle}</a>.</p>
     </DocsPage>
   );
 }

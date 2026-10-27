@@ -104,6 +104,7 @@ export default function HomePage() {
       <footer className="border-t border-fd-border/60 py-10 text-center text-xs text-fd-muted-foreground">
         <p className="font-medium">{BRAND.affiliation}</p>
         <p className="mt-1">{BRAND.affiliationLong} Testnet only; test tokens have no value.</p>
+        <p className="mt-3">Built by <a href={BRAND.builderUrl} target="_blank" rel="noopener" className="font-medium text-fd-foreground underline underline-offset-2">{BRAND.builderHandle}</a></p>
       </footer>
       <script type="application/ld+json" dangerouslySetInnerHTML={ldJson({ '@context': 'https://schema.org', '@graph': [organization, website, software] })} />
     </main>

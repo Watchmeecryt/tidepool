@@ -7,12 +7,13 @@ export const llmsHeader = `# ${BRAND.name}: ${BRAND.tagline}
 
 - What: a NEAR Intents 1Click sandbox, a testnet-compatible version of the 1Click API. Use it as a free 1Click testnet endpoint and a 1Click API alternative for development, CI and agents, then switch the base URL to mainnet 1Click for production.
 - Status: ${BRAND.affiliation}.
-- Base URL: ${SITE} (drop-in for the 1Click API base URL; same /v0/tokens, /v0/quote, /v0/deposit/submit, /v0/status endpoints and field names)
+- Base URL: ${SITE} (drop-in for the 1Click API base URL; same 1Click v0 endpoints and field names: tokens, quote, deposit/submit, status, generate-intent, submit-intent, orders, any-input/withdrawals, auth, account)
 - Quickstart: ${SITE}/docs/quickstart (Markdown: ${SITE}/docs/quickstart.md)
 - Free test tokens: POST ${SITE}/v0/faucet {"accountId":"you.testnet","mode":"wallet"|"intents"}, or {"chain":"base"|"arb"|"eth","address":"0x..."} on EVM testnets
 - Test bridges (trusted relayer run by Tidepool, testnet only): Base Sepolia, Arbitrum Sepolia, Ethereum Sepolia. ${SITE}/docs/guides/bridges
 - OpenAPI: ${SITE}/openapi.json · Agent rules: ${SITE}/AGENTS.md · Full docs in one file: ${SITE}/llms-full.txt
 - Health: ${SITE}/v0/health
+- Contact / built by: ${BRAND.builderHandle} (${BRAND.builderUrl})
 - Trust model: community-operated testnet; Tidepool runs the only maker and derives deposit-address keys. Never send real assets. ${SITE}/docs/resources/trust-model
 - Compatibility vs mainnet 1Click: ${SITE}/docs/resources/compatibility
 - Dev prompt for coding agents: ${SITE}/docs/guides/agents#prompt-snippet

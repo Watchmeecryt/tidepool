@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   description: BRAND.description,
   keywords: BRAND.keywords,
   applicationName: BRAND.name,
-  authors: [{ name: `${BRAND.name} (${BRAND.affiliationShort})`, url: SITE }],
+  authors: [{ name: BRAND.builderHandle, url: BRAND.builderUrl }],
   alternates: { canonical: '/' },
   manifest: '/site.webmanifest',
   icons: {
