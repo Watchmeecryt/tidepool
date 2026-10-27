@@ -3,6 +3,13 @@ title: Changelog
 description: What changed in Tidepool and when.
 ---
 
+## 2026-10-27 · 1Click status codes, compatibility table, examples repo
+
+- **Breaking (fix):** `POST /v0/quote` and `POST /v0/deposit/submit` now return **HTTP 200** on success instead of 201, matching the 1Click spec. Clients that checked `res.ok` are unaffected.
+- New [Compatibility](/docs/resources/compatibility) page: same as mainnet 1Click, different, and not supported yet.
+- Trust-model note at the top of the landing page and docs; "Run your first test swap" is the primary call to action.
+- New public examples repo [tidepool-examples](https://github.com/zer0plugyut-afk/tidepool-examples) (MIT) with a live conformance report.
+
 ## 2026-10-26 · NEAR RPC failover
 
 - The server now fails over between NEAR testnet RPC providers (FastNEAR → dRPC → Intea → rpc.testnet.near.org) on rate limits (429), 5xx, timeouts and network errors, with a short cooldown for rate-limited providers. Configure with `NEAR_RPC_URLS` (comma separated); `NEAR_RPC` still sets the first provider. Signed transactions are re-broadcast unchanged, never re-signed, so retries are safe.

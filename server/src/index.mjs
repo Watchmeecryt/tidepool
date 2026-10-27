@@ -91,8 +91,8 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'OPTIONS') { res.writeHead(204, { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type, authorization, x-api-key', 'access-control-allow-methods': 'GET, POST, OPTIONS' }); return res.end(); }
     // ---- API (1Click-compatible) ----
     if (p === '/v0/tokens' && req.method === 'GET') return json(res, 200, await tokens());
-    if (p === '/v0/quote' && req.method === 'POST') return json(res, 201, await quote(await readBody(req), { authed: authed(req) }));
-    if (p === '/v0/deposit/submit' && req.method === 'POST') return json(res, 201, submitDeposit(await readBody(req)));
+    if (p === '/v0/quote' && req.method === 'POST') return json(res, 200, await quote(await readBody(req), { authed: authed(req) }));
+    if (p === '/v0/deposit/submit' && req.method === 'POST') return json(res, 200, submitDeposit(await readBody(req)));
     if (p === '/v0/status' && req.method === 'GET') { const s = statusOf(url.searchParams.get('depositAddress')); return s ? json(res, 200, s) : json(res, 404, { message: 'Deposit address not found' }); }
     // ---- Tidepool extensions ----
     if (p === '/v0/faucet' && req.method === 'POST') return json(res, 200, await drip(await readBody(req), ip(req)));

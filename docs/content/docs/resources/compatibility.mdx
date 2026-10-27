@@ -1,0 +1,46 @@
+---
+title: Compatibility with 1Click
+description: What is the same as mainnet 1Click, what is different on Tidepool, and what is not supported yet.
+---
+
+Checked against the official 1Click OpenAPI (`https://1click.chaindefuser.com/docs/v0/openapi.yaml`). The latest live check is published in [CONFORMANCE.md](https://github.com/zer0plugyut-afk/tidepool-examples/blob/main/CONFORMANCE.md).
+
+## Same as mainnet 1Click
+
+| Area | Detail |
+| --- | --- |
+| Endpoints | `GET /v0/tokens`, `POST /v0/quote`, `POST /v0/deposit/submit`, `GET /v0/status` |
+| Status codes | `200` on success for all four (quote and deposit/submit return `200`, as in the spec), `400` on bad input, `404` for an unknown deposit address |
+| Request fields | `dry`, `swapType`, `slippageTolerance`, `originAsset`, `depositType`, `destinationAsset`, `amount`, `refundTo`, `refundType`, `recipient`, `recipientType`, `deadline` (same required set) |
+| Response shapes | `QuoteResponse` (`correlationId`, `timestamp`, `signature`, `quoteRequest`, `quote`), `GetExecutionStatusResponse` with `swapDetails`, `TokenResponse` |
+| Swap types | `EXACT_INPUT`, `EXACT_OUTPUT`, `FLEX_INPUT` |
+| Deposit / refund / recipient types | `ORIGIN_CHAIN`, `INTENTS` / `ORIGIN_CHAIN`, `INTENTS` / `DESTINATION_CHAIN`, `INTENTS` |
+| Status lifecycle | `PENDING_DEPOSIT`, `KNOWN_DEPOSIT_TX`, `INCOMPLETE_DEPOSIT`, `PROCESSING`, `SUCCESS`, `REFUNDED`, `FAILED` |
+| SDK | `@defuse-protocol/one-click-sdk-typescript` works by changing `OpenAPI.BASE` |
+
+## Different on Tidepool
+
+| Area | Mainnet 1Click | Tidepool |
+| --- | --- | --- |
+| Network | NEAR mainnet + many chains | NEAR testnet; Base, Arbitrum and Ethereum Sepolia |
+| Solvers | Competing solvers via the solver relay | One Tidepool maker quotes and fills every swap (CoinGecko prices + fixed fee) |
+| Verifier | `intents.near` | Official `defuse` v0.4.2 wasm (byte-identical) at `verifier.tidepool-sandbox.testnet` |
+| Cross-chain | Production bridges | Tidepool-run trusted relayer bridges to Base / Arbitrum / Ethereum Sepolia |
+| Tokens | Real assets | Six test tokens (+ bridged USDC/USDT) from a public faucet; no value |
+| Deposit addresses | Run by 1Click | Keys derived by the Tidepool server (custodial, testnet) |
+| Auth | JWT required for fee-free quotes | Any `x-api-key` / Bearer value is accepted; no key needed |
+| Extras | — | `POST /v0/faucet`, `GET /v0/health` |
+
+## Not supported yet
+
+Requests using these return `400` (or `404` for endpoints). See the [Roadmap](/docs/resources/roadmap).
+
+| Feature | Behaviour on Tidepool |
+| --- | --- |
+| `depositMode: MEMO` | `400`; only `SIMPLE` |
+| `swapType: ANY_INPUT` and `GET /v0/any-input/withdrawals` | `400` / `404` |
+| `appFees` | `400` when non-empty |
+| `confidentiality` (`CONFIDENTIAL_INTENTS`) | Ignored; all swaps are public |
+| `/v0/auth/*`, `/v0/account/*` | `404` |
+| `/v0/generate-intent`, `/v0/submit-intent`, `/v0/orders` (limit orders) | `404` |
+| `referral`, `rebates`, `insured`, `virtualChain*`, `connectedWallets`, `sessionId`, `quoteWaitingTimeMs` | Accepted and echoed, no effect |

@@ -13,6 +13,10 @@ export const llmsHeader = `# ${BRAND.name}: ${BRAND.tagline}
 - Test bridges (trusted relayer run by Tidepool, testnet only): Base Sepolia, Arbitrum Sepolia, Ethereum Sepolia. ${SITE}/docs/guides/bridges
 - OpenAPI: ${SITE}/openapi.json · Agent rules: ${SITE}/AGENTS.md · Full docs in one file: ${SITE}/llms-full.txt
 - Health: ${SITE}/v0/health
+- Trust model: community-operated testnet; Tidepool runs the only maker and derives deposit-address keys. Never send real assets. ${SITE}/docs/resources/trust-model
+- Compatibility vs mainnet 1Click: ${SITE}/docs/resources/compatibility
+- Dev prompt for coding agents: ${SITE}/docs/guides/agents#prompt-snippet
+- Runnable examples (MIT): https://github.com/zer0plugyut-afk/tidepool-examples (conformance report: CONFORMANCE.md)
 
 Quick try:
     curl ${SITE}/v0/tokens
