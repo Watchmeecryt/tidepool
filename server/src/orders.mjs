@@ -93,7 +93,9 @@ export function listOrders(owner, q) {
   const after = q.get('page[after]');
   if (after) { const i = items.findIndex(v => v.id === after); items = i < 0 ? [] : items.slice(i + 1); }
   const page = items.slice(0, size);
-  return { data: page, meta: meta(items.length > size ? { nextCursor: page.at(-1).id } : {}) };
+  const more = items.length > size;
+  const next = more ? `/v0/orders?page[size]=${size}&page[after]=${page.at(-1).id}` + (fs ? `&filter[fillStatus]=${fs.join(',')}` : '') + (fin !== null ? `&filter[isPayoutStatusFinal]=${fin}` : '') : null;
+  return { data: page, links: { next }, meta: meta(more ? { nextCursor: page.at(-1).id } : {}) };
 }
 export function cancelOrder(owner, id) {
   const [, s] = owned(owner, id);

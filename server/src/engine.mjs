@@ -453,7 +453,13 @@ export function anyInputWithdrawals(depositAddress, depositMemo, { timestampFrom
   if (timestampFrom) { const t = new Date(timestampFrom).getTime(); if (isNaN(t)) throw new BadRequest('timestampFrom must be an ISO date'); w = w.filter(x => new Date(x.timestamp).getTime() >= t); }
   if (sortOrder === 'desc') w.reverse();
   limit = Math.min(Math.max(1, Number(limit) || 50), 50); page = Math.max(1, Number(page) || 1);
-  return { asset: req.destinationAsset, recipient: req.recipient, affiliateRecipient: s.appFees?.[0]?.recipient || '', withdrawals: w.slice((page - 1) * limit, page * limit) };
+  const pageItems = w.slice((page - 1) * limit, page * limit);
+  // Spec types `withdrawals` as a single AnyInputQuoteWithdrawal: we return the first one on the page there,
+  // and the whole page under the `tidepool.withdrawals` extension.
+  const out = { asset: req.destinationAsset, recipient: req.recipient, affiliateRecipient: s.appFees?.[0]?.recipient || '' };
+  if (pageItems[0]) out.withdrawals = pageItems[0];
+  out.tidepool = { withdrawals: pageItems, total: w.length, page, limit };
+  return out;
 }
 
 // internals shared with orders.mjs / intents.mjs
