@@ -80,4 +80,9 @@ Same request and response fields, `blockchain: "sol"`, and the same asset id rul
 
 ## Verified flows
 
-The relayer code was run end to end against a local Solana validator with real NEAR testnet settlement: SOL → NEAR USDC ([NEAR tx](https://testnet.nearblocks.io/txns/C8n5M6fMtt9FUprBDSbM6Z6j3x7fZdBbSNgDupwZB6Lr)), NEAR USDC → Solana USDC payout ([NEAR tx](https://testnet.nearblocks.io/txns/AvZBgdo4mRQSqh4k9nLikjkeThLueYorjB7FMLZSbsRn)), a `PARTIAL_DEPOSIT` refund ([NEAR tx](https://testnet.nearblocks.io/txns/Co939EZy8CcyAKAKVG96pRow6pBuL4FgDcgAg3MnB2GJ)), and a `400` for a 0.006 SOL quote.
+These ran end to end on the live Tidepool testnet against Solana **devnet** (real devnet transactions, real NEAR testnet settlement) on 2026-10-28:
+
+- **SOL → NEAR USDC** (0.002 SOL): [Solana deposit tx](https://explorer.solana.com/tx/2m9pQEZs5bvd6iYDdDxADz9kqv641RBkUerNJsT9sDDmjGJfuHqjzsMxxwFpapZFc4hNjTcgyy8YFcnf51DwpfsX?cluster=devnet), [NEAR settlement tx](https://testnet.nearblocks.io/txns/AUcUxuzhpUVnhrEhHs7vVTyeo7LUC85gmZ6NUkozSUkn).
+- **NEAR USDC → Solana USDC payout** (5 USDC): [NEAR deposit tx](https://testnet.nearblocks.io/txns/EzJu3W2Pvdx7w4ZCjnoDnGNNPYHukxgB5cxHMSHhVVhM), [Solana payout tx](https://explorer.solana.com/tx/kPW2EvGVSFeELMCgV7M6F6vLxtH8fhapRntn4gyuDgSapv5qfirccvveFWKN23muW1tPEGhSoDxSPQgTBVFP4Z9?cluster=devnet).
+- **`PARTIAL_DEPOSIT` refund** (quoted 0.003 SOL, sent 0.002 SOL): [Solana deposit tx](https://explorer.solana.com/tx/3VBkRYgaTacE2guCBYsTW6gBPxxMwdDm2dQazcy3nsvvppvVzwYFL8syDUe4Xx6vyETMrX4JwB6RtbQ8vc7mob6p?cluster=devnet), [Solana refund tx](https://explorer.solana.com/tx/2cKPTuCKHw5uFgkXJXCi9tUrSax75LMrDBJQpEET1qd1LzoNb7UfwhRenxXFnCyLStkZDmJUMWScMPp5NbZtWYc7?cluster=devnet). Final status `REFUNDED`.
+- **Over the cap:** a 0.006 SOL quote is rejected with `400` ("SOL is capped at 0.005 SOL ... per swap"), before any deposit address is issued.
