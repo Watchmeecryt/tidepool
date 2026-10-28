@@ -24,6 +24,7 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
 
   const MDX = page.data.body;
   const markdownUrl = getPageMarkdownUrl(page).url;
+  const faq = page.slugs.join('/') === 'resources/faq' ? faqLd(await page.data.getText('raw')) : null;
 
   return (
     <DocsPage toc={page.data.toc} full={page.data.full}>
@@ -37,6 +38,7 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
         />
       </div>
       <script type="application/ld+json" dangerouslySetInnerHTML={ldJson(jsonLd(page))} />
+      {faq && <script type="application/ld+json" dangerouslySetInnerHTML={ldJson(faq)} />}
       <DocsBody>
         <MDX
           components={getMDXComponents({
@@ -52,6 +54,17 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
 
 export async function generateStaticParams() {
   return source.generateParams();
+}
+
+// FAQPage structured data built from the <Accordion title="Q">A</Accordion> pairs in resources/faq.mdx.
+const plain = (s: string) => s.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/[`*_]/g, '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+function faqLd(raw: string) {
+  const items = [...raw.matchAll(/<Accordion title="([^"]+)">([\s\S]*?)<\/Accordion>/g)];
+  if (!items.length) return null;
+  return {
+    '@context': 'https://schema.org', '@type': 'FAQPage', '@id': `${SITE}/docs/resources/faq#faq`,
+    mainEntity: items.map(([, q, a]) => ({ '@type': 'Question', name: plain(q), acceptedAnswer: { '@type': 'Answer', text: plain(a) } })),
+  };
 }
 
 function jsonLd(page: NonNullable<ReturnType<typeof source.getPage>>) {
@@ -75,8 +88,9 @@ export async function generateMetadata(props: PageProps<'/docs/[[...slug]]'>): P
   const page = source.getPage(params.slug);
   if (!page) notFound();
   const description = describe(page.data.description);
-  const title = page.slugs.length ? page.data.title : 'Docs: NEAR Intents 1Click sandbox, a testnet-compatible 1Click API';
-  const full = `${title} · ${BRAND.name} (NEAR Intents testnet)`;
+  // seoTitle (frontmatter) wins; the root layout template appends " · Tidepool".
+  const title = page.data.seoTitle ?? (page.slugs.length ? page.data.title : 'Docs: NEAR Intents 1Click sandbox, a testnet-compatible 1Click API');
+  const full = `${title} · ${BRAND.name}`;
   const image = { url: `${SITE}${getPageImageUrl(page).url}`, width: 1200, height: 630, alt: `${page.data.title}: ${BRAND.name}` };
   return {
     title, description,

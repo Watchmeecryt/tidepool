@@ -23,7 +23,7 @@ export function Waves() {
   );
 }
 
-/** Hero for the docs introduction page. */
+/** Hero for the docs introduction page. Endpoint count = operations in site/public/openapi.json (15 1Click-compatible + faucet + health); update when the spec changes. */
 export function DocsHero() {
   return (
     <div className="tp-docs-hero not-prose">
@@ -37,7 +37,7 @@ export function DocsHero() {
           <Link href="/docs/guides/first-swap" className="tp-btn tp-btn-ghost">First swap in 5 min</Link>
         </div>
         <div className="mt-6 grid grid-cols-3 gap-3 sm:max-w-md">
-          {[['6', 'test tokens'], ['4', 'API endpoints'], ['~5s', 'to SUCCESS']].map(([n, l]) => (
+          {[['6', 'test tokens'], ['17', 'API endpoints'], ['~5s', 'to SUCCESS']].map(([n, l]) => (
             <div key={l} className="tp-stat"><b>{n}</b><span>{l}</span></div>
           ))}
         </div>

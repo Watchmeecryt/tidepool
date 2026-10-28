@@ -9,12 +9,13 @@ const inter = localFont({ src: './fonts/Geist-Variable.woff2', variable: '--font
 const display = localFont({ src: './fonts/Geist-Variable.woff2', variable: '--font-display', weight: '100 900', display: 'swap', preload: false });
 const mono = localFont({ src: './fonts/GeistMono-Variable.woff2', variable: '--font-mono', weight: '100 900', display: 'swap' });
 
-const defaultTitle = `${BRAND.name}: free 1Click API testnet sandbox for NEAR Intents (${BRAND.affiliationShort})`;
+const defaultTitle = BRAND.homeTitle;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE),
-  title: { template: `%s · ${BRAND.name} (NEAR Intents testnet)`, default: defaultTitle },
-  description: BRAND.description,
+  title: { template: `%s · ${BRAND.name}`, default: defaultTitle },
+  // Short, SERP-length text; the long BRAND.description stays in llms.txt and JSON-LD.
+  description: BRAND.metaDescription,
   keywords: BRAND.keywords,
   applicationName: BRAND.name,
   authors: [{ name: BRAND.builderHandle, url: BRAND.builderUrl }],
@@ -24,8 +25,8 @@ export const metadata: Metadata = {
     icon: [{ url: '/favicon.ico', sizes: '32x32' }, { url: '/favicon.svg', type: 'image/svg+xml' }, { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' }, { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' }],
     apple: [{ url: '/apple-touch-icon.png', sizes: '180x180' }],
   },
-  openGraph: { type: 'website', siteName: BRAND.name, title: defaultTitle, description: BRAND.description, url: '/', locale: 'en_US', images: [OG_IMAGE] },
-  twitter: { card: 'summary_large_image', site: BRAND.xHandle, creator: BRAND.xHandle, title: defaultTitle, description: BRAND.description, images: [OG_IMAGE.url] },
+  openGraph: { type: 'website', siteName: BRAND.name, title: defaultTitle, description: BRAND.metaDescription, url: '/', locale: 'en_US', images: [OG_IMAGE] },
+  twitter: { card: 'summary_large_image', site: BRAND.xHandle, creator: BRAND.xHandle, title: defaultTitle, description: BRAND.metaDescription, images: [OG_IMAGE.url] },
   robots: { index: true, follow: true, googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1 } },
   other: { 'llms-txt': `${SITE}/llms.txt` },
 };

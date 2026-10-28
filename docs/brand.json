@@ -6,6 +6,8 @@
   "affiliation": "Community-built · not affiliated with NEAR",
   "affiliationLong": "Tidepool is community-built and not affiliated with NEAR, Defuse or 1Click.",
   "affiliationShort": "community-built",
+  "homeTitle": "Tidepool: Free NEAR Intents Testnet & 1Click API Sandbox",
+  "metaDescription": "Free NEAR Intents testnet & 1Click API sandbox: signed intents, limit orders, appFees, ANY_INPUT, MEMO, failed-swap simulation. No API key. Community-built.",
   "description": "Free, community-built NEAR Intents 1Click sandbox: a testnet-compatible 1Click API with the same endpoints and field names, running NEAR's unmodified Intents verifier on testnet, with test tokens and a faucet. Test NEAR Intents swaps without real funds.",
   "keywords": [
     "NEAR Intents testnet",

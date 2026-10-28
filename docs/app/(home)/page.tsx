@@ -15,6 +15,18 @@ const features = [
 ];
 
 
+// What the testnet covers. Keep in sync with docs/resources/compatibility. Confidential intents are NOT supported.
+const covered = [
+  { t: 'Signed intents', d: 'generate-intent and submit-intent, settled by the verifier.', href: '/docs/api-reference/generate-intent' },
+  { t: 'Limit orders', d: 'Create, list, fetch and cancel orders on /v0/orders.', href: '/docs/api-reference/create-order' },
+  { t: 'appFees', d: 'App fees in bps, settled in the same execute_intents call.', href: '/docs/resources/compatibility' },
+  { t: 'ANY_INPUT', d: 'Open-amount deposits, plus the withdrawals endpoint.', href: '/docs/api-reference/get-any-input-quote-withdrawals' },
+  { t: 'MEMO deposits', d: 'depositMode MEMO for NEAR-native origin-chain tokens.', href: '/docs/resources/compatibility' },
+  { t: 'Auth', d: 'authenticate and refresh JWTs. Any API key is accepted.', href: '/docs/api-reference/authenticate' },
+  { t: 'Stuck & failed swaps', d: 'Reproduce partial deposits, expired quotes and simulated stuck or failed swaps.', href: '/docs/guides/failure-cases' },
+  { t: '31/31 spec checks', d: 'Response codes and schemas checked against the official 1Click OpenAPI.', href: 'https://github.com/zer0plugyut-afk/tidepool-examples/blob/main/CONFORMANCE.md' },
+];
+
 const icon = (d: string) => <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg>;
 const ICONS = [
   'M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z M9 12l2 2 4-4',
@@ -85,6 +97,20 @@ export default function HomePage() {
             ))}
           </div>
         </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-6xl px-6 pt-20">
+        <h2 className="tp-display text-center text-3xl sm:text-5xl">Everything in the 1Click API, <span className="tp-gradient-text">on testnet</span></h2>
+        <p className="mx-auto mt-4 max-w-2xl text-center text-fd-muted-foreground">All 17 endpoints in the OpenAPI spec (15 from 1Click plus a faucet and a health check), free and keyless, on NEAR testnet.</p>
+        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {covered.map((c) => (
+            <Link key={c.t} href={c.href} className="tp-glass block p-5 transition-transform hover:-translate-y-0.5">
+              <div className="font-semibold">{c.t}</div>
+              <p className="mt-1.5 text-sm text-fd-muted-foreground">{c.d}</p>
+            </Link>
+          ))}
+        </div>
+        <p className="mt-6 text-center text-sm text-fd-muted-foreground">Not supported: confidential intents. Swaps settle publicly on testnet. See the <Link href="/docs/resources/compatibility" className="underline underline-offset-2">compatibility table</Link>.</p>
       </section>
 
       <section className="mx-auto w-full max-w-3xl px-6 pt-20 text-center">
