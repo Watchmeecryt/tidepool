@@ -1,6 +1,6 @@
 ---
 title: Testing failure cases
-description: Reproduce partial deposits, expired quotes, overpayment and API errors on testnet, with the real status JSON each one returns.
+description: Reproduce partial deposits, expired quotes, overpayment, simulated stuck or failed swaps and API errors on testnet, with the real status JSON each one returns.
 ---
 
 Happy-path swaps are the easy part. This guide covers what your integration has to handle when a deposit goes wrong. Each case below was run against `https://www.usetidepool.tech` on NEAR testnet. The status JSON on this page is the real response from those runs, and every transaction is linked on NearBlocks.
@@ -14,6 +14,7 @@ Tidepool uses the 1Click status values (`PENDING_DEPOSIT`, `KNOWN_DEPOSIT_TX`, `
 | [Partial deposit](#partial-deposit) | Deposit less than `minAmountIn` | `INCOMPLETE_DEPOSIT`, then `REFUNDED` with `refundReason: PARTIAL_DEPOSIT` at the deadline |
 | [Late deposit](#late-deposit) | Deposit the full amount after `deadline` | `REFUNDED` with `refundReason: DEADLINE_PASSED` |
 | [Overpay](#overpay) | Deposit more than `amountIn` | `SUCCESS`, with the excess in `swapDetails.refundedAmount` |
+| [Stuck or failed swap (simulated outage)](#stuck-or-failed-swap-simulated-outage) | Add `simulate: "STUCK"` or `"FAILED"` to the quote (Tidepool-only, testnet) | `STUCK`: `PROCESSING`, then `REFUNDED` (`DEADLINE_PASSED`) at the deadline. `FAILED`: `PROCESSING`, then `FAILED` (`SWAP_FAILED`), deposit refunded |
 | [API errors](#api-errors) | A bad deadline, or an unknown deposit address | HTTP 400 or 404 before any funds move |
 
 The refund always returns the **origin token** to `refundTo`. See [Refunds](/docs/concepts/refunds) for every refund reason and [Status lifecycle](/docs/concepts/status-lifecycle) for the state machine.
@@ -25,17 +26,17 @@ The refund always returns the **origin token** to `refundTo`. See [Refunds](/doc
 ```bash
 npm install near-api-js@5 bs58@6   # Node 20+; save the script below as failure-cases.mjs
 # Uses a throwaway testnet account by default, or set NEAR_ACCOUNT_ID + NEAR_PRIVATE_KEY.
-TIDEPOOL_URL=https://www.usetidepool.tech node failure-cases.mjs all       # about 3 minutes
-node failure-cases.mjs partial   # or: expired | overpay | errors
+TIDEPOOL_URL=https://www.usetidepool.tech node failure-cases.mjs all       # about 5 minutes
+node failure-cases.mjs partial   # or: expired | overpay | stuck | failed | errors
 node failure-cases.mjs all --json run.json   # also save every status response
 ```
 
 <Accordions><Accordion title="failure-cases.mjs (full script)">
 
 ```js title="failure-cases.mjs"
-// Tidepool failure cases on NEAR testnet: partial deposit, expired quote, overpay, and API errors.
+// Tidepool failure cases on NEAR testnet: partial deposit, expired quote, overpay, simulated stuck/failed swaps, and API errors.
 //
-//   TIDEPOOL_URL=https://www.usetidepool.tech node failure-cases.mjs [partial|expired|overpay|errors|all]
+//   TIDEPOOL_URL=https://www.usetidepool.tech node failure-cases.mjs [partial|expired|overpay|stuck|failed|errors|all]
 //
 // Account: NEAR_ACCOUNT_ID + NEAR_PRIVATE_KEY, or a throwaway testnet account kept in ./.example-account.json
 // (same as swap.mjs). Deposits are INTENTS transfers from your verifier balance; the faucet tops it up.
@@ -138,6 +139,21 @@ const cases = {
     const tx = await deposit(depositAddress, (BigInt(amountIn) * 3n / 2n).toString());
     const st = await watch('overpay', depositAddress); log.push({ case: 'overpay', depositTx: tx, depositAddress }); return st;
   },
+  // Tidepool-only `simulate: "STUCK"`: the deposit is seen, the swap goes PROCESSING and never settles, then it is
+  // REFUNDED (DEADLINE_PASSED) at the quote deadline. Reproduces a client's view of a slow or down 1Click. Remove `simulate` on mainnet.
+  async stuck() {
+    const q = await quote(65_000, { simulate: 'STUCK' }); const { depositAddress, amountIn, deadline } = q.quote;
+    say('[stuck] quote', depositAddress, 'deadline', deadline, 'tidepool', JSON.stringify(q.tidepool));
+    const tx = await deposit(depositAddress, amountIn);
+    const st = await watch('stuck', depositAddress); log.push({ case: 'stuck', depositTx: tx, depositAddress }); return st;
+  },
+  // Tidepool-only `simulate: "FAILED"`: PROCESSING, then FAILED, and the deposit is refunded (SWAP_FAILED).
+  async failed() {
+    const q = await quote(600_000, { simulate: 'FAILED' }); const { depositAddress, amountIn } = q.quote;
+    say('[failed] quote', depositAddress, 'tidepool', JSON.stringify(q.tidepool));
+    const tx = await deposit(depositAddress, amountIn);
+    const st = await watch('failed', depositAddress); log.push({ case: 'failed', depositTx: tx, depositAddress }); return st;
+  },
   // API errors you should handle before any funds move.
   async errors() {
     const show = async (label, r) => { say(`[errors] ${label}: HTTP ${(r = await r).status}`, JSON.stringify(r.body)); log.push({ case: 'errors', label, http: r.status, body: r.body }); };
@@ -145,13 +161,14 @@ const cases = {
     await show('deadline 30 s ahead', call('POST', '/v0/quote', { ...body, deadline: new Date(Date.now() + 30_000).toISOString() }));
     await show('deadline in the past', call('POST', '/v0/quote', { ...body, deadline: new Date(Date.now() - 60_000).toISOString() }));
     await show('deadline not a date', call('POST', '/v0/quote', { ...body, deadline: 'tomorrow' }));
+    await show('simulate not STUCK or FAILED', call('POST', '/v0/quote', { ...body, deadline: new Date(Date.now() + 600_000).toISOString(), simulate: 'BOOM' }));
     await show('deadline 2 days ahead', call('POST', '/v0/quote', { ...body, deadline: new Date(Date.now() + 48 * 3600_000).toISOString() }));
     const bogus = crypto.randomBytes(32).toString('hex');
     await show('status of an unknown deposit address', call('GET', `/v0/status?depositAddress=${bogus}`));
     await show('submit a deposit for an unknown address', call('POST', '/v0/deposit/submit', { txHash: '8HAgViUuMBZ6bMSU3g6tMx5df6FFpevyHkQTLLcWqZzK', depositAddress: bogus }));
   },
 };
-const run = CASE === 'all' ? ['errors', 'overpay', 'partial', 'expired'] : [CASE];
+const run = CASE === 'all' ? ['errors', 'overpay', 'partial', 'expired', 'stuck', 'failed'] : [CASE];
 for (const c of run) {
   const st = await cases[c]();
   if (st) { const d = st.swapDetails; say(`[${c}] final ${st.status}`, JSON.stringify({ refundReason: d.refundReason, refundedAmount: d.refundedAmountFormatted, amountOut: d.amountOutFormatted })); for (const t of st.tidepool?.explorer || []) say('  ', t.label, t.url); }
@@ -425,6 +442,240 @@ Deposit **7.5 USDC** against a 5 USDC quote. Overpaying is not a failure. The sw
 }
 ```
 
+## Stuck or failed swap (simulated outage)
+
+<Callout type="warn" title="Testnet only. Remove `simulate` before you go to mainnet">
+`simulate` is a Tidepool-specific field. Real 1Click has no such field, so remove it when you move to mainnet 1Click. Tidepool ignores the field when you omit it, and rejects any value other than `STUCK` or `FAILED` with a 400.
+</Callout>
+
+This case reproduces **what your client sees when 1Click is slow or down**: a deposit that is detected but never settles, or a swap that ends in `FAILED`. It does not reproduce the cause. Whatever goes wrong on a real outage happens inside NEAR's own infrastructure, which Tidepool does not simulate. Use it to test your polling timeouts, your "taking longer than expected" UI, and your handling of `REFUNDED` and `FAILED`.
+
+Add `"simulate": "STUCK"` or `"simulate": "FAILED"` to a normal `POST /v0/quote` body:
+
+```bash
+curl -s -X POST https://www.usetidepool.tech/v0/quote \
+  -H 'content-type: application/json' -H 'x-api-key: <your key>' \
+  -d '{
+    "dry": false,
+    "swapType": "EXACT_INPUT",
+    "slippageTolerance": 100,
+    "originAsset": "nep141:usdc.tidepool-sandbox.testnet",
+    "destinationAsset": "nep141:wnear.tidepool-sandbox.testnet",
+    "amount": "5000000",
+    "depositType": "INTENTS",
+    "refundTo": "alice.testnet",
+    "refundType": "INTENTS",
+    "recipient": "alice.testnet",
+    "recipientType": "INTENTS",
+    "deadline": "<ISO 8601 time 65 s to 24 h ahead>",
+    "simulate": "STUCK"
+  }'
+```
+
+The flag is stored with the quote, so `/v0/status` stays consistent across server restarts. It is exposed only in the Tidepool-specific `tidepool` object (`tidepool.simulate`, plus an explanatory `tidepool.note`). The status value and the `swapDetails` fields are the plain 1Click ones. The simulation starts once the deposit is detected and is at least `minAmountIn`. An underpaid or late deposit is handled as in [Partial deposit](#partial-deposit) and [Late deposit](#late-deposit).
+
+| `simulate` | After the deposit | Final status | `refundReason` |
+| --- | --- | --- | --- |
+| `STUCK` | `PROCESSING`, never settles, until the quote `deadline` | `REFUNDED` | `DEADLINE_PASSED` |
+| `FAILED` | `PROCESSING`, then `FAILED` about 10 s later | `FAILED`, deposit refunded | `SWAP_FAILED` |
+
+No new refund reason was added. `STUCK` reuses `DEADLINE_PASSED`, the existing reason for a deposit that was not swapped before the deadline, so code that branches on the known values keeps working. `FAILED` uses `SWAP_FAILED`. Normal Tidepool `FAILED` is only used when a refund itself cannot be completed, so for the simulation Tidepool also returns the origin token to `refundTo` and fills in `refundedAmount` and `refundReason`. Treat it as an outage you can recover from by re-quoting, and don't depend on that refund on mainnet: check `swapDetails.refundedAmount` rather than assuming one.
+
+An invalid value is rejected with the usual helpful 400 (`message`, `hint`, `field`, `docs`, `exampleRequest`). This is the real response for `"simulate": "stuck"` (lowercase):
+
+```json title="HTTP 400"
+{
+  "message": "simulate \"stuck\" is not supported (supported: STUCK, FAILED). Did you mean STUCK?",
+  "hint": "simulate is a Tidepool-only testnet field and is optional: omit it for a normal swap, or set it to STUCK or FAILED (uppercase) to simulate a stuck or failed swap. Remove it when you move to mainnet 1Click.",
+  "docs": "https://www.usetidepool.tech/docs/guides/failure-cases#stuck-or-failed-swap-simulated-outage",
+  "field": "simulate",
+  "supportedValues": [
+    "STUCK",
+    "FAILED"
+  ],
+  "exampleRequest": {
+    "dry": true,
+    "swapType": "EXACT_INPUT",
+    "slippageTolerance": 100,
+    "originAsset": "nep141:usdc.tidepool-sandbox.testnet",
+    "depositType": "INTENTS",
+    "destinationAsset": "nep141:wnear.tidepool-sandbox.testnet",
+    "amount": "10000000",
+    "refundTo": "alice.testnet",
+    "refundType": "INTENTS",
+    "recipient": "alice.testnet",
+    "recipientType": "DESTINATION_CHAIN",
+    "deadline": "2026-10-28T05:56:40.255Z"
+  }
+}
+```
+
+### Stuck swap (`STUCK`)
+
+Run on 2026-10-28 with `node failure-cases.mjs stuck`: a 65 s deadline, then a deposit of the full 5 USDC. The quote response carried `"tidepool": {"simulate": "STUCK"}`.
+
+- Deposit: [h4RsjsNJ…](https://testnet.nearblocks.io/txns/h4RsjsNJREiKtnfMec2qZWHgPahiPzThvmEaViradyk)
+- Refund: [FGasLbPb…](https://testnet.nearblocks.io/txns/FGasLbPb1ZCFzTZaYgxvfycmyDi1qM37UgyzqyxELFYe)
+- Deposit address: `b3aebff5ca3353026377f1cf64f8e54244387f39de6226b4f58b2de980f57367`
+
+The swap reached `PROCESSING` about 3 s after the deposit and stayed there for about a minute, until the deadline (05:40:26 UTC).
+
+```json title="PROCESSING"
+{
+  "status": "PROCESSING",
+  "updatedAt": "2026-10-28T05:39:27.657Z",
+  "swapDetails": {
+    "intentHashes": [],
+    "nearTxHashes": [],
+    "originChainTxHashes": [
+      {
+        "hash": "h4RsjsNJREiKtnfMec2qZWHgPahiPzThvmEaViradyk",
+        "explorerUrl": "https://testnet.nearblocks.io/txns/h4RsjsNJREiKtnfMec2qZWHgPahiPzThvmEaViradyk"
+      }
+    ],
+    "destinationChainTxHashes": [],
+    "depositedAmount": "5000000",
+    "depositedAmountFormatted": "5",
+    "depositedAmountUsd": "4.9967",
+    "withdrawFee": "0"
+  },
+  "tidepool": {
+    "explorer": [],
+    "intentsAccount": "b3aebff5ca3353026377f1cf64f8e54244387f39de6226b4f58b2de980f57367",
+    "note": "Simulated STUCK (Tidepool-only, from the simulate field of the quote request): settlement is withheld, so the swap stays PROCESSING until the quote deadline, then the deposit is refunded.",
+    "simulate": "STUCK"
+  }
+}
+```
+
+```json title="REFUNDED (after the deadline)"
+{
+  "status": "REFUNDED",
+  "updatedAt": "2026-10-28T05:40:29.881Z",
+  "swapDetails": {
+    "intentHashes": [
+      "DFwBC2BXXWwaGrK48hLrarvQg5ABvcEjviczwrfkYhva"
+    ],
+    "nearTxHashes": [
+      "FGasLbPb1ZCFzTZaYgxvfycmyDi1qM37UgyzqyxELFYe"
+    ],
+    "originChainTxHashes": [
+      {
+        "hash": "h4RsjsNJREiKtnfMec2qZWHgPahiPzThvmEaViradyk",
+        "explorerUrl": "https://testnet.nearblocks.io/txns/h4RsjsNJREiKtnfMec2qZWHgPahiPzThvmEaViradyk"
+      }
+    ],
+    "destinationChainTxHashes": [
+      {
+        "hash": "FGasLbPb1ZCFzTZaYgxvfycmyDi1qM37UgyzqyxELFYe",
+        "explorerUrl": "https://testnet.nearblocks.io/txns/FGasLbPb1ZCFzTZaYgxvfycmyDi1qM37UgyzqyxELFYe"
+      }
+    ],
+    "depositedAmount": "5000000",
+    "depositedAmountFormatted": "5",
+    "depositedAmountUsd": "4.9967",
+    "refundedAmount": "5000000",
+    "refundedAmountFormatted": "5",
+    "refundedAmountUsd": "4.9967",
+    "refundReason": "DEADLINE_PASSED",
+    "withdrawFee": "0"
+  },
+  "tidepool": {
+    "explorer": [
+      {
+        "label": "refund",
+        "url": "https://testnet.nearblocks.io/txns/FGasLbPb1ZCFzTZaYgxvfycmyDi1qM37UgyzqyxELFYe"
+      }
+    ],
+    "intentsAccount": "b3aebff5ca3353026377f1cf64f8e54244387f39de6226b4f58b2de980f57367",
+    "note": "Simulated STUCK (Tidepool-only, from the simulate field of the quote request): settlement is withheld, so the swap stays PROCESSING until the quote deadline, then the deposit is refunded.",
+    "simulate": "STUCK"
+  }
+}
+```
+
+### Failed swap (`FAILED`)
+
+Run on 2026-10-28 with `node failure-cases.mjs failed`: a 10 minute deadline, then a deposit of the full 5 USDC. The swap went `PROCESSING`, then `FAILED` 12 s later, well before the deadline.
+
+- Deposit: [4MAyBKA2…](https://testnet.nearblocks.io/txns/4MAyBKA2ESihGyLD77fxfBjevbawQWf6VXyCQBcMLgGT)
+- Refund: [7rSC9oJa…](https://testnet.nearblocks.io/txns/7rSC9oJacoXxAe5qberk5pN7GsZQwh5uVyCvbwM3GjAG)
+- Deposit address: `444f9a3728f6c94857cb9715ff6f4deef029800e2374842b8aa34d05d4c0d6d1`
+
+```json title="PROCESSING"
+{
+  "status": "PROCESSING",
+  "updatedAt": "2026-10-28T05:40:35.661Z",
+  "swapDetails": {
+    "intentHashes": [],
+    "nearTxHashes": [],
+    "originChainTxHashes": [
+      {
+        "hash": "4MAyBKA2ESihGyLD77fxfBjevbawQWf6VXyCQBcMLgGT",
+        "explorerUrl": "https://testnet.nearblocks.io/txns/4MAyBKA2ESihGyLD77fxfBjevbawQWf6VXyCQBcMLgGT"
+      }
+    ],
+    "destinationChainTxHashes": [],
+    "depositedAmount": "5000000",
+    "depositedAmountFormatted": "5",
+    "depositedAmountUsd": "4.9968",
+    "withdrawFee": "0"
+  },
+  "tidepool": {
+    "explorer": [],
+    "intentsAccount": "444f9a3728f6c94857cb9715ff6f4deef029800e2374842b8aa34d05d4c0d6d1",
+    "note": "Simulated FAILED (Tidepool-only, from the simulate field of the quote request): the swap moves to PROCESSING, then FAILED, and the deposit is refunded.",
+    "simulate": "FAILED"
+  }
+}
+```
+
+```json title="FAILED"
+{
+  "status": "FAILED",
+  "updatedAt": "2026-10-28T05:40:49.734Z",
+  "swapDetails": {
+    "intentHashes": [
+      "8Sz7vYQ9S83VYdS5UPs1AUMZCSvXMYZHbcTXiaRi8v3V"
+    ],
+    "nearTxHashes": [
+      "7rSC9oJacoXxAe5qberk5pN7GsZQwh5uVyCvbwM3GjAG"
+    ],
+    "originChainTxHashes": [
+      {
+        "hash": "4MAyBKA2ESihGyLD77fxfBjevbawQWf6VXyCQBcMLgGT",
+        "explorerUrl": "https://testnet.nearblocks.io/txns/4MAyBKA2ESihGyLD77fxfBjevbawQWf6VXyCQBcMLgGT"
+      }
+    ],
+    "destinationChainTxHashes": [
+      {
+        "hash": "7rSC9oJacoXxAe5qberk5pN7GsZQwh5uVyCvbwM3GjAG",
+        "explorerUrl": "https://testnet.nearblocks.io/txns/7rSC9oJacoXxAe5qberk5pN7GsZQwh5uVyCvbwM3GjAG"
+      }
+    ],
+    "depositedAmount": "5000000",
+    "depositedAmountFormatted": "5",
+    "depositedAmountUsd": "4.9968",
+    "refundedAmount": "5000000",
+    "refundedAmountFormatted": "5",
+    "refundedAmountUsd": "4.9968",
+    "refundReason": "SWAP_FAILED",
+    "withdrawFee": "0"
+  },
+  "tidepool": {
+    "explorer": [
+      {
+        "label": "refund",
+        "url": "https://testnet.nearblocks.io/txns/7rSC9oJacoXxAe5qberk5pN7GsZQwh5uVyCvbwM3GjAG"
+      }
+    ],
+    "intentsAccount": "444f9a3728f6c94857cb9715ff6f4deef029800e2374842b8aa34d05d4c0d6d1",
+    "note": "Simulated FAILED (Tidepool-only, from the simulate field of the quote request): the swap moves to PROCESSING, then FAILED, and the deposit is refunded.",
+    "simulate": "FAILED"
+  }
+}
+```
+
 ## API errors
 
 These requests are rejected before any funds move. The response bodies below are real.
@@ -435,6 +686,7 @@ These requests are rejected before any funds move. The response bodies below are
 | `POST /v0/quote`, `dry: false`, deadline in the past | 400 | `{"message":"deadline must be at least 60 seconds in the future"}` |
 | `POST /v0/quote`, `deadline: "tomorrow"` | 400 | `{"message":"deadline must be an ISO 8601 date"}` |
 | `POST /v0/quote`, `dry: false`, deadline 48 h ahead | 400 | `{"message":"deadline must be within 24 hours"}` |
+| `POST /v0/quote` with `simulate: "stuck"` (or any value other than `STUCK`/`FAILED`) | 400 | `{"message":"simulate \"stuck\" is not supported (supported: STUCK, FAILED). Did you mean STUCK?", ...}` plus `hint`, `field`, `docs`, `exampleRequest` |
 | `GET /v0/status?depositAddress=<unknown>` | 404 | `{"message":"Deposit address not found"}` |
 | `POST /v0/deposit/submit` with an unknown `depositAddress` | 404 | `{"message":"Unknown depositAddress"}` |
 
@@ -452,4 +704,5 @@ A 404 from `/v0/status` means Tidepool never issued that deposit address. Funds 
 - **Show `INCOMPLETE_DEPOSIT` to the user.** Show `depositedAmount` against `minAmountIn`, with a countdown to `deadline`, so they can top up in time.
 - **Pick deadlines that fit the deposit.** Live quotes need 60 s to 24 h. Allow for wallet confirmation and block time: 5–30 minutes suits interactive flows. Never reuse an expired deposit address. Get a new quote instead.
 - **Make it idempotent.** One live quote is one deposit address is one swap. Key your records by `depositAddress` (or `correlationId`). Retrying `/v0/deposit/submit` or polling `/v0/status` is safe. Don't create a new quote on a retry, or you end up with two addresses for one payment.
-- **Handle `FAILED`** (rare) as "contact support". It is kept for cases where a refund itself could not be completed. Log `correlationId` and `tidepool.note`.
+- **Handle `FAILED`** (rare) as "contact support". On 1Click it means the swap could not complete. Tidepool uses it for a refund that could not be completed, and for `simulate: "FAILED"`, where the deposit is refunded with `refundReason: SWAP_FAILED`. Log `correlationId` and `tidepool.note`.
+- **Time out on `PROCESSING`.** A swap that stays in `PROCESSING` for longer than `timeEstimate` plus a margin is a slow or down 1Click as far as your user can tell. Show "taking longer than expected", keep polling until the `deadline`, and expect `REFUNDED`. Test it with `simulate: "STUCK"`.

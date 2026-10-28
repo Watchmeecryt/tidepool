@@ -8,11 +8,11 @@ A refund always returns the **origin token** to `refundTo`, as a wallet balance 
 | Reason | When |
 | --- | --- |
 | `PARTIAL_DEPOSIT` | Deadline passed with less than `minAmountIn` deposited. |
-| `DEADLINE_PASSED` | Funds landed only after the deadline. |
+| `DEADLINE_PASSED` | Funds landed only after the deadline. Also used when a swap quoted with `simulate: "STUCK"` is still `PROCESSING` at the deadline. |
 | `SLIPPAGE_EXCEEDED` | At settlement the re-priced output fell below `minAmountOut`. |
 | `PRICE_MOVED` | `EXACT_OUTPUT`: the deposit no longer covers the requested output. |
 | `INSUFFICIENT_LIQUIDITY` | The maker ran out of the destination token. |
-| `SWAP_FAILED` | The settlement transaction failed on chain. |
+| `SWAP_FAILED` | The settlement transaction failed on chain. Also used for `simulate: "FAILED"`, which ends `FAILED` with the deposit refunded. |
 
 ## Excess is not a refund
 

@@ -51,7 +51,25 @@ const testnetAcct = (v) => (typeof v === 'string' && /\.testnet$/.test(v) ? v : 
 export function exampleQuote(req = {}) {
   return { dry: true, swapType: 'EXACT_INPUT', slippageTolerance: 100, originAsset: tp('usdc'), depositType: 'INTENTS', destinationAsset: tp('wnear'), amount: '10000000', refundTo: testnetAcct(req.refundTo), refundType: 'INTENTS', recipient: testnetAcct(req.recipient), recipientType: 'DESTINATION_CHAIN', deadline: new Date(Date.now() + 15 * 60_000).toISOString() };
 }
-const hint = (h, req, more = {}) => ({ hint: h, ...more, docs: DOCS_QUICKSTART, exampleRequest: exampleQuote(req) });
+const hint = (h, req, more = {}) => ({ hint: h, docs: DOCS_QUICKSTART, ...more, exampleRequest: exampleQuote(req) });
+
+// ---- Tidepool-only: opt-in swap failure simulation (`simulate` on POST /v0/quote). Real 1Click has no such field. ----
+export const SIMULATE_VALUES = ['STUCK', 'FAILED'];
+const DOCS_SIMULATE = 'https://www.usetidepool.tech/docs/guides/failure-cases#stuck-or-failed-swap-simulated-outage';
+const FAILED_DELAY_MS = Number(process.env.SIMULATE_FAILED_DELAY_MS) || 10_000; // PROCESSING time before a simulated FAILED
+const SIM_NOTE = {
+  STUCK: 'Simulated STUCK (Tidepool-only, from the simulate field of the quote request): settlement is withheld, so the swap stays PROCESSING until the quote deadline, then the deposit is refunded.',
+  FAILED: 'Simulated FAILED (Tidepool-only, from the simulate field of the quote request): the swap moves to PROCESSING, then FAILED, and the deposit is refunded.',
+};
+function checkSimulate(req) {
+  if (req.simulate === undefined || req.simulate === null) return undefined; // absent: ignored, like real 1Click
+  if (!SIMULATE_VALUES.includes(req.simulate)) {
+    const near = typeof req.simulate === 'string' && SIMULATE_VALUES.find(v => v === req.simulate.trim().toUpperCase());
+    throw new BadRequest(`simulate ${JSON.stringify(req.simulate)} is not supported (supported: ${SIMULATE_VALUES.join(', ')})${near ? `. Did you mean ${near}?` : ''}`, 400, hint(`simulate is a Tidepool-only testnet field and is optional: omit it for a normal swap, or set it to ${SIMULATE_VALUES.join(' or ')} (uppercase) to simulate a stuck or failed swap. Remove it when you move to mainnet 1Click.`, req, { field: 'simulate', supportedValues: SIMULATE_VALUES, docs: DOCS_SIMULATE }));
+  }
+  if (req.swapType === 'ANY_INPUT') throw new BadRequest('simulate is not supported for ANY_INPUT quotes (use EXACT_INPUT, EXACT_OUTPUT or FLEX_INPUT)', 400, hint('Failure simulation needs a swap that settles once; ANY_INPUT converts every deposit separately.', req, { field: 'simulate', docs: DOCS_SIMULATE }));
+  return req.simulate;
+}
 const SUPPORTED_SHORT = () => TOKENS.filter(t => !t.chain).map(t => t.assetId);
 function assetError(field, id, req) {
   const sug = suggestAsset(id);
@@ -110,6 +128,8 @@ export async function quote(req, { authed, maxDeadlineMs = 24 * 3600_000 } = {})
   const need = ['dry', 'swapType', 'slippageTolerance', 'originAsset', 'depositType', 'destinationAsset', 'amount', 'refundTo', 'refundType', 'recipient', 'recipientType', 'deadline'];
   const missing = need.filter(k => req[k] === undefined || req[k] === null || req[k] === '');
   if (missing.length) throw new BadRequest(`${missing[0]} is required${missing.length > 1 ? ` (missing: ${missing.join(', ')})` : ''}`, 400, hint('A quote needs all of these fields. Copy exampleRequest and adjust it.', req, { missingFields: missing }));
+  const simulate = checkSimulate(req);
+  const { simulate: _sim, ...quoteReq } = req; // simulate is Tidepool-only: kept out of the echoed (1Click-shaped) quoteRequest
   const inT = byAsset[req.originAsset], outT = byAsset[req.destinationAsset];
   if (!inT) throw assetError('originAsset', req.originAsset, req);
   if (!outT) throw assetError('destinationAsset', req.destinationAsset, req);
@@ -175,13 +195,13 @@ export async function quote(req, { authed, maxDeadlineMs = 24 * 3600_000 } = {})
     if (q.depositMemo) { const { depositMemo } = q; delete q.depositMemo; Object.assign(q, { depositAddress, depositMemo }); }
     if (req.swapType === 'ANY_INPUT' && req.depositType === 'INTENTS') q.chainDepositAddresses = [{ blockchain: 'near', address: accountId }];
   }
-  const body = { correlationId, timestamp: new Date().toISOString(), quoteRequest: req, quote: q };
+  const body = { correlationId, timestamp: new Date().toISOString(), quoteRequest: quoteReq, quote: q };
   const quoteResponse = { ...body, signature: signQuote(body) };
   if (!req.dry) {
-    db.swaps[keyOf(q.depositAddress, q.depositMemo)] = { quoteResponse, appFees, depositMemo: q.depositMemo, intentsAccount: deriveDepositKey(MASTER, correlationId).accountId, status: 'PENDING_DEPOSIT', updatedAt: new Date().toISOString(), feeBps: fee, priceSource: p.source, txs: [], intentHashes: [], originTxs: [], destTxs: [] };
+    db.swaps[keyOf(q.depositAddress, q.depositMemo)] = { quoteResponse, appFees, depositMemo: q.depositMemo, intentsAccount: deriveDepositKey(MASTER, correlationId).accountId, status: 'PENDING_DEPOSIT', ...(simulate ? { simulate } : {}), updatedAt: new Date().toISOString(), feeBps: fee, priceSource: p.source, txs: [], intentHashes: [], originTxs: [], destTxs: [] };
     save();
   }
-  return quoteResponse;
+  return simulate ? { ...quoteResponse, tidepool: { simulate } } : quoteResponse;
 }
 
 export const keyOf = (a, memo) => (isEvmAddress(a) ? a.toLowerCase() : a) + (memo ? `#${memo}` : '');
@@ -236,6 +256,7 @@ export function statusOf(depositAddress, depositMemo) {
   if (qr.quoteRequest.referral) d.referral = qr.quoteRequest.referral;
   d.withdrawFee = '0';
   const tp = { explorer: s.txs.map(t => ({ label: t.label, url: urlOf(s, t.hash) })), intentsAccount: acctOf(depositAddress, s), note: s.note };
+  if (s.simulate) { tp.simulate = s.simulate; if (!tp.note) tp.note = SIM_NOTE[s.simulate]; }
   if (s.appFeePaid?.length) tp.appFees = s.appFeePaid;
   if (s.withdrawals?.length) tp.anyInputWithdrawals = s.withdrawals.length;
   return { correlationId: qr.correlationId, quoteResponse: qr, status: s.status, updatedAt: s.updatedAt, swapDetails: d, tidepool: tp };
@@ -428,9 +449,34 @@ async function tick(addr, s) {
   if (req.swapType === 'ANY_INPUT') return tickAnyInput(addr, s, inT, outT, deadline);
   const bal = await intentsBal(acctOf(addr, s), inT.assetId);
   if (bal > 0n) s.deposited = bal.toString();
+  if (s.simulate && (await simulateTick(addr, s, inT, bal, deadline))) return;
   if (bal >= BigInt(q.minAmountIn) && Date.now() < deadline) return settle(addr, s, inT, outT, bal);
   if (bal > 0n && Date.now() >= deadline) return refund(addr, s, inT, bal, bal < BigInt(q.minAmountIn) ? 'PARTIAL_DEPOSIT' : 'DEADLINE_PASSED');
   if (bal > 0n && s.status !== 'INCOMPLETE_DEPOSIT') set(s, 'INCOMPLETE_DEPOSIT');
+}
+
+// Simulated outage (opt-in `simulate` on the quote). Returns true when it handled this tick.
+//  STUCK:  deposit seen -> PROCESSING and no settlement. At the deadline the normal late path refunds it (REFUNDED, DEADLINE_PASSED).
+//  FAILED: deposit seen -> PROCESSING, then after FAILED_DELAY_MS -> FAILED with the deposit refunded (refundReason SWAP_FAILED).
+async function simulateTick(addr, s, inT, bal, deadline) {
+  const q = s.quoteResponse.quote;
+  const funded = bal >= BigInt(q.minAmountIn) && Date.now() < deadline;
+  if (s.simulate === 'STUCK') {
+    if (!funded) return false; // underpaid or past the deadline: normal INCOMPLETE_DEPOSIT / refund handling
+    if (s.status !== 'PROCESSING') set(s, 'PROCESSING', { deposited: bal.toString(), simulatedAt: new Date().toISOString() });
+    return true;
+  }
+  if (s.simulate === 'FAILED') {
+    if (s.status !== 'PROCESSING') {
+      if (!funded) return false;
+      set(s, 'PROCESSING', { deposited: bal.toString(), simulatedAt: new Date().toISOString() });
+      return true;
+    }
+    if (Date.now() - new Date(s.simulatedAt || 0).getTime() < FAILED_DELAY_MS) return true;
+    await refund(addr, s, inT, bal, 'SWAP_FAILED', 'FAILED'); // FAILED is final; the deposit still goes back to refundTo
+    return true;
+  }
+  return false;
 }
 
 // ---- MEMO deposits: verify the user's ft_transfer to the shared address carried our memo, then forward ----

@@ -36,6 +36,7 @@ function fields(s, prefix = '', rows = [], depth = 0, seen = new Set()) {
   if (s.allOf) { for (const x of s.allOf) fields(x, prefix, rows, depth, seen); return rows; }
   const req = new Set(s.required || []);
   for (const [k, v] of Object.entries(s.properties || {})) {
+    if (k === 'simulate' && /quoteRequest\.$/.test(prefix)) continue; // Tidepool strips simulate from the echoed quoteRequest
     const d = deref(v);
     rows.push(`| \`${prefix}${k}\` | ${esc(tname(v))} | ${req.has(k) ? 'yes' : ''} | ${esc(d.description || v.description)} |`);
     const inner = d.type === 'array' ? deref(d.items || {}) : d;

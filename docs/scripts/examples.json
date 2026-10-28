@@ -78,7 +78,7 @@
         "message": "swapType is required"
       }
     },
-    "notes": "Returns **HTTP 201** on success (the spec lists 200, matching 1Click). With `dry: false` the response adds `quote.depositAddress`, `deadline` and `timeWhenInactive`. See [Quotes and pricing](/docs/concepts/quotes) and [Swap types](/docs/concepts/swap-types)."
+    "notes": "Returns **HTTP 201** on success (the spec lists 200, matching 1Click). With `dry: false` the response adds `quote.depositAddress`, `deadline` and `timeWhenInactive`. See [Quotes and pricing](/docs/concepts/quotes) and [Swap types](/docs/concepts/swap-types). Tidepool-only: the optional `simulate` field (`STUCK` or `FAILED`) simulates a stuck or failed swap on testnet, see [Stuck or failed swap](/docs/guides/failure-cases#stuck-or-failed-swap-simulated-outage). Remove it when you move to mainnet 1Click."
   },
   "getExecutionStatus": {
     "tryIt": true,

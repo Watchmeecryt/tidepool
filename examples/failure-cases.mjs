@@ -1,6 +1,6 @@
-// Tidepool failure cases on NEAR testnet: partial deposit, expired quote, overpay, and API errors.
+// Tidepool failure cases on NEAR testnet: partial deposit, expired quote, overpay, simulated stuck/failed swaps, and API errors.
 //
-//   TIDEPOOL_URL=https://www.usetidepool.tech node failure-cases.mjs [partial|expired|overpay|errors|all]
+//   TIDEPOOL_URL=https://www.usetidepool.tech node failure-cases.mjs [partial|expired|overpay|stuck|failed|errors|all]
 //
 // Account: NEAR_ACCOUNT_ID + NEAR_PRIVATE_KEY, or a throwaway testnet account kept in ./.example-account.json
 // (same as swap.mjs). Deposits are INTENTS transfers from your verifier balance; the faucet tops it up.
@@ -103,6 +103,21 @@ const cases = {
     const tx = await deposit(depositAddress, (BigInt(amountIn) * 3n / 2n).toString());
     const st = await watch('overpay', depositAddress); log.push({ case: 'overpay', depositTx: tx, depositAddress }); return st;
   },
+  // Tidepool-only `simulate: "STUCK"`: the deposit is seen, the swap goes PROCESSING and never settles, then it is
+  // REFUNDED (DEADLINE_PASSED) at the quote deadline. Reproduces a client's view of a slow or down 1Click. Remove `simulate` on mainnet.
+  async stuck() {
+    const q = await quote(65_000, { simulate: 'STUCK' }); const { depositAddress, amountIn, deadline } = q.quote;
+    say('[stuck] quote', depositAddress, 'deadline', deadline, 'tidepool', JSON.stringify(q.tidepool));
+    const tx = await deposit(depositAddress, amountIn);
+    const st = await watch('stuck', depositAddress); log.push({ case: 'stuck', depositTx: tx, depositAddress }); return st;
+  },
+  // Tidepool-only `simulate: "FAILED"`: PROCESSING, then FAILED, and the deposit is refunded (SWAP_FAILED).
+  async failed() {
+    const q = await quote(600_000, { simulate: 'FAILED' }); const { depositAddress, amountIn } = q.quote;
+    say('[failed] quote', depositAddress, 'tidepool', JSON.stringify(q.tidepool));
+    const tx = await deposit(depositAddress, amountIn);
+    const st = await watch('failed', depositAddress); log.push({ case: 'failed', depositTx: tx, depositAddress }); return st;
+  },
   // API errors you should handle before any funds move.
   async errors() {
     const show = async (label, r) => { say(`[errors] ${label}: HTTP ${(r = await r).status}`, JSON.stringify(r.body)); log.push({ case: 'errors', label, http: r.status, body: r.body }); };
@@ -110,13 +125,14 @@ const cases = {
     await show('deadline 30 s ahead', call('POST', '/v0/quote', { ...body, deadline: new Date(Date.now() + 30_000).toISOString() }));
     await show('deadline in the past', call('POST', '/v0/quote', { ...body, deadline: new Date(Date.now() - 60_000).toISOString() }));
     await show('deadline not a date', call('POST', '/v0/quote', { ...body, deadline: 'tomorrow' }));
+    await show('simulate not STUCK or FAILED', call('POST', '/v0/quote', { ...body, deadline: new Date(Date.now() + 600_000).toISOString(), simulate: 'BOOM' }));
     await show('deadline 2 days ahead', call('POST', '/v0/quote', { ...body, deadline: new Date(Date.now() + 48 * 3600_000).toISOString() }));
     const bogus = crypto.randomBytes(32).toString('hex');
     await show('status of an unknown deposit address', call('GET', `/v0/status?depositAddress=${bogus}`));
     await show('submit a deposit for an unknown address', call('POST', '/v0/deposit/submit', { txHash: '8HAgViUuMBZ6bMSU3g6tMx5df6FFpevyHkQTLLcWqZzK', depositAddress: bogus }));
   },
 };
-const run = CASE === 'all' ? ['errors', 'overpay', 'partial', 'expired'] : [CASE];
+const run = CASE === 'all' ? ['errors', 'overpay', 'partial', 'expired', 'stuck', 'failed'] : [CASE];
 for (const c of run) {
   const st = await cases[c]();
   if (st) { const d = st.swapDetails; say(`[${c}] final ${st.status}`, JSON.stringify({ refundReason: d.refundReason, refundedAmount: d.refundedAmountFormatted, amountOut: d.amountOutFormatted })); for (const t of st.tidepool?.explorer || []) say('  ', t.label, t.url); }

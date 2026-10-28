@@ -13,7 +13,7 @@ description: Every status a swap can have, what moves it, and when to stop polli
 | `PROCESSING` | Enough arrived. Settlement transaction is being sent. | |
 | `SUCCESS` | Swapped. `swapDetails` has amounts, tx hashes and intent hashes. | ✓ |
 | `REFUNDED` | Deposit returned to `refundTo`. `swapDetails.refundReason` says why. | ✓ |
-| `FAILED` | Settlement and refund both failed. Rare; contact the maintainer with the deposit address. | ✓ |
+| `FAILED` | Settlement and refund both failed. Rare; contact the maintainer with the deposit address. A quote with `simulate: "FAILED"` also ends here, with the deposit refunded (`refundReason: SWAP_FAILED`). | ✓ |
 
 ## Polling
 

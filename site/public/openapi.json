@@ -349,7 +349,7 @@
     },
     "/v0/quote": {
       "post": {
-        "description": "Generates a swap quote based on input parameters such as the assets, amount, slippage tolerance, and recipient/refund information.\n\nReturns pricing details, estimated time, and a unique **deposit address** to which tokens must be transferred to initiate the swap.\n\nYou can set the `dry` parameter to `true` to simulate the quote request **without generating a deposit address** or initiating the swap process. This is useful for previewing swap parameters or validating input data without committing to an actual swap.\n\nThis endpoint is the first required step in the swap process. Tidepool supports EXACT_INPUT, EXACT_OUTPUT, FLEX_INPUT and ANY_INPUT; appFees; depositMode SIMPLE and MEMO (MEMO for NEAR-native ORIGIN_CHAIN only); ORIGIN_CHAIN and INTENTS deposit/refund types; DESTINATION_CHAIN and INTENTS recipient types. CONFIDENTIAL_INTENTS / confidentiality is accepted but ignored.",
+        "description": "Generates a swap quote based on input parameters such as the assets, amount, slippage tolerance, and recipient/refund information.\n\nReturns pricing details, estimated time, and a unique **deposit address** to which tokens must be transferred to initiate the swap.\n\nYou can set the `dry` parameter to `true` to simulate the quote request **without generating a deposit address** or initiating the swap process. This is useful for previewing swap parameters or validating input data without committing to an actual swap.\n\nThis endpoint is the first required step in the swap process. Tidepool supports EXACT_INPUT, EXACT_OUTPUT, FLEX_INPUT and ANY_INPUT; appFees; depositMode SIMPLE and MEMO (MEMO for NEAR-native ORIGIN_CHAIN only); ORIGIN_CHAIN and INTENTS deposit/refund types; DESTINATION_CHAIN and INTENTS recipient types. CONFIDENTIAL_INTENTS / confidentiality is accepted but ignored. Tidepool-only: the optional `simulate` field (`STUCK` or `FAILED`) simulates a stuck or failed swap on testnet; see the Testing failure cases guide.",
         "operationId": "getQuote",
         "parameters": [],
         "requestBody": {
@@ -2149,6 +2149,16 @@
             ],
             "default": "public",
             "example": "basic"
+          },
+          "simulate": {
+            "type": "string",
+            "enum": [
+              "STUCK",
+              "FAILED"
+            ],
+            "description": "**Tidepool-only, testnet-only, optional.** Real 1Click has no such field; omit it and Tidepool behaves like 1Click. Simulates a swap outage after the deposit is detected. `STUCK`: the swap goes to `PROCESSING` and stays there until `deadline`, then the origin token is refunded to `refundTo` (`REFUNDED`, `refundReason: DEADLINE_PASSED`). `FAILED`: the swap goes to `PROCESSING`, then `FAILED`, and the deposit is refunded (`refundReason: SWAP_FAILED`, `refundedAmount` set). Other values return HTTP 400. Not supported with `ANY_INPUT`. The flag is stored with the quote and reported as `tidepool.simulate` in `/v0/status`. It reproduces what a client sees when 1Click is slow or down, not the cause. Remove it when you move to mainnet 1Click.",
+            "example": "STUCK",
+            "x-tidepool": true
           },
           "referral": {
             "type": "string",
