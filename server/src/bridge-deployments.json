@@ -380,6 +380,14 @@
       {
         "label": "back treasury with USDT",
         "hash": "uuub4r7JkPBGnyGDR5CR3qtzXhQ26myzRKMsQkWdF4X9FsrV1yUh7JN3Mz1VC5gHnnEPzBC24o6ZR1rBi2CJR7U"
+      },
+      {
+        "label": "top up maker SOL inventory (mint)",
+        "hash": "G9rqyKzTTknp9Z2DYY5JTz78iTKBnBMpHgC3y4vHGbwu"
+      },
+      {
+        "label": "top up maker SOL inventory (deposit)",
+        "hash": "6KRDQbrreRuAFYV1ht1FZy2wHk6kBmEihZwNpNTo728F"
       }
     ],
     "relayer": "BEijzwSQpWxbgQQ5NfBePxUzHgLoc2vrApPe8G4St55Q",
@@ -388,7 +396,7 @@
       "USDT": "H9ERDhrU8KDeXkMna2Lw6hYJT3LSyhvypiktDc6zmoeJ"
     },
     "inventory": {
-      "SOL": "1",
+      "SOL": "100",
       "USDC": "200000",
       "USDT": "200000"
     },

@@ -24,7 +24,7 @@ const deployments = JSON.parse(fs.readFileSync(DEP, 'utf8'));
 const relayer = sol.relayer();
 const mints = { USDC: sol.keypairFromFile(SECRETS + 'solana-mint-usdc.key'), USDT: sol.keypairFromFile(SECRETS + 'solana-mint-usdt.key') };
 const d = deployments.sol ||= { name: 'Solana Devnet', cluster: 'devnet', txs: [] };
-Object.assign(d, { relayer: relayer.address, tokens: { USDC: mints.USDC.address, USDT: mints.USDT.address }, inventory: { SOL: '1', USDC: '200000', USDT: '200000' } });
+Object.assign(d, { relayer: relayer.address, tokens: { USDC: mints.USDC.address, USDT: mints.USDT.address }, inventory: { SOL: '100', USDC: '200000', USDT: '200000' } });
 d.live ??= false;
 const saveDep = () => fs.writeFileSync(DEP, JSON.stringify(deployments, null, 2) + '\n');
 const log = (label, hash) => { d.txs.push({ label, hash }); saveDep(); console.log('  ', label, hash); };
