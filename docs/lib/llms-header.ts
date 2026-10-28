@@ -10,8 +10,8 @@ export const llmsHeader = `# ${BRAND.name}: ${BRAND.tagline}
 - Status: ${BRAND.affiliation}.
 - Base URL: ${SITE} (drop-in for the 1Click API base URL; same 1Click v0 endpoints and field names: tokens, quote, deposit/submit, status, generate-intent, submit-intent, orders, any-input/withdrawals, auth, account)
 - Quickstart: ${SITE}/docs/quickstart (Markdown: ${SITE}/docs/quickstart.md)
-- Free test tokens: POST ${SITE}/v0/faucet {"accountId":"you.testnet","mode":"wallet"|"intents"}, or {"chain":"base"|"arb"|"eth","address":"0x..."} on EVM testnets
-- Test bridges (trusted relayer run by Tidepool, testnet only): Base Sepolia, Arbitrum Sepolia, Ethereum Sepolia. ${SITE}/docs/guides/bridges
+- Free test tokens: POST ${SITE}/v0/faucet {"accountId":"you.testnet","mode":"wallet"|"intents"}, or {"chain":"base"|"arb"|"eth","address":"0x..."} on EVM testnets, {"chain":"sol","address":"<base58>"} on Solana devnet (USDC/USDT, not SOL)
+- Test bridges (trusted relayer run by Tidepool, testnet only): Base Sepolia, Arbitrum Sepolia, Ethereum Sepolia, plus Solana devnet (custodial, SOL capped at 0.005 SOL; listed only while live: ${SITE}/docs/guides/bridge-solana-devnet). ${SITE}/docs/guides/bridges
 - OpenAPI: ${SITE}/openapi.json · Agent rules: ${SITE}/AGENTS.md · Full docs in one file: ${SITE}/llms-full.txt
 - Health: ${SITE}/v0/health
 - Contact / built by: ${BRAND.builderHandle} (${BRAND.builderUrl})

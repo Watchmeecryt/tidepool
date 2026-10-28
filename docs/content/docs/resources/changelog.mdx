@@ -3,6 +3,20 @@ title: Changelog
 description: What changed in Tidepool and when.
 ---
 
+## 2026-10-28 · Solana devnet bridge (SOL, USDC, USDT), capped at 0.005 SOL
+
+- **New chain:** Solana devnet, `blockchain: "sol"`, a trusted-relayer bridge run by Tidepool. Devnet only, custodial and testnet-only: the tokens have no value. Guide: [Solana devnet bridge](/docs/guides/bridge-solana-devnet). The route is listed in `/v0/tokens` and `/v0/health` (`bridges.chains.sol`) only while it is live.
+- **Assets:** native SOL `nep141:sol.tp-omft.testnet` (9 decimals), and Tidepool's own classic-SPL test USDC and USDT (6 decimals): `nep141:sol-d48c1adc423a64867ac91ed2e1c0df76da323235.tp-omft.testnet` (mint `7pafEGXSmR35rLKNaD6inpfLYuEnRX9DyBc1c7M8r4Xr`) and `nep141:sol-4c5179da74eb695eb57e01b787c4937157cf2833.tp-omft.testnet` (mint `H9ERDhrU8KDeXkMna2Lw6hYJT3LSyhvypiktDc6zmoeJ`). The relayer `BEijzwSQpWxbgQQ5NfBePxUzHgLoc2vrApPe8G4St55Q` is the mint authority. `contractAddress` carries the base58 mint.
+- **Deposits:** every live quote gets a unique base58 deposit address (an ed25519 key derived from the quote id and the server master seed; no on-chain program). SOL goes to the address, SPL tokens to its associated token account. Send the transfer, then `POST /v0/deposit/submit` with the signature.
+- **Sweep and mint:** the deposit key signs a sweep into the treasury, the relayer pays the fee, then the matching NEP-141 is minted and credited to the verifier with `ft_transfer_call`. Credit happens at `confirmed` commitment.
+- **Payouts and refunds:** the verifier withdraws the bridged token to the relayer, which creates the recipient's associated token account if needed and pays out (`transferChecked`, `mintTo` if the treasury is short, or a system transfer for SOL). Transactions are signed first, the signature is recorded, then sent, and the signature status is checked before any re-sign, so a payout cannot be paid twice. Refunds go back to `refundTo` with the same machinery.
+- **The cap:** SOL is capped at **0.005 SOL (5,000,000 lamports) per swap, payout or refund**, enforced at quote time with a `400`. Why: the relayer's SOL comes from rate-limited devnet airdrops, so a small cap protects the treasury. The minimum SOL leg is 0.00089088 SOL (rent-exempt minimum). `ANY_INPUT` to a SOL recipient is rejected. Overpayment of your own deposit is returned in full and is not blocked by the cap. USDC and USDT are not capped.
+- **Faucet:** `POST /v0/faucet {"chain":"sol","address":"…"}` drips test USDC and USDT (not SOL).
+- **RPC and failover:** the relayer reads `SOLANA_DEVNET_RPC` first and falls back to `https://api.devnet.solana.com`; reads are batched with `getMultipleAccounts`. The server tops the treasury up with devnet airdrops (`requestAirdrop`, never the web faucet) when it falls below 3 SOL, with backoff. The public devnet RPC faucet is currently closed, so a provider endpoint with a devnet faucet is needed to fund SOL.
+- **Limits:** devnet resets wipe balances (the mint keypairs are kept so the same addresses can be re-created), rent minimums apply, associated token accounts are created for payouts, classic SPL only (no Token-2022).
+- **Mainnet 1Click mapping:** same fields and asset id rule, `nep141:sol.omft.near`, `nep141:sol-5ce3bf3a31af18be40ba30f721101b4341690186.omft.near` (USDC) and `nep141:sol-c800a4bd850783ccb82c2b2c7e84175443606352.omft.near` (USDT). Mainnet has no cap.
+- New example `sol-deposit.ts` in tidepool-examples, `scripts/sol-airdrop-topup.mjs` (idempotent treasury top-up) and `scripts/bridge-solana-bootstrap.mjs`.
+
 ## 2026-10-28 · Opt-in swap failure simulation (`simulate`)
 
 - **New:** `POST /v0/quote` accepts an optional, Tidepool-only `simulate` field: `"STUCK"` or `"FAILED"`. Testnet only. Real 1Click has no such field, so remove it when you move to mainnet 1Click. Omit it for a normal swap. Other values return the usual helpful 400 (`message`, `hint`, `field`, `docs`, `exampleRequest`).

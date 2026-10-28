@@ -55,4 +55,8 @@ curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: applicatio
 
 You get 100 USDC and 100 USDT (6 decimals) on that chain, with the same limits (one drip per address per chain per hour, six per IP per hour). Gas ETH is **not** included; use the chain's public faucet. You can also call `faucet()` on the token contracts directly. Addresses are in each route guide under [Test bridges](/docs/guides/bridges).
 
+## Solana devnet
+
+`{"chain":"sol","address":"YourSolanaAddress"}` mints test USDC and USDT to your associated token accounts on Solana devnet (not SOL: bring your own devnet SOL; SOL swaps are capped at 0.005 SOL). See the [Solana devnet bridge](/docs/guides/bridge-solana-devnet).
+
 <Callout type="warn">Test tokens have **no value**. The EVM test tokens are bridged only by Tidepool's own testnet relayer, not by any NEAR or 1Click bridge. Do not list or trade them anywhere.</Callout>

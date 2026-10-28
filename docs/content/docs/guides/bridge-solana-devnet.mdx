@@ -1,0 +1,83 @@
+---
+title: Solana devnet bridge
+description: Swap between Solana devnet and NEAR testnet through Tidepool's testnet relayer, with 1Click-style deposit addresses, status and refunds. Native SOL (capped at 0.005 SOL) plus Tidepool test USDC and USDT.
+---
+
+<Callout type="warn">**Devnet only, custodial, trusted relayer.** This route is run by Tidepool as its own testnet service. It is not a NEAR, Omni Bridge or 1Click bridge, and the tokens have no value. SOL is **capped at 0.005 SOL per swap, payout or refund** because devnet SOL is scarce. Read [Test bridges](/docs/guides/bridges) for what you are trusting.</Callout>
+
+<Callout>**Availability.** The Solana route appears in [`GET /v0/tokens`](/docs/api-reference/get-tokens) (`blockchain: "sol"`) and in `/v0/health` under `bridges.chains.sol` only while it is live. If the tokens are not listed, the route is not active on that deployment yet.</Callout>
+
+## Tokens
+
+| What | Value |
+| --- | --- |
+| Chain | Solana devnet, `blockchain: "sol"` |
+| Native SOL | 9 decimals, asset id `nep141:sol.tp-omft.testnet`, no `contractAddress` |
+| Test USDC (6 decimals, classic SPL) | mint [`7pafEGXSmR35rLKNaD6inpfLYuEnRX9DyBc1c7M8r4Xr`](https://explorer.solana.com/address/7pafEGXSmR35rLKNaD6inpfLYuEnRX9DyBc1c7M8r4Xr?cluster=devnet), asset id `nep141:sol-d48c1adc423a64867ac91ed2e1c0df76da323235.tp-omft.testnet` |
+| Test USDT (6 decimals, classic SPL) | mint [`H9ERDhrU8KDeXkMna2Lw6hYJT3LSyhvypiktDc6zmoeJ`](https://explorer.solana.com/address/H9ERDhrU8KDeXkMna2Lw6hYJT3LSyhvypiktDc6zmoeJ?cluster=devnet), asset id `nep141:sol-4c5179da74eb695eb57e01b787c4937157cf2833.tp-omft.testnet` |
+| Relayer / treasury | [`BEijzwSQpWxbgQQ5NfBePxUzHgLoc2vrApPe8G4St55Q`](https://explorer.solana.com/address/BEijzwSQpWxbgQQ5NfBePxUzHgLoc2vrApPe8G4St55Q?cluster=devnet) (mint authority of both test mints) |
+
+The SPL asset id is `nep141:sol-<keccak256(mint pubkey bytes)[12..]>.tp-omft.testnet`, the same naming rule 1Click uses on mainnet. These are Tidepool's own mints, not Circle or Tether tokens.
+
+## The SOL cap (0.005 SOL)
+
+Any swap with a SOL leg is rejected at **quote time** with a `400` if the SOL amount (input or output) exceeds `0.005 SOL` (5,000,000 lamports). It covers SOL swaps, payouts and refunds. Why: the relayer's SOL comes from rate-limited devnet airdrops, so a small cap keeps one user from draining it. Also:
+
+- A SOL leg must be at least `0.00089088 SOL` (the rent-exempt minimum for an empty account) for payouts to a new address and for fixed-size deposits.
+- `ANY_INPUT` quotes that pay out to a Solana address in SOL are rejected (the amount is not known at quote time).
+- If you deposit more than you quoted, the excess is returned to `refundTo` in full: that return of your own deposit is not blocked by the cap.
+- USDC and USDT legs are not capped.
+
+## 1. Get tokens
+
+```bash
+curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: application/json' \
+  -d '{"chain":"sol","address":"YourSolanaAddress"}'
+```
+
+This mints test USDC and USDT to your associated token accounts. The faucet does **not** drip SOL: get devnet SOL from your own RPC provider or a faucet. (The public `api.devnet.solana.com` RPC faucet is currently closed.)
+
+## 2. Solana → NEAR
+
+```ts
+const quote = await OneClickService.getQuote({
+  dry: false, swapType: 'EXACT_INPUT', slippageTolerance: 100,
+  originAsset: 'nep141:sol.tp-omft.testnet',
+  destinationAsset: 'nep141:usdc.tidepool-sandbox.testnet',
+  amount: '2000000',                        // 0.002 SOL in lamports
+  depositType: 'ORIGIN_CHAIN', refundTo: 'YourSolanaAddress', refundType: 'ORIGIN_CHAIN',
+  recipient: 'you.testnet', recipientType: 'DESTINATION_CHAIN',
+  deadline: new Date(Date.now() + 30 * 60_000).toISOString(),
+});
+// quote.quote.depositAddress is a base58 Solana address. Send SOL there with SystemProgram.transfer.
+// For an SPL origin, send the tokens to that address's associated token account (the ATA of depositAddress + mint).
+await OneClickService.submitDepositTx({ txHash: '<signature>', depositAddress: quote.quote.depositAddress });
+```
+
+Each deposit address is an ed25519 key derived from the quote id and the server master seed; no on-chain program is involved. The relayer sweeps the deposit into the treasury (the deposit key signs, the relayer pays the fee), mints the matching NEP-141 to the Tidepool root and credits it to the verifier with `ft_transfer_call`. The swap then settles like any NEAR-only swap. Deposits are credited at `confirmed` commitment.
+
+Runnable: `SOL_SECRET_KEY='[...]' RECIPIENT=you.testnet npm run sol-deposit` in [tidepool-examples](https://github.com/zer0plugyut-afk/tidepool-examples).
+
+## 3. NEAR → Solana
+
+Quote with a Solana `destinationAsset`, `recipient: 'YourSolanaAddress'` and `recipientType: 'DESTINATION_CHAIN'`, then deposit on NEAR as usual. The verifier `ft_withdraw`s the bridged token to the relayer, which pays out on Solana: for SPL it creates your associated token account if needed and sends the tokens (`transferChecked`, or `mintTo` if the treasury is short); for SOL it sends a system transfer. Payouts are signed first and the signature is recorded before sending, so a crash or retry never pays twice (the signature status is checked first).
+
+## Refunds
+
+Same reasons as every route (`DEADLINE_PASSED`, `PARTIAL_DEPOSIT`, …). A refund with `refundType: "ORIGIN_CHAIN"` is signed by the deposit key and returned to `refundTo` on Solana. SOL refunds return the full deposit; the relayer pays the fee.
+
+## Limits
+
+- **Devnet resets.** If devnet is reset, mints and balances are gone. The mint keypairs are kept, so the same addresses can be re-created.
+- **Rent.** New SOL accounts need `0.00089088 SOL`; a new token account costs about `0.00204 SOL`, paid by the relayer for payouts.
+- **Associated token accounts, classic SPL only.** Token-2022 mints are not supported.
+- **RPC.** The relayer uses a configured devnet RPC and fails over to `api.devnet.solana.com`; devnet congestion can delay a swap.
+- **Treasury SOL.** The relayer tops itself up from devnet airdrops when it can. If SOL is short, SOL payouts quote a `503`.
+
+## Mapping to mainnet 1Click
+
+Same request and response fields, `blockchain: "sol"`, and the same asset id rule (`nep141:sol.omft.near`, `nep141:sol-5ce3bf3a31af18be40ba30f721101b4341690186.omft.near` for USDC, `nep141:sol-c800a4bd850783ccb82c2b2c7e84175443606352.omft.near` for USDT). Switch the base URL and swap the asset ids. Mainnet has no 0.005 SOL cap and uses real Solana addresses.
+
+## Verified flows
+
+The relayer code was run end to end against a local Solana validator with real NEAR testnet settlement: SOL → NEAR USDC ([NEAR tx](https://testnet.nearblocks.io/txns/C8n5M6fMtt9FUprBDSbM6Z6j3x7fZdBbSNgDupwZB6Lr)), NEAR USDC → Solana USDC payout ([NEAR tx](https://testnet.nearblocks.io/txns/AvZBgdo4mRQSqh4k9nLikjkeThLueYorjB7FMLZSbsRn)), a `PARTIAL_DEPOSIT` refund ([NEAR tx](https://testnet.nearblocks.io/txns/Co939EZy8CcyAKAKVG96pRow6pBuL4FgDcgAg3MnB2GJ)), and a `400` for a 0.006 SOL quote.

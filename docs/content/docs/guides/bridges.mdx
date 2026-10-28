@@ -13,6 +13,8 @@ Tidepool can swap between NEAR testnet and three EVM testnets, with the same API
 | Arbitrum Sepolia | `arb` | 421614 | [Arbitrum Sepolia bridge](/docs/guides/bridge-arbitrum-sepolia) |
 | Ethereum Sepolia | `eth` | 11155111 | [Ethereum Sepolia bridge](/docs/guides/bridge-ethereum-sepolia) |
 
+Solana devnet is also available as a separate, same-style bridge (SOL capped at 0.005 SOL): [Solana devnet bridge](/docs/guides/bridge-solana-devnet). It is devnet only and custodial, and is listed in `/v0/tokens` only while it is live.
+
 ## What matches 1Click
 
 - **Asset ids.** Bridged tokens look like 1Click's omft ids: `nep141:<chain>-<erc20 address>.tp-omft.testnet`. `/v0/tokens` lists them with `blockchain` and `contractAddress`.

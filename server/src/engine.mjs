@@ -5,8 +5,9 @@ import crypto from 'node:crypto';
 import { KeyPair } from 'near-api-js';
 import bs58 from 'bs58';
 import { rpc, call, view, viewAccount, sendNear, signIntents, deriveDepositKey, keyStore, NETWORK, TGAS, parseNear, txUrl } from './near.mjs';
-import { ROOT, VERIFIER, MAKER, TOKENS, fromUnits, chainOf, isEvmAddress, BRIDGE_ACCOUNT } from './config.mjs';
+import { ROOT, VERIFIER, MAKER, TOKENS, fromUnits, chainOf, isEvmAddress, isSolAddress, BRIDGE_ACCOUNT, SOL_PAYOUT_CAP_LAMPORTS, SOL_RENT_MIN_LAMPORTS } from './config.mjs';
 import * as evm from './evm.mjs';
+import * as sol from './solana.mjs';
 import { prices } from './prices.mjs';
 import { db, save } from './store.mjs';
 
@@ -18,7 +19,7 @@ export class BadRequest extends Error { constructor(m, code = 400, extra) { supe
 // ---- First-call hints: extra fields on 400s (the spec's `message` field is kept) ----
 const DOCS_QUICKSTART = 'https://www.usetidepool.tech/docs/quickstart';
 const tp = (sub) => `nep141:${sub}.${ROOT}`;
-const evmTp = (chain, sym) => TOKENS.find(t => t.chain === chain && t.symbol === sym)?.assetId;
+const evmTp = (chain, sym) => TOKENS.find(t => t.chain === chain && t.symbol === sym)?.assetId; // also finds Solana ('sol') tokens
 const MAINNET_MAP = {
   'nep141:wrap.near': tp('wnear'),
   'nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1': tp('usdc'),
@@ -33,11 +34,15 @@ const MAINNET_MAP = {
   'nep141:arb-0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9.omft.near': evmTp('arb', 'USDT'),
   'nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near': evmTp('eth', 'USDC'),
   'nep141:eth-0xdac17f958d2ee523a2206206994597c13d831ec7.omft.near': evmTp('eth', 'USDT'),
+  'nep141:sol.omft.near': evmTp('sol', 'SOL'),
+  'nep141:sol-5ce3bf3a31af18be40ba30f721101b4341690186.omft.near': evmTp('sol', 'USDC'),
+  'nep141:sol-c800a4bd850783ccb82c2b2c7e84175443606352.omft.near': evmTp('sol', 'USDT'),
 };
 export function suggestAsset(id) {
   const s = String(id || '').toLowerCase();
   if (MAINNET_MAP[s]) return MAINNET_MAP[s];
-  const chain = /^nep141:(base|arb|eth)-0x/.exec(s)?.[1];
+  const chain = /^nep141:(base|arb|eth)-0x/.exec(s)?.[1] || (/^nep141:sol[-.]/.test(s) ? 'sol' : undefined);
+  if (/^nep141:sol\.|^(w?sol|solana)$/.test(s)) return evmTp('sol', 'SOL') || null;
   const pick = (sym) => (chain && evmTp(chain, sym)) || tp(sym.toLowerCase());
   if (/usdc|17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1/.test(s)) return pick('USDC');
   if (/usdt|tether/.test(s)) return pick('USDT');
@@ -124,6 +129,24 @@ function signQuote(obj) {
 let _mk; function makerKey() { return _mk; }
 export async function initEngine() { _mk = await keyStore.getKey(NETWORK, MAKER); if (!MASTER) console.warn('DEPOSIT_MASTER_SEED missing: non-dry quotes disabled'); }
 
+// Solana devnet limits. SOL is capped at SOL_PAYOUT_CAP_LAMPORTS (0.005 SOL) on any swap leg, payout or refund because devnet
+// SOL is scarce (airdrops are rate-limited). Enforced here, at quote time, so users get a clear error instead of a stuck swap.
+const CAP_SOL = () => fromUnits(SOL_PAYOUT_CAP_LAMPORTS, 9);
+export function solLimits(req, inT, outT, amountIn, amountOut) {
+  const capHint = (why, extra = {}) => hint(`SOL on Solana Devnet is capped at ${CAP_SOL()} SOL per swap, payout or refund (devnet SOL is scarce). ${why}`, req, { capLamports: SOL_PAYOUT_CAP_LAMPORTS.toString(), ...extra });
+  if (outT.kind === 'sol' && outT.native) {
+    if (amountOut > SOL_PAYOUT_CAP_LAMPORTS) throw new BadRequest(`SOL is capped at ${CAP_SOL()} SOL (${SOL_PAYOUT_CAP_LAMPORTS} lamports) per swap on Tidepool's Solana devnet bridge; this quote would pay out ${fromUnits(amountOut, 9)} SOL. Lower the amount.`, 400, capHint('Lower amount (or the EXACT_OUTPUT amount) so the SOL leg is at most the cap.', { field: 'amount' }));
+    if (req.recipientType === 'DESTINATION_CHAIN') {
+      if (req.swapType === 'ANY_INPUT') throw new BadRequest(`ANY_INPUT quotes cannot pay out SOL on Solana Devnet (each deposit would be converted separately and could exceed the ${CAP_SOL()} SOL cap); use EXACT_INPUT, EXACT_OUTPUT or FLEX_INPUT`);
+      if (amountOut < SOL_RENT_MIN_LAMPORTS) throw new BadRequest(`SOL payout is below Solana's rent-exempt minimum (${fromUnits(SOL_RENT_MIN_LAMPORTS, 9)} SOL); a new account cannot receive less. Increase the amount.`);
+    }
+  }
+  if (inT.kind === 'sol' && inT.native) {
+    if (amountIn > SOL_PAYOUT_CAP_LAMPORTS) throw new BadRequest(`SOL is capped at ${CAP_SOL()} SOL (${SOL_PAYOUT_CAP_LAMPORTS} lamports) per swap on Tidepool's Solana devnet bridge; this quote would take ${fromUnits(amountIn, 9)} SOL. Lower the amount.`, 400, capHint('Lower amount so the SOL leg is at most the cap.', { field: 'amount' }));
+    if (req.depositType === 'ORIGIN_CHAIN' && req.swapType !== 'ANY_INPUT' && amountIn < SOL_RENT_MIN_LAMPORTS) throw new BadRequest(`SOL deposit is below Solana's rent-exempt minimum (${fromUnits(SOL_RENT_MIN_LAMPORTS, 9)} SOL); the deposit transaction would fail on-chain. Increase the amount.`);
+  }
+}
+
 export async function quote(req, { authed, maxDeadlineMs = 24 * 3600_000 } = {}) {
   const need = ['dry', 'swapType', 'slippageTolerance', 'originAsset', 'depositType', 'destinationAsset', 'amount', 'refundTo', 'refundType', 'recipient', 'recipientType', 'deadline'];
   const missing = need.filter(k => req[k] === undefined || req[k] === null || req[k] === '');
@@ -143,8 +166,8 @@ export async function quote(req, { authed, maxDeadlineMs = 24 * 3600_000 } = {})
   if (memoMode && (inT.chain || req.depositType !== 'ORIGIN_CHAIN')) throw new BadRequest('depositMode MEMO is supported for ORIGIN_CHAIN deposits of NEAR-native tokens (shared address + ft_transfer memo); use SIMPLE otherwise');
   if (req.swapType === 'ANY_INPUT' && memoMode) throw new BadRequest('ANY_INPUT quotes use depositMode SIMPLE');
   // Address formats follow 1Click: chain-native addresses for *_CHAIN types, NEAR accounts for INTENTS.
-  const addrOk = (t, onChain, v) => (onChain && t.chain ? isEvmAddress(v) : isAccount(v));
-  const what = (t, onChain) => (onChain && t.chain ? `a ${chainOf(t.chain).name} address (0x...)` : 'a NEAR testnet account id');
+  const addrOk = (t, onChain, v) => (onChain && t.chain ? (t.kind === 'sol' ? isSolAddress(v) : isEvmAddress(v)) : isAccount(v));
+  const what = (t, onChain) => (onChain && t.chain ? `a ${chainOf(t.chain).name} address (${t.kind === 'sol' ? 'base58 public key' : '0x...'})` : 'a NEAR testnet account id');
   for (const f of ['recipient', 'refundTo']) if (isMainnetAcct(req[f])) throw new BadRequest(`${f} ${req[f]} is a mainnet account; Tidepool runs on NEAR testnet. Use a .testnet account such as alice.testnet`, 400, hint('Use a NEAR testnet account (ending in .testnet), or an implicit testnet account. Create one free at https://testnet.mynearwallet.com.', req, { field: f }));
   if (!addrOk(outT, req.recipientType === 'DESTINATION_CHAIN', req.recipient)) throw new BadRequest(`recipient must be ${what(outT, req.recipientType === 'DESTINATION_CHAIN')}`);
   if (!addrOk(inT, req.refundType === 'ORIGIN_CHAIN', req.refundTo)) throw new BadRequest(`refundTo must be ${what(inT, req.refundType === 'ORIGIN_CHAIN')}`);
@@ -175,6 +198,7 @@ export async function quote(req, { authed, maxDeadlineMs = 24 * 3600_000 } = {})
     minAmountOut = amountOut * (10000n - s) / 10000n;
   }
   if (amountOut <= 0n) throw new BadRequest('amount is too low for this pair');
+  solLimits(req, inT, outT, amountIn, amountOut);
   const inv = await makerBalance(outT.assetId);
   if (inv < amountOut) throw new BadRequest(`Not enough maker liquidity for ${outT.symbol} (max ~${fromUnits(inv, outT.decimals)})`);
 
@@ -189,7 +213,12 @@ export async function quote(req, { authed, maxDeadlineMs = 24 * 3600_000 } = {})
     const { accountId } = deriveDepositKey(MASTER, correlationId);
     // EVM origin: a CREATE2 address of the chain's Tidepool vault; the funds are credited to the
     // per-quote NEAR intents account (accountId) once the relayer sweeps them.
-    let depositAddress = inT.chain && req.depositType === 'ORIGIN_CHAIN' ? evm.depositAddressFor(inT.chain, correlationId) : accountId;
+    if ((inT.kind === 'sol' || outT.kind === 'sol') && !sol.relayerConfigured()) throw new BadRequest('Solana devnet bridge is not configured on this server', 503);
+    if (outT.kind === 'sol' && req.recipientType === 'DESTINATION_CHAIN') { // keep a reserve for ATA rent + fees
+      const r = await sol.account(sol.relayer().address).catch(() => null);
+      if (!r || r.lamports < 20_000_000n) throw new BadRequest('The Solana devnet treasury is low on SOL right now (devnet airdrops are rate-limited). Try again later or use a different destination.', 503);
+    }
+    let depositAddress = inT.chain && req.depositType === 'ORIGIN_CHAIN' ? (inT.kind === 'sol' ? sol.depositAddressFor(MASTER, correlationId) : evm.depositAddressFor(inT.chain, correlationId)) : accountId;
     if (memoMode) { depositAddress = await memoAccount(inT); q.depositAddress = depositAddress; q.depositMemo = newMemo(); }
     Object.assign(q, { depositAddress, deadline: deadline.toISOString(), timeWhenInactive: deadline.toISOString() });
     if (q.depositMemo) { const { depositMemo } = q; delete q.depositMemo; Object.assign(q, { depositAddress, depositMemo }); }
@@ -237,7 +266,8 @@ async function memoAccount(inT) {
 const newMemo = () => String(crypto.randomInt(100000000, 999999999)) + String(crypto.randomInt(100, 999));
 const acctOf = (addr, s) => s.intentsAccount || addr;
 // explorer link for a tx hash recorded on a swap (NEAR by default, EVM when tagged)
-const urlOf = (s, h) => (s.evmTxs?.[h] ? evm.evmTxUrl(s.evmTxs[h], h) : txUrl(h));
+// (evmTxs holds every non-NEAR hash -> chain key; 'sol' is Solana)
+const urlOf = (s, h) => (s.evmTxs?.[h] === 'sol' ? sol.txUrl(h) : s.evmTxs?.[h] ? evm.evmTxUrl(s.evmTxs[h], h) : txUrl(h));
 const tagEvm = (s, chain, h) => { (s.evmTxs ||= {})[h] = chain; return h; };
 
 export function statusOf(depositAddress, depositMemo) {
@@ -275,7 +305,7 @@ export function submitDeposit({ txHash, depositAddress, nearSenderAccount, memo 
 function submitDepositCommon(s, depositAddress, memo, txHash, nearSenderAccount) {
   if (!s.originTxs.includes(txHash)) s.originTxs.push(txHash);
   const inT = byAsset[s.quoteResponse.quoteRequest.originAsset];
-  if (inT.chain && /^0x[0-9a-fA-F]{64}$/.test(txHash)) tagEvm(s, inT.chain, txHash);
+  if (inT.chain && (inT.kind === 'sol' ? /^[1-9A-HJ-NP-Za-km-z]{80,90}$/ : /^0x[0-9a-fA-F]{64}$/).test(txHash)) tagEvm(s, inT.chain, txHash);
   if (nearSenderAccount) s.sender = nearSenderAccount;
   if (s.status === 'PENDING_DEPOSIT') { s.status = 'KNOWN_DEPOSIT_TX'; s.updatedAt = new Date().toISOString(); }
   save();
@@ -305,10 +335,20 @@ function outIntent(kind, account, t, amount) {
 // Queue an EVM payout for a bridged token that was withdrawn to the bridge account.
 function queueRelease(s, tag, t, to, amount) {
   if (!t.chain || amount <= 0n) return;
-  (s.releases ||= []).push({ id: evm.releaseId(`${s.quoteResponse.correlationId}:${tag}`), chain: t.chain, token: t.evmAddress, to, amount: amount.toString(), tag, done: false });
+  const rel = { id: evm.releaseId(`${s.quoteResponse.correlationId}:${tag}`), chain: t.chain, token: t.evmAddress, to, amount: amount.toString(), tag, done: false };
+  if (t.kind === 'sol') Object.assign(rel, { id: `sol:${s.quoteResponse.correlationId}:${tag}`, token: t.mint, assetId: t.assetId, tx: {} });
+  (s.releases ||= []).push(rel);
 }
 async function processReleases(s) {
   for (const r of s.releases.filter(r => !r.done)) {
+    if (r.chain === 'sol') { // sign-first: the signature is persisted before sending; retries check it and only re-sign after the blockhash expires
+      const t = byAsset[r.assetId];
+      if ((await sol.drive(r.tx ||= {}, async () => sol.prepare(await sol.payoutInstructions(t, r.to, BigInt(r.amount))), save)) !== 'confirmed') continue;
+      const h = tagEvm(s, 'sol', r.tx.sig);
+      s.txs.push({ label: `${r.tag} payout on ${chainOf(r.chain).name}`, hash: h });
+      s.destTxs.push(h);
+      r.done = true; save(); continue;
+    }
     if (await evm.isReleased(r.chain, r.id)) { r.done = true; save(); continue; }
     const h = await evm.release(r.chain, r.id, r.token, r.to, BigInt(r.amount));
     tagEvm(s, r.chain, h);
@@ -316,6 +356,7 @@ async function processReleases(s) {
     s.destTxs.push(h);
     r.done = true; save();
   }
+  if (s.releases.some(r => !r.done)) return; // a Solana payout is still confirming; the next tick continues
   if (s.final) { const { status, ...extra } = s.final; delete s.final; set(s, status, extra); }
 }
 const finish = (s, status, extra) => {
@@ -330,7 +371,7 @@ async function execute(signed) {
 
 // ORIGIN_CHAIN: the user sent NEP-141 tokens to the deposit address itself. Move them into the verifier.
 async function sweepOrigin(addr, s, inT) {
-  if (inT.chain) return bridgeIn(addr, s, inT);
+  if (inT.chain) return inT.kind === 'sol' ? bridgeInSol(addr, s, inT) : bridgeIn(addr, s, inT);
   const bal = BigInt(await view(inT.nearContract, 'ft_balance_of', { account_id: addr }));
   if (bal === 0n) return;
   const acct = await viewAccount(addr);
@@ -349,6 +390,51 @@ async function sweepOrigin(addr, s, inT) {
 // NEP-141 to the quote's intents account with a normal ft_transfer_call into the verifier.
 async function bridgeIn(addr, s, inT) {
   const c = inT.chain;
+  await creditBridgeIn(addr, s, inT);
+  const bal = await evm.erc20Balance(c, inT.evmAddress, addr);
+  if (bal === 0n) return;
+  if (!s.originTxs.some(h => s.evmTxs?.[h])) for (const h of await evm.findDepositTxs(c, inT.evmAddress, addr)) { if (!s.originTxs.includes(h)) s.originTxs.push(h); tagEvm(s, c, h); }
+  if (s.status === 'PENDING_DEPOSIT') set(s, 'KNOWN_DEPOSIT_TX');
+  const sw = await evm.sweep(c, s.quoteResponse.correlationId, inT.evmAddress);
+  tagEvm(s, c, sw.hash);
+  s.txs.push({ label: `sweep deposit address into vault (${chainOf(c).name})`, hash: sw.hash });
+  s.bridgeIn.push({ sweepTx: sw.hash, amount: sw.amount.toString(), stage: 'swept' }); save();
+  return creditBridgeIn(addr, s, inT);
+}
+
+// Solana origin: sweep the per-quote deposit address (SOL, or its SPL associated token account) into the treasury, then mint + credit
+// exactly like the EVM path. The sweep is sign-first/recorded ('sweeping') so a crash or timeout can never lose or double a credit.
+async function bridgeInSol(addr, s, inT) {
+  await creditBridgeIn(addr, s, inT);
+  let sw = s.bridgeIn.find(b => b.stage === 'sweeping');
+  if (!sw) {
+    const bal = await sol.depositBalance(inT, addr);
+    if (bal === 0n) return;
+    if (!s.originTxs.some(h => s.evmTxs?.[h])) {
+      const [h] = await sol.recentSignatures(inT.native ? addr : sol.ataOf(addr, inT.mint), 1).catch(() => []);
+      if (h) { if (!s.originTxs.includes(h)) s.originTxs.push(h); tagEvm(s, 'sol', h); }
+    }
+    if (s.status === 'PENDING_DEPOSIT') set(s, 'KNOWN_DEPOSIT_TX');
+    sw = { amount: bal.toString(), stage: 'sweeping', tx: {} };
+    s.bridgeIn.push(sw); save();
+  }
+  const dep = sol.depositKeypair(MASTER, s.quoteResponse.correlationId);
+  const st = await sol.drive(sw.tx, async () => {
+    const bal = await sol.depositBalance(inT, addr); // re-read when (re)signing so a SOL account is drained to exactly 0
+    if (bal === 0n) throw new Error('deposit address is empty; waiting for the previous sweep to confirm');
+    sw.amount = bal.toString();
+    return sol.prepare(sol.sweepInstructions(inT, dep, bal), [dep]);
+  }, save);
+  if (st !== 'confirmed') return;
+  const h = tagEvm(s, 'sol', sw.tx.sig);
+  s.txs.push({ label: `sweep deposit address into treasury (${chainOf('sol').name})`, hash: h });
+  sw.sweepTx = h; sw.stage = 'swept'; delete sw.tx; save();
+  return creditBridgeIn(addr, s, inT);
+}
+
+// Shared by the EVM and Solana paths: swept -> minted -> credited (mint the omft to the bridge account, ft_transfer_call into the verifier).
+async function creditBridgeIn(addr, s, inT) {
+  const c = inT.chain;
   s.bridgeIn ||= [];
   for (const b of s.bridgeIn.filter(b => b.stage !== 'credited')) {
     if (b.stage === 'swept') {
@@ -364,15 +450,6 @@ async function bridgeIn(addr, s, inT) {
       b.stage = 'credited'; save();
     }
   }
-  const bal = await evm.erc20Balance(c, inT.evmAddress, addr);
-  if (bal === 0n) return;
-  if (!s.originTxs.some(h => s.evmTxs?.[h])) for (const h of await evm.findDepositTxs(c, inT.evmAddress, addr)) { if (!s.originTxs.includes(h)) s.originTxs.push(h); tagEvm(s, c, h); }
-  if (s.status === 'PENDING_DEPOSIT') set(s, 'KNOWN_DEPOSIT_TX');
-  const sw = await evm.sweep(c, s.quoteResponse.correlationId, inT.evmAddress);
-  tagEvm(s, c, sw.hash);
-  s.txs.push({ label: `sweep deposit address into vault (${chainOf(c).name})`, hash: sw.hash });
-  s.bridgeIn.push({ sweepTx: sw.hash, amount: sw.amount.toString(), stage: 'swept' }); save();
-  return bridgeIn(addr, s, inT);
 }
 
 async function refund(addr, s, inT, amount, reason, status = 'REFUNDED') {
