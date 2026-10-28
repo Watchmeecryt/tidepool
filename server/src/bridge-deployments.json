@@ -364,6 +364,22 @@
       {
         "label": "deposit maker inventory USDT",
         "hash": "FMw35oVqaYc9n7qckHiEKqKJ1rt4NjYezWFvXcHiuRYH"
+      },
+      {
+        "label": "create USDC mint 7pafEGXSmR35rLKNaD6inpfLYuEnRX9DyBc1c7M8r4Xr",
+        "hash": "38bvGmP8dgxQQx53Q7hmgyeGvcEPShe4kmDdX46BGAeu9eTYXP4NoU3oSQxYxnL4Rc7k3Y3cQNzppXj4eeKpe3Ju"
+      },
+      {
+        "label": "back treasury with USDC",
+        "hash": "3MH454BousuhDfFjuwq8NhjK3kPoTxYHzPmjPSQjwey8FWDVQ87MZNTfe28hPHyig49Z4NK8rgb9xQSRKMeNpaMG"
+      },
+      {
+        "label": "create USDT mint H9ERDhrU8KDeXkMna2Lw6hYJT3LSyhvypiktDc6zmoeJ",
+        "hash": "4Rb4NvpLUP81WrxmxgFDAz29gATbhe4DLR6zimHUp4769TTdcuWdCPi2MUP2TyV1TaXhCsubvnypVBKeNQoFhhnG"
+      },
+      {
+        "label": "back treasury with USDT",
+        "hash": "uuub4r7JkPBGnyGDR5CR3qtzXhQ26myzRKMsQkWdF4X9FsrV1yUh7JN3Mz1VC5gHnnEPzBC24o6ZR1rBi2CJR7U"
       }
     ],
     "relayer": "BEijzwSQpWxbgQQ5NfBePxUzHgLoc2vrApPe8G4St55Q",
@@ -376,6 +392,6 @@
       "USDC": "200000",
       "USDT": "200000"
     },
-    "live": false
+    "live": true
   }
 }
