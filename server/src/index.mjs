@@ -68,11 +68,20 @@ const readBody = (req) => new Promise((ok, bad) => { let b = ''; req.on('data', 
 const authed = (req) => Boolean(req.headers['x-api-key'] || /^Bearer\s+\S+/i.test(req.headers.authorization || '')); // any key/JWT gets the lower fee on testnet
 const ip = (req) => String(req.headers['x-forwarded-for'] || req.socket.remoteAddress).split(',')[0].trim();
 
+// Warn (never fail health) when the verifier's spare NEAR for storage is low: each new intents account, nonce and
+// token balance costs 0.00001 NEAR/byte, and new-account deposits revert with LackBalanceForState at zero.
+const LOW_SPARE_NEAR = Number(process.env.VERIFIER_LOW_SPARE_NEAR || 2);
+function verifierStorage(out, a) {
+  const near = (y) => Number(BigInt(y) / 10n ** 18n) / 1e6;
+  const balance = near(a.amount), stake = Number(a.storage_usage) * 1e-5, spare = Math.round((balance - stake) * 1e4) / 1e4;
+  out.verifierStorage = { balanceNear: balance, storageStakeNear: Math.round(stake * 1e4) / 1e4, spareNear: spare, storageBytes: a.storage_usage, lowSpareThresholdNear: LOW_SPARE_NEAR, low: spare < LOW_SPARE_NEAR };
+  if (spare < LOW_SPARE_NEAR) (out.warnings ||= []).push(`Verifier ${VERIFIER} has only ${spare} NEAR spare for storage (threshold ${LOW_SPARE_NEAR}); new-account deposits will revert with LackBalanceForState when it reaches 0. Top it up.`);
+}
 async function health() {
   const out = { service: 'tidepool', network: 'testnet', verifier: VERIFIER, verifierWasmSha256: VERIFIER_WASM_SHA256, verifierRelease: VERIFIER_RELEASE, maker: MAKER, checks: {} };
   const t0 = Date.now();
   try { const b = await rpc('block', { finality: 'final' }); out.checks.rpc = { ok: true, height: b.header.height, ms: Date.now() - t0 }; } catch (e) { out.checks.rpc = { ok: false, error: e.message }; }
-  try { const a = await viewAccount(VERIFIER); const code = Buffer.from(a.code_hash ? (await import('bs58')).default.decode(a.code_hash) : []).toString('hex'); out.checks.verifier = { ok: code === VERIFIER_WASM_SHA256, codeHashHex: code }; } catch (e) { out.checks.verifier = { ok: false, error: e.message }; }
+  try { const a = await viewAccount(VERIFIER); const code = Buffer.from(a.code_hash ? (await import('bs58')).default.decode(a.code_hash) : []).toString('hex'); out.checks.verifier = { ok: code === VERIFIER_WASM_SHA256, codeHashHex: code }; verifierStorage(out, a); } catch (e) { out.checks.verifier = { ok: false, error: e.message }; }
   const p = await prices(); out.checks.prices = { ok: p.source === 'coingecko', source: p.source, updatedAt: new Date(p.at).toISOString(), error: p.error };
   try { out.checks.makerInventory = { ok: true, balances: Object.fromEntries(await Promise.all(TOKENS.map(async t => [t.symbol, fromUnits(await makerBalance(t.assetId), t.decimals)]))) }; } catch (e) { out.checks.makerInventory = { ok: false, error: e.message }; }
   out.bridges = { note: 'Testnet EVM bridges: trusted relayer run by Tidepool, testnet only.', chains: await evmHealth() };
