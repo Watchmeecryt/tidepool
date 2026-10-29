@@ -8,6 +8,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
+import { exclusive } from './guard.mjs';
 import { SOL_CHAIN, TOKENS, SOL_PAYOUT_CAP_LAMPORTS } from './config.mjs';
 
 // ---------- RPC with failover (SOLANA_DEVNET_RPC first, then the public devnet endpoint). URLs are never logged or put in errors. ----------
@@ -188,7 +189,8 @@ export async function status(rec) {
  * rec holds {sig, raw, lastValid, fails}. Returns 'confirmed' or 'pending'. `build` returns prepare(...) output.
  * Never re-signs while a previously signed tx could still land.
  */
-export async function drive(rec, build, persist) {
+export const drive = (rec, build, persist) => exclusive(rec, () => step(rec, build, persist)); // one step at a time per slot: see guard.mjs
+async function step(rec, build, persist) {
   if (rec.sig) {
     const st = await status(rec);
     if (st === 'confirmed') return 'confirmed';

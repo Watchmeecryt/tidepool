@@ -10,6 +10,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { SuiGrpcClient } from '@mysten/sui/grpc';
+import { exclusive } from './guard.mjs';
 import { Transaction, Inputs, TransactionDataBuilder } from '@mysten/sui/transactions';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
@@ -181,7 +182,8 @@ const clear = (rec) => { delete rec.digest; delete rec.bytes; delete rec.sigs; }
  * Idempotent driver for one transaction slot `rec` (a plain object persisted in the swap record): {digest, bytes, sigs, fails}.
  * `build` returns {digest, bytes, sigs, ...}. Returns 'confirmed' or 'pending'. Builds, signs and records under the treasury lock.
  */
-export async function drive(rec, build, persist) {
+export const drive = (rec, build, persist) => exclusive(rec, () => step(rec, build, persist)); // one step at a time per slot: see guard.mjs
+async function step(rec, build, persist) {
   if (rec.digest) {
     const st = await status(rec.digest);
     if (st === 'confirmed') return 'confirmed';

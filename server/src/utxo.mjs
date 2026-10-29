@@ -9,6 +9,7 @@
 //    one of the same inputs (`must`) so the old and the new transaction can never both confirm.
 // Keys, RPC URLs and secrets never leave these modules and are never logged.
 import { db, save } from './store.mjs';
+import { exclusive } from './guard.mjs';
 
 export class UtxoError extends Error {
   constructor(message, { transient = false, fatal = false } = {}) { super(message); this.name = 'UtxoError'; this.transient = transient; this.fatal = fatal; }
@@ -102,7 +103,8 @@ export function makeBridge(A) {
    * Idempotent driver for one transaction slot `rec` (a plain object persisted in the swap record): {txid, hex, spends, at, fails}.
    * `build({must})` returns the signed tx {txid, hex, spends, outs, ...}. Returns 'confirmed' (accepted by the network) or 'pending'.
    */
-  async function drive(rec, build, persist) {
+  const drive = (rec, build, persist) => exclusive(rec, () => step(rec, build, persist)); // one step at a time per slot: see guard.mjs
+  async function step(rec, build, persist) {
     let must = [];
     if (rec.txid) {
       const st = await A.txStatus(rec.txid).catch(() => 'error');

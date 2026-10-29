@@ -3,6 +3,11 @@ title: Changelog
 description: What changed in Tidepool and when.
 ---
 
+## 2026-10-29 · Bitcoin watcher rate limits, payout driver hardening
+
+- **Bitcoin testnet4 reads.** Public Esplora hosts were answering `429` to Tidepool's server, which stalled deposits (health reported `btc.ok: false`). The watcher now caches reads and shares in-flight requests, polls each deposit address every 20 seconds (2 minutes after its quote expired), backs endpoints off exponentially (honouring `Retry-After`) and also fails over to mempool.ninja. Swaps that were waiting resume on their own; a deposit that arrived after its deadline is refunded to `refundTo`.
+- **No more duplicate payouts.** A concurrent-step bug could sign two transactions for one payout slot (seen on the XRP Ledger testnet bridge, where one swap was paid four times from the treasury). Every payout, sweep and refund driver (Bitcoin, Stellar, Sui, Solana, XRP) now runs one step at a time per slot, and Stellar no longer re-signs on `tx_bad_seq`. Covered by regression tests.
+
 ## 2026-10-29 · XRP Ledger testnet bridge (native XRP)
 
 - **New chain:** XRP Ledger testnet (`blockchain: "xrp"`), a trusted-relayer bridge run by Tidepool. Testnet only, custodial: the coins have no value. Guide: [XRP Ledger testnet bridge](/docs/guides/bridge-xrp-testnet). The route is listed in `/v0/tokens` and `/v0/health` (`bridges.chains.xrp`) only while it is live.

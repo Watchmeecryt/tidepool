@@ -460,7 +460,13 @@ function queueRelease(s, tag, t, to, amount) {
   if (t.kind === 'stellar') Object.assign(rel, { id: `stellar:${s.quoteResponse.correlationId}:${tag}`, token: undefined, assetId: t.assetId, tx: {} });
   (s.releases ||= []).push(rel);
 }
-async function processReleases(s) {
+const releasing = new WeakSet();
+async function processReleases(s) { // never two passes over one swap's payouts at once (defense in depth next to the per-slot guard in guard.mjs)
+  if (releasing.has(s)) return;
+  releasing.add(s);
+  try { return await processReleasesOnce(s); } finally { releasing.delete(s); }
+}
+async function processReleasesOnce(s) {
   for (const r of s.releases.filter(r => !r.done)) {
     if (r.chain === 'sol') { // sign-first: the signature is persisted before sending; retries check it and only re-sign after the blockhash expires
       const t = byAsset[r.assetId];
@@ -617,11 +623,20 @@ async function bridgeInSui(addr, s, inT) {
 // Bitcoin testnet4 / Zcash testnet origin: one sweep transaction (signed with the per-quote deposit key) moves every confirmed output of
 // the deposit address into the treasury, which pays the network fee, so exactly what was deposited is minted + credited. The sweep is
 // sign-first/recorded ('sweeping', with the swept outpoints in `inputs`) so a crash, a re-broadcast or a node lag can never lose or double a credit.
+const utxoPoll = new Map();
+export function utxoPollDue(addr, everyMs, now = Date.now()) {
+  if ((utxoPoll.get(addr) || 0) > now) return false;
+  utxoPoll.set(addr, now + everyMs);
+  if (utxoPoll.size > 2000) for (const [k, t] of utxoPoll) if (t < now) utxoPoll.delete(k);
+  return true;
+}
 async function bridgeInUtxo(addr, s, inT) {
   const M = UTXO[inT.kind];
   await creditBridgeIn(addr, s, inT);
   let sw = s.bridgeIn.find(b => b.stage === 'sweeping');
   if (!sw) {
+    // Public Esplora APIs rate-limit hard: look at a deposit address every 20 s (every 2 min once the quote has expired) instead of every worker tick.
+    if (!utxoPollDue(addr, Date.now() < new Date(s.quoteResponse.quote.deadline).getTime() ? 20_000 : 120_000)) return;
     const { ready, unconfirmed } = await M.depositUtxos(addr, s);
     const seen = ready[0] || unconfirmed[0];
     if (seen && !s.originTxs.some(h => s.evmTxs?.[h])) { s.originTxs.push(seen.txid); tagEvm(s, inT.kind, seen.txid); }

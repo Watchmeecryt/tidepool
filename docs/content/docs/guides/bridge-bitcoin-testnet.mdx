@@ -81,7 +81,7 @@ Same reasons as every route (`DEADLINE_PASSED`, `PARTIAL_DEPOSIT`, …). A refun
 - **Fees.** The relayer pays miner fees from the treasury (at least 2 sat/vB, following the half-hour estimate of mempool.space). The fee is not deducted from your swap.
 - **One treasury-signed transaction at a time.** Payouts share the treasury's coins and are serialized (unconfirmed change is tracked, so back-to-back payouts work).
 - **Unreachable destinations.** If a payout keeps being rejected, the swap stays in `PROCESSING` with a note and needs operator attention.
-- **Public APIs.** The relayer reads and broadcasts through the public mempool.space and blockstream.info testnet4 Esplora APIs (override: `BTC_API_URLS`); rate limits can delay a swap.
+- **Public APIs.** The relayer reads and broadcasts through the public mempool.space, blockstream.info and mempool.ninja testnet4 Esplora APIs (override: `BTC_API_URLS`), with failover, a shared read cache and exponential backoff on `429`. Public hosts rate-limit shared cloud IPs, so a deposit address is only polled every 20 seconds (every 2 minutes once its quote has expired) and rate limits can still delay a swap by a few minutes. `GET /v0/health` reports `bridges.chains.btc.ok: false` while the treasury cannot be read.
 
 ## Mapping to mainnet 1Click
 

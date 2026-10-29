@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import { Keypair, TransactionBuilder, Operation, Asset, Networks, Account, Memo } from '@stellar/stellar-base';
 import { STELLAR_CHAIN, STELLAR_DECIMALS, XLM_CREATE_MIN_STROOPS, fromUnits, toUnits } from './config.mjs';
 import { db, save } from './store.mjs';
+import { exclusive } from './guard.mjs';
 
 const PASSPHRASE = Networks.TESTNET;
 const HORIZONS = [...new Set([process.env.STELLAR_HORIZON_URL, 'https://horizon-testnet.stellar.org'].map(u => u?.trim().replace(/\/$/, '')).filter(Boolean))];
@@ -103,7 +104,8 @@ async function txStatus(rec) {
 let lock = null, lockAt = 0;
 const release = (rec) => { if (lock === rec) lock = null; };
 /** Advances rec ({hash,xdr,maxTime,fails}) one step; returns 'confirmed' | 'pending'. Throws after repeated on-chain failures. */
-export async function drive(rec, build, persist) {
+export const drive = (rec, build, persist) => exclusive(rec, () => step(rec, build, persist)); // one step at a time per slot: see guard.mjs
+async function step(rec, build, persist) {
   if (rec.hash) {
     const st = await txStatus(rec);
     if (st === 'confirmed') { release(rec); return 'confirmed'; }
@@ -116,7 +118,9 @@ export async function drive(rec, build, persist) {
     }
     lockAt = Date.now();
     try { await horizon('/transactions', { method: 'POST', form: { tx: rec.xdr } }); } // same signed bytes: idempotent
-    catch (e) { if (e.codes?.transaction === 'tx_bad_seq') { if ((await txStatus(rec)) === 'pending') { release(rec); delete rec.hash; delete rec.xdr; delete rec.maxTime; persist(); } } else if (!e.transient && !e.codes) throw e; }
+    // tx_bad_seq is NOT proof the tx is dead: our own tx may already have consumed that sequence while Horizon has not ingested it yet.
+    // Never re-sign on it (a re-sign would pay twice); the tx expires after its time window and only then is a fresh one signed.
+    catch (e) { if (!e.transient && !e.codes) throw e; }
     return 'pending';
   }
   if (lock && lock !== rec && Date.now() - lockAt < 300_000) return 'pending'; // another transaction owns the sequence number

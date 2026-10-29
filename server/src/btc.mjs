@@ -1,7 +1,7 @@
 // Bitcoin testnet4 bridge: trusted relayer, no on-chain program. Native tBTC only (like 1Click's nep141:btc.omft.near).
 //  - deposit address = per-quote native segwit (p2wpkh, tb1q...) key derived from the master seed, plain (no memo).
 //  - sweep / payout / refund transactions are built and signed here (bitcoinjs-lib) and broadcast via public Esplora APIs
-//    (mempool.space/testnet4, blockstream.info/testnet4) with failover. Signing + idempotence live in utxo.mjs.
+//    (mempool.space/testnet4, blockstream.info/testnet4, mempool.ninja/testnet4) with failover, caching and 429 backoff. Signing + idempotence live in utxo.mjs.
 // Keys, API URLs and secrets never leave this module and are never logged.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -21,27 +21,55 @@ export const TREASURY_PATH = "m/84'/1'/0'/0/0";
 const DUST = 294n; // p2wpkh dust at 3 sat/vB
 
 // ---------- Esplora endpoints with failover (BTC_API_URLS = comma separated overrides, tried first). URLs are never logged. ----------
-const urls = () => [...(process.env.BTC_API_URLS || '').split(',').map(s => s.trim().replace(/\/$/, '')).filter(Boolean), 'https://mempool.space/testnet4/api', 'https://blockstream.info/testnet4/api'];
+// Public Esplora hosts rate-limit shared cloud IPs (Railway) hard, so every request goes through: a response cache with in-flight dedupe,
+// a global pacing gap, and a per-endpoint exponential backoff that honours Retry-After. An endpoint that answered last stays preferred.
+const urls = () => [...(process.env.BTC_API_URLS || '').split(',').map(s => s.trim().replace(/\/$/, '')).filter(Boolean),
+  'https://mempool.space/testnet4/api', 'https://blockstream.info/testnet4/api', 'https://mempool.ninja/testnet4/api'];
 export const rpcInfo = () => ({ custom: Boolean(process.env.BTC_API_URLS?.trim()), endpoints: urls().length });
-const cooldown = new Map();
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const EP = new Map(); // endpoint url -> { until, fails }
+let preferred = 0, nextSlot = 0;
+const PACE_MS = Number(process.env.BTC_API_GAP_MS) || 250;
+async function pace() { const now = Date.now(), at = Math.max(now, nextSlot); nextSlot = at + PACE_MS; if (at > now) await sleep(at - now); }
+function backoff(u, { retryAfter, base }) {
+  const st = EP.get(u) || { until: 0, fails: 0 };
+  st.fails++;
+  const wait = retryAfter ? Math.min(300, Math.max(1, retryAfter)) * 1000 : Math.min(120_000, base * 2 ** Math.min(st.fails - 1, 6));
+  st.until = Date.now() + wait; EP.set(u, st);
+}
+export const resetApiState = () => { EP.clear(); preferred = 0; nextSlot = 0; cache.clear(); };
 async function api(path, { method = 'GET', body, json = true } = {}) {
   let last;
   const list = urls();
-  for (let i = 0; i < list.length; i++) {
-    if ((cooldown.get(i) || 0) > Date.now() && i < list.length - 1) continue;
+  for (let n = 0; n < list.length; n++) {
+    const i = (preferred + n) % list.length, u = list[i];
+    if ((EP.get(u)?.until || 0) > Date.now()) { last ||= new UtxoError('Bitcoin API 429 (backing off)', { transient: true }); continue; }
     try {
-      const r = await fetch(list[i] + path, { method, body, headers: body ? { 'content-type': 'text/plain' } : undefined, signal: AbortSignal.timeout(15_000) });
+      await pace();
+      const r = await fetch(u + path, { method, body, headers: body ? { 'content-type': 'text/plain' } : undefined, signal: AbortSignal.timeout(15_000) });
       const text = await r.text();
-      if (r.status >= 500 || r.status === 429) { cooldown.set(i, Date.now() + 20_000); last = new UtxoError(`Bitcoin API ${r.status}`, { transient: true }); continue; }
+      if (r.status >= 500 || r.status === 429) { backoff(u, { retryAfter: Number(r.headers.get('retry-after')) || 0, base: r.status === 429 ? 30_000 : 10_000 }); last = new UtxoError(`Bitcoin API ${r.status}`, { transient: true }); continue; }
       if (!r.ok) { const e = new UtxoError(`Bitcoin API ${r.status}: ${scrub(text)}`); e.status = r.status; e.body = text; throw e; }
+      EP.delete(u); preferred = i;
       return json ? JSON.parse(text) : text;
     } catch (e) {
       if (e instanceof UtxoError && !e.transient) throw e;
       last = e instanceof UtxoError ? e : new UtxoError(`Bitcoin API ${e?.name || 'error'}: ${scrub(e?.message)}`, { transient: true });
-      cooldown.set(i, Date.now() + 20_000);
+      backoff(u, { base: 10_000 });
     }
   }
   throw last || new UtxoError('no Bitcoin API available', { transient: true });
+}
+// Shared read cache: one network read serves every swap that asks for the same thing within the TTL (concurrent calls share the promise).
+const cache = new Map();
+function cached(k, ttl, fn) {
+  const hit = cache.get(k);
+  if (hit && (!hit.done || Date.now() - hit.at < hit.ttl)) return hit.p; // still in flight (shared) or fresh
+  if (cache.size > 400) for (const [key, v] of cache) if (v.done && Date.now() - v.at >= v.ttl) cache.delete(key);
+  const e = { at: Date.now(), ttl: 0, done: false, p: null };
+  e.p = fn().then(v => { e.at = Date.now(); e.ttl = typeof ttl === 'function' ? ttl(v) : ttl; e.done = true; return v; }, err => { if (cache.get(k) === e) cache.delete(k); throw err; });
+  cache.set(k, e);
+  return e.p;
 }
 
 // ---------- keys (env BTC_TREASURY_KEY = 32-byte hex HD seed, or the gitignored .secrets/btc-treasury.key; m/84'/1'/0'/0/0) ----------
@@ -67,30 +95,30 @@ export const txUrl = (txid) => `${BTC_CHAIN.explorer}/tx/${txid}`;
 export const addrUrl = (a) => `${BTC_CHAIN.explorer}/address/${a}`;
 
 // ---------- chain adapter ----------
-let feeRate = 2n; // sat/vB, refreshed on reads
-let tipCache = { at: 0, v: 0 };
-async function tip() {
-  if (Date.now() - tipCache.at < 15_000) return tipCache.v;
+let feeRate = 2n; // sat/vB, refreshed every few minutes
+const tip = () => cached('tip', 15_000, async () => {
   const h = Number(await api('/blocks/tip/height', { json: false }));
   if (!Number.isFinite(h) || h <= 0) throw new UtxoError('bad tip height', { transient: true });
-  tipCache = { at: Date.now(), v: h };
-  api('/v1/fees/recommended').then(r => { const n = Math.ceil(Number(r.halfHourFee) || 2); feeRate = BigInt(Math.min(50, Math.max(2, n))); }).catch(() => {});
+  cached('fees', 300_000, () => api('/v1/fees/recommended')).then(r => { const n = Math.ceil(Number(r.halfHourFee) || 2); feeRate = BigInt(Math.min(50, Math.max(2, n))); }).catch(() => {});
   return h;
-}
+});
 const vsize = (nIn, nOut) => 11n + 68n * BigInt(nIn) + 31n * BigInt(nOut); // p2wpkh in/out (slight overestimate)
 const adapter = {
   name: 'btc', minConf: BTC_CHAIN.confirmations, dust: DUST,
   treasury,
   async utxos(address) {
-    const [list, h] = await Promise.all([api(`/address/${address}/utxo`), tip()]);
+    const [list, h] = await Promise.all([cached(`utxo:${address}`, 8_000, () => api(`/address/${address}/utxo`)), tip()]);
     return list.map(u => ({ txid: u.txid, vout: u.vout, value: BigInt(u.value), conf: u.status?.confirmed ? Math.max(1, h - u.status.block_height + 1) : 0 }));
   },
   async txStatus(txid) {
-    try { const t = await api(`/tx/${txid}`); return t.status?.confirmed ? 'confirmed' : 'mempool'; }
-    catch (e) { if (e.status === 404) return 'unknown'; throw e; }
+    // confirmed is final (cached for good); mempool/unknown are re-read after a few seconds, and every broadcast drops the cache
+    return cached(`tx:${txid}`, v => (v === 'confirmed' ? 3_600_000 : v === 'mempool' ? 6_000 : 2_000), async () => {
+      try { const t = await api(`/tx/${txid}`); return t.status?.confirmed ? 'confirmed' : 'mempool'; }
+      catch (e) { if (e.status === 404) return 'unknown'; throw e; }
+    });
   },
   async broadcast(hex) {
-    try { await api('/tx', { method: 'POST', body: hex, json: false }); }
+    try { await api('/tx', { method: 'POST', body: hex, json: false }); cache.clear(); }
     catch (e) {
       const m = String(e.body || e.message || '');
       if (/already (in|known)|txn-already|already in block chain|already exists/i.test(m)) return;
