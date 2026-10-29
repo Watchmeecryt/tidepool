@@ -3,6 +3,18 @@ title: Changelog
 description: What changed in Tidepool and when.
 ---
 
+## 2026-10-29 · Stellar testnet bridge (XLM, USDC, USDT), capped at 100 XLM
+
+- **New chain:** Stellar testnet, `blockchain: "stellar"`, a trusted-relayer bridge run by Tidepool. Testnet only, custodial: the tokens have no value. Guide: [Stellar testnet bridge](/docs/guides/bridge-stellar-testnet). The route is listed in `/v0/tokens` and `/v0/health` (`bridges.chains.stellar`) only while it is live.
+- **Assets:** native XLM `nep141:stellar.tp-omft.testnet` (7 decimals), and Tidepool's own classic-asset test USDC and USDT (7 decimals, issuer `GDXABUSRHP4YA5CELHLNJQ4M3TX2BSJ6PEMDFCG2RA4PQLAQLRMFFQAN`): `nep141:stellar-0da9087074a12ebeb5dcdc8bcf33cf163ab498fc.tp-omft.testnet` and `nep141:stellar-c36e358585c12ac3f684b98be0c6682ca9c4665f.tp-omft.testnet`. The ids are `stellar-<keccak256 of the Stellar Asset Contract id, last 20 bytes>`.
+- **Deposit model, MEMO:** like 1Click, Stellar quotes require `depositMode: "MEMO"`: one shared treasury `depositAddress` (`GBWLJSU3XF6NKHBY25VSDVVKIYS2ATCHHUVYLNWSARHLOLDDXSP2BA4Z`) and a numeric `depositMemo` per quote. Pay the treasury with that memo; `/v0/status` takes `depositAddress` + `depositMemo` and `/v0/deposit/submit` takes `memo`. The relayer watches the treasury through Horizon and matches payments to swaps by memo; there is no sweep, the NEP-141 is minted and credited to the verifier as soon as the payment is seen. Payments with the wrong asset or no matching memo are ignored and stay in the treasury.
+- **Payouts and refunds:** the verifier withdraws the bridged token to the relayer, which pays from the treasury (`payment`, or `createAccount` for XLM to a new account). Transactions are signed first with a deterministic hash and a 3 minute window, recorded before sending and looked up on Horizon on retry, so nothing is paid twice. Destinations are checked at quote time (account exists, trustline present).
+- **The cap:** XLM is capped at **100 XLM (1,000,000,000 stroops) per swap, payout or refund**, enforced at quote time with a `400`. Why: Friendbot hands out 10,000 XLM per request, so a cap protects the treasury. The treasury refills itself from Friendbot below 1,500 XLM. Minimum XLM payout to a new account is 1 XLM.
+- **Faucet:** `POST /v0/faucet {"chain":"stellar","address":"G…"}` drips test USDC and USDT (needs the account and trustlines; not XLM, use Friendbot).
+- **1Click difference:** mainnet 1Click lists Stellar as `nep245:` HOT-bridge ids; Tidepool uses OMFT-style `nep141:` ids. Take the ids from `/v0/tokens`.
+- **Verified on Stellar testnet** (2026-10-29): XLM → NEAR USDC, NEAR USDC → XLM, NEAR USDC → Stellar USDC, a `PARTIAL_DEPOSIT` refund and an over-cap rejection. Transaction links are in the guide.
+- New example `stellar-deposit.ts` in tidepool-examples and `scripts/bridge-stellar-bootstrap.mjs`.
+
 ## 2026-10-28 · Solana devnet bridge (SOL, USDC, USDT), capped at 0.005 SOL
 
 - **New chain:** Solana devnet, `blockchain: "sol"`, a trusted-relayer bridge run by Tidepool. Devnet only, custodial and testnet-only: the tokens have no value. Guide: [Solana devnet bridge](/docs/guides/bridge-solana-devnet). The route is listed in `/v0/tokens` and `/v0/health` (`bridges.chains.sol`) only while it is live.

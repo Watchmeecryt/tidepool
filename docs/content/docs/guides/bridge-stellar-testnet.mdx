@@ -92,4 +92,10 @@ Same request and response fields, `blockchain: "stellar"`, `depositMode: "MEMO"`
 
 ## Verified flows
 
-VERIFIED_PLACEHOLDER
+These ran end to end on the live Tidepool testnet against **Stellar testnet** (real Stellar transactions, real NEAR testnet settlement) on 2026-10-29:
+
+- **XLM → NEAR USDC** (5 XLM, MEMO deposit): [Stellar deposit tx](https://stellar.expert/explorer/testnet/tx/736d461f62d240693288ba6b695c5edf9308b1477ced8900b3328e79d46af5df), [NEAR settlement tx](https://testnet.nearblocks.io/txns/nNbfnFWMtXRfgbKQAZdQDgrtXHNp5p9DrADocxrVEjq).
+- **NEAR USDC → XLM payout** (5 USDC): [NEAR deposit tx](https://testnet.nearblocks.io/txns/2mjhvGMUFkehSg6VLB8PpwwbhbEktnhNCMzM4uCW9Tb7), [NEAR settlement tx](https://testnet.nearblocks.io/txns/Fu965XuxoAkUbzN5yMm6Bm29VABns7BRyNhKJU4Z3mFn), [Stellar payout tx](https://stellar.expert/explorer/testnet/tx/403d1f60c8f48db777e09e16d06a39b54c8ab0f7161edcf4f70727d007681d9c).
+- **NEAR USDC → Stellar USDC payout** (5 USDC, recipient with a trustline): [NEAR deposit tx](https://testnet.nearblocks.io/txns/HpBVzwovg5N4wqQ3TEESiAETF56ezhAA7hVQZbDdudR9), [NEAR settlement tx](https://testnet.nearblocks.io/txns/CJd2FpcECAfwjNVe8xoMmCXmytacwKNAwDjTG8f9MzWX), [Stellar payout tx](https://stellar.expert/explorer/testnet/tx/7985135b68e488da89fdd062bc967ed345d19a8208114555945d4bcfb145c6de).
+- **`PARTIAL_DEPOSIT` refund** (quoted 10 XLM, sent 4 XLM): [Stellar deposit tx](https://stellar.expert/explorer/testnet/tx/db08c66d78721464335e665eef4c8f30e651550b7f513f0567d34b7d6c06abcb), [NEAR refund tx](https://testnet.nearblocks.io/txns/9za8ccxL4FFU1tqo5PFAVFW8L4LeTKvTDFMMY7Jj3bd2), [Stellar refund tx](https://stellar.expert/explorer/testnet/tx/552f7461562d68f0f0bd324d16f9bf7893e02f43d8fbd3e3b71eb5b9e77bab59). Final status `REFUNDED`.
+- **Over the cap:** a 100.0000001 XLM quote is rejected with `400` ("XLM is capped at 100 XLM ... per swap"), and so is a quote that would pay out more than 100 XLM, before any deposit memo is issued.
