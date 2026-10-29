@@ -1441,7 +1441,7 @@
           "Tidepool"
         ],
         "summary": "Get testnet tokens (Tidepool extension, not part of 1Click)",
-        "description": "Drips Tidepool test tokens; the same faucet backs the dropdown on /docs/guides/faucet. NEAR (no chain): pass accountId; mode=wallet mints the six NEP-141 test tokens to the account; mode=intents credits them inside the Tidepool verifier. With mode=intents, assets also accepts chain aliases (sol, stellar, sui, base, arb, eth, bridged) that credit that chain's bridged test tokens to the intents balance: USDC and USDT 100 each, plus verifier-only test SOL (0.05) for sol and test XLM (5) for stellar and test SUI (0.5) for sui; bridged drips have their own hourly limit. Other chains: pass chain (eth, base, arb, sol, stellar or sui) and the address on that chain to send 100 test USDC and 100 test USDT there (ERC-20, SPL with token accounts created for you, Stellar classic assets, or Sui Move coins (no setup, any address); Stellar needs an existing account with trustlines to issuer GDXABUSRHP4YA5CELHLNJQ4M3TX2BSJ6PEMDFCG2RA4PQLAQLRMFFQAN). Native gas (ETH, SOL, XLM, SUI) is never dripped: use each chain's own faucet. One drip per account (or address) and mode/chain per hour; 6 per IP per hour.",
+        "description": "Drips Tidepool test tokens; the same faucet backs the dropdown on /docs/guides/faucet. NEAR (no chain): pass accountId; mode=wallet mints the six NEP-141 test tokens to the account; mode=intents credits them inside the Tidepool verifier. With mode=intents, assets also accepts chain aliases (sol, stellar, sui, base, arb, eth, bridged) that credit that chain's bridged test tokens to the intents balance: USDC and USDT 100 each, plus verifier-only test SOL (0.05) for sol and test XLM (5) for stellar and test SUI (0.5) for sui; bridged drips have their own hourly limit. Other chains: pass chain (eth, base, arb, sol, stellar or sui) and the address on that chain to send 100 test USDC and 100 test USDT there (ERC-20, SPL with token accounts created for you, Stellar classic assets, or Sui Move coins (no setup, any address); Stellar needs an existing account with trustlines to issuer GDXABUSRHP4YA5CELHLNJQ4M3TX2BSJ6PEMDFCG2RA4PQLAQLRMFFQAN). Native gas (ETH, SOL, XLM, SUI) is never dripped: use each chain's own faucet. Native BTC (testnet4) and ZEC (testnet) are never dripped either: chain btc or zec answers 400 and names the external faucet (CypherFaucet / testnet4.info for tBTC, the Valar faucet for TAZ). One drip per account (or address) and mode/chain per hour; 6 per IP per hour.",
         "requestBody": {
           "required": true,
           "content": {
@@ -1467,7 +1467,7 @@
                     "items": {
                       "type": "string"
                     },
-                    "description": "Optional subset: asset ids, NEAR symbols, or (mode=intents) chain aliases sol, stellar, sui, base, arb, eth, bridged. Default: the six NEAR tokens."
+                    "description": "Optional subset: asset ids, NEAR symbols, or (mode=intents) chain aliases sol, stellar, sui, base, arb, eth, bridged (btc and zec are accepted but give nothing: native BTC and ZEC are never dripped). Default: the six NEAR tokens."
                   },
                   "chain": {
                     "type": "string",
@@ -1479,7 +1479,7 @@
                       "stellar",
                       "sui"
                     ],
-                    "description": "Chain to drip USDC and USDT on (Base Sepolia, Arbitrum Sepolia, Ethereum Sepolia, Solana devnet, Stellar testnet, Sui testnet). Omit for NEAR."
+                    "description": "Chain to drip USDC and USDT on (Base Sepolia, Arbitrum Sepolia, Ethereum Sepolia, Solana devnet, Stellar testnet, Sui testnet). Omit for NEAR. btc and zec are not drip chains: they answer 400 with the external faucet to use (native BTC and ZEC are never dripped)."
                   },
                   "address": {
                     "type": "string",
@@ -1978,7 +1978,7 @@
               "qtc",
               "prl"
             ],
-            "description": "Blockchain associated with the token. The enum is the full 1Click list; Tidepool testnet lists near, eth, base, arb, sol, stellar and sui.",
+            "description": "Blockchain associated with the token. The enum is the full 1Click list; Tidepool testnet lists near, eth, base, arb, sol, stellar, sui, btc and zec.",
             "example": "near"
           },
           "symbol": {

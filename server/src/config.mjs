@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import bs58 from 'bs58';
 import { keccak256 } from 'ethers';
+import bs58check from 'bs58check';
+import * as bitcoin from 'bitcoinjs-lib';
 import { Asset, Networks, StrKey } from '@stellar/stellar-base';
 // Tidepool deployment config: testnet accounts and the test token list.
 export const ROOT = process.env.TIDEPOOL_ROOT || 'tidepool-sandbox.testnet';
@@ -123,7 +125,43 @@ if (UD?.treasury) {
     return { ...b, ...common, inventory: UD.inventory?.[b.symbol] || b.inventory, sub: `sui-${b.symbol.toLowerCase()}`, coinType, treasuryCap, contractAddress: coinType, nearContract: `${sub}.${OMFT}`, assetId: `nep141:${sub}.${OMFT}`, name: `Tidepool Testnet ${b.symbol} on Sui Testnet (bridged, no value)` }; });
   for (const t of [sui, ...coins]) { if (SUI_CHAIN.deployed) TOKENS.push(t); SUI_CHAIN.tokens.push(t); }
 }
-export const chainOf = (key) => key === 'sol' ? SOL_CHAIN : key === 'stellar' ? STELLAR_CHAIN : key === 'sui' ? SUI_CHAIN : EVM_CHAINS.find(c => c.key === key);
+
+// ---- Bitcoin testnet4 and Zcash testnet bridges (trusted relayer run by Tidepool; testnet only) ----
+// Same shape as the Sui bridge and as 1Click's mainnet BTC/ZEC support: NATIVE only, a PER-QUOTE plain deposit address (no memo), swept
+// into the treasury by the relayer. Ids mirror 1Click's nep141:btc.omft.near / nep141:zec.omft.near under tp-omft.testnet. Both
+// assets have 8 decimals. Native testnet coins are never dripped by the Tidepool faucet: get them from the public faucets
+// (tBTC: https://cypherfaucet.com/btc-testnet or https://mempool.space/testnet4/faucet; TAZ: https://faucet.testnet.valargroup.dev/).
+export const BTC_DECIMALS = 8, ZEC_DECIMALS = 8;
+export const BTC_CAP_SATS = BigInt(process.env.BTC_CAP_SATS || 500_000); // 0.005 tBTC cap on any BTC swap leg, payout or refund (enforced at quote time)
+export const BTC_MIN_SATS = BigInt(process.env.BTC_MIN_SATS || 10_000); // 0.0001 tBTC minimum (a sweep and a payout each pay a network fee)
+export const ZEC_CAP_ZAT = BigInt(process.env.ZEC_CAP_ZAT || 50_000_000); // 0.5 TAZ cap
+export const ZEC_MIN_ZAT = BigInt(process.env.ZEC_MIN_ZAT || 200_000); // 0.002 TAZ minimum (ZIP-317 fees are 0.0001 TAZ per transparent action)
+export const BTC_CHAIN = { key: 'btc', blockchain: 'btc', kind: 'btc', name: 'Bitcoin Testnet4', network: 'testnet4', explorer: 'https://mempool.space/testnet4', faucet: 'https://cypherfaucet.com/btc-testnet', confirmations: 1, symbol: 'BTC' };
+export const ZEC_CHAIN = { key: 'zec', blockchain: 'zec', kind: 'zec', name: 'Zcash Testnet', network: 'testnet', explorer: 'https://testnet.zcashexplorer.app', faucet: 'https://faucet.testnet.valargroup.dev/', confirmations: 1, symbol: 'ZEC' };
+// tb1q... (native segwit p2wpkh, testnet/testnet4) and bech32 taproot tb1p...; legacy m/n and 2... addresses are accepted too (base58check).
+export const isBtcAddress = (s) => {
+  if (typeof s !== 'string' || s.length < 26 || s.length > 90) return false;
+  try { bitcoin.address.toOutputScript(s, bitcoin.networks.testnet); return true; } catch { return false; }
+};
+// Zcash TRANSPARENT testnet addresses only: tm... (p2pkh, 0x1D25) and t2... (p2sh, 0x1CBA). Shielded (ztestsapling/utest) are not supported.
+export const ZEC_P2PKH = Buffer.from([0x1d, 0x25]), ZEC_P2SH = Buffer.from([0x1c, 0xba]);
+export const decodeZecAddress = (s) => {
+  if (typeof s !== 'string' || !/^t[m2][1-9A-HJ-NP-Za-km-z]{32,36}$/.test(s)) return null;
+  try { const b = Buffer.from(bs58check.decode(s)); if (b.length !== 22) return null; const p = b.subarray(0, 2); return p.equals(ZEC_P2PKH) ? { type: 'p2pkh', hash: b.subarray(2) } : p.equals(ZEC_P2SH) ? { type: 'p2sh', hash: b.subarray(2) } : null; } catch { return null; }
+};
+export const isZecAddress = (s) => Boolean(decodeZecAddress(s));
+const UTXO_NATIVE = [[BTC_CHAIN, 'btc', 'BTC', 'bitcoin', 100000, 'Bitcoin Testnet4'], [ZEC_CHAIN, 'zec', 'ZEC', 'zcash', 40, 'Zcash Testnet']];
+for (const [C, k, symbol, coingeckoId, fallback, label] of UTXO_NATIVE) {
+  const D = DEPLOYED[k];
+  C.deployed = Boolean(D?.treasury && D.live);
+  if (!D?.treasury) continue;
+  C.treasury = D.treasury; C.tokens = [];
+  const t = { chain: k, kind: k, blockchain: k, sub: k, symbol, decimals: 8, coingeckoId, fallback, drip: '0', inventory: D.inventory?.[symbol] || '1', native: true,
+    nearContract: `${k}.${OMFT}`, assetId: `nep141:${k}.${OMFT}`, name: `Tidepool Testnet ${symbol} on ${label} (bridged, no value)` };
+  if (C.deployed) TOKENS.push(t);
+  C.tokens.push(t);
+}
+export const chainOf = (key) => key === 'sol' ? SOL_CHAIN : key === 'stellar' ? STELLAR_CHAIN : key === 'sui' ? SUI_CHAIN : key === 'btc' ? BTC_CHAIN : key === 'zec' ? ZEC_CHAIN : EVM_CHAINS.find(c => c.key === key);
 export const isEvmAddress = (s) => typeof s === 'string' && /^0x[0-9a-fA-F]{40}$/.test(s);
 
 export const toUnits = (s, d) => { const [i, f = ''] = String(s).split('.'); return BigInt(i + (f + '0'.repeat(d)).slice(0, d)); };

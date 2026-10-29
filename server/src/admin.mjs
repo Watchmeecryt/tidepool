@@ -17,8 +17,8 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<'
 const H = { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex', 'x-frame-options': 'DENY', 'referrer-policy': 'no-referrer' };
 const readForm = (req) => new Promise((ok) => { let b = ''; req.on('data', c => { b += c; if (b.length > 4096) req.destroy(); }); req.on('end', () => ok(new URLSearchParams(b))); });
 const fmtT = (t) => t ? new Date(t).toISOString().replace('T', ' ').slice(0, 16) + 'Z' : '-';
-// Explorer link by wallet kind: NEAR testnet accounts -> nearblocks, Sui addresses (0x + 64 hex) -> suiscan testnet; other chains' addresses are shown as text.
-const walletUrl = (w) => /^0x[0-9a-fA-F]{64}$/.test(w) ? `https://suiscan.xyz/testnet/account/${w}` : /^[a-z0-9._-]{2,64}$/.test(w) && !/^0x[0-9a-f]{40}$/.test(w) ? `https://testnet.nearblocks.io/address/${encodeURIComponent(w)}` : null;
+// Explorer link by wallet kind: NEAR testnet accounts -> nearblocks, Sui addresses (0x + 64 hex) -> suiscan testnet, Bitcoin testnet4 (tb1...) -> mempool.space, Zcash testnet (tm.../t2...) -> zcashexplorer; other chains' addresses are shown as text.
+const walletUrl = (w) => /^0x[0-9a-fA-F]{64}$/.test(w) ? `https://suiscan.xyz/testnet/account/${w}` : /^tb1[a-z0-9]{20,80}$/.test(w) ? `https://mempool.space/testnet4/address/${w}` : /^t[m2][1-9A-HJ-NP-Za-km-z]{33}$/.test(w) ? `https://testnet.zcashexplorer.app/address/${w}` : /^[a-z0-9._-]{2,64}$/.test(w) && !/^0x[0-9a-f]{40}$/.test(w) ? `https://testnet.nearblocks.io/address/${encodeURIComponent(w)}` : null;
 const nb = (w) => walletUrl(w) ? `<a href="${walletUrl(w)}" target="_blank" rel="noopener">${esc(w)}</a>` : esc(w);
 const bySym = Object.fromEntries(TOKENS.map(t => [t.assetId, t]));
 

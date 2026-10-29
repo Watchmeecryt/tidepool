@@ -5,11 +5,13 @@ import crypto from 'node:crypto';
 import { KeyPair } from 'near-api-js';
 import bs58 from 'bs58';
 import { rpc, call, view, viewAccount, sendNear, signIntents, deriveDepositKey, keyStore, NETWORK, TGAS, parseNear, txUrl } from './near.mjs';
-import { ROOT, VERIFIER, MAKER, TOKENS, fromUnits, chainOf, isEvmAddress, isSolAddress, isStellarAddress, STELLAR_CHAIN, XLM_CAP_STROOPS, isSuiAddress, SUI_CHAIN, SUI_CAP_MIST, BRIDGE_ACCOUNT, SOL_PAYOUT_CAP_LAMPORTS, SOL_RENT_MIN_LAMPORTS } from './config.mjs';
+import { ROOT, VERIFIER, MAKER, TOKENS, fromUnits, chainOf, isEvmAddress, isSolAddress, isStellarAddress, STELLAR_CHAIN, XLM_CAP_STROOPS, isSuiAddress, SUI_CHAIN, SUI_CAP_MIST, BTC_CHAIN, ZEC_CHAIN, isBtcAddress, isZecAddress, BTC_CAP_SATS, BTC_MIN_SATS, ZEC_CAP_ZAT, ZEC_MIN_ZAT, BRIDGE_ACCOUNT, SOL_PAYOUT_CAP_LAMPORTS, SOL_RENT_MIN_LAMPORTS } from './config.mjs';
 import * as evm from './evm.mjs';
 import * as sol from './solana.mjs';
 import * as stellar from './stellar.mjs';
 import * as sui from './sui.mjs';
+import * as btc from './btc.mjs';
+import * as zec from './zec.mjs';
 import { prices } from './prices.mjs';
 import { db, save } from './store.mjs';
 
@@ -21,7 +23,7 @@ export class BadRequest extends Error { constructor(m, code = 400, extra) { supe
 // ---- First-call hints: extra fields on 400s (the spec's `message` field is kept) ----
 const DOCS_QUICKSTART = 'https://www.usetidepool.tech/docs/quickstart';
 const tp = (sub) => `nep141:${sub}.${ROOT}`;
-const evmTp = (chain, sym) => TOKENS.find(t => t.chain === chain && t.symbol === sym)?.assetId; // also finds Solana ('sol'), Stellar ('stellar') and Sui ('sui') tokens
+const evmTp = (chain, sym) => TOKENS.find(t => t.chain === chain && t.symbol === sym)?.assetId; // also finds Solana ('sol'), Stellar ('stellar'), Sui ('sui'), Bitcoin ('btc') and Zcash ('zec') tokens
 const MAINNET_MAP = {
   'nep141:wrap.near': tp('wnear'),
   'nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1': tp('usdc'),
@@ -29,7 +31,7 @@ const MAINNET_MAP = {
   'nep141:usdt.tether-token.near': tp('usdt'),
   'nep141:dac17f958d2ee523a2206206994597c13d831ec7.factory.bridge.near': tp('usdt'),
   'nep141:eth.omft.near': tp('eth'), 'nep141:aurora': tp('eth'), 'nep141:eth.bridge.near': tp('eth'),
-  'nep141:btc.omft.near': tp('wbtc'), 'nep141:nbtc.bridge.near': tp('wbtc'),
+  'nep141:btc.omft.near': evmTp('btc', 'BTC') || tp('wbtc'), 'nep141:nbtc.bridge.near': tp('wbtc'), 'nep141:zec.omft.near': evmTp('zec', 'ZEC'),
   'nep141:2260fac5e5542a773aa44fbcfedf7c193bc2c599.factory.bridge.near': tp('wbtc'),
   'nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near': evmTp('base', 'USDC'),
   'nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near': evmTp('arb', 'USDC'),
@@ -44,6 +46,7 @@ const MAINNET_MAP = {
   // Sui: the same ids 1Click lists on mainnet (the id hash is keccak256 of the coin type string; Tidepool's own Move coins use the same scheme)
   'nep141:sui.omft.near': evmTp('sui', 'SUI'),
   'nep141:sui-c1b81ecaf27933252d31a963bc5e9458f13c18ce.omft.near': evmTp('sui', 'USDC'),
+  // Bitcoin / Zcash: native BTC and ZEC use the same ids 1Click lists on mainnet (nep141:btc.omft.near, nep141:zec.omft.near)
 };
 export function suggestAsset(id) {
   const s = String(id || '').toLowerCase();
@@ -51,6 +54,8 @@ export function suggestAsset(id) {
   const chain = /^nep141:(base|arb|eth)-0x/.exec(s)?.[1] || (/^nep141:sol[-.]/.test(s) ? 'sol' : /^nep141:stellar[-.]/.test(s) ? 'stellar' : /^nep141:sui[-.]/.test(s) ? 'sui' : undefined);
   if (/^nep141:sol\.|^(w?sol|solana)$/.test(s)) return evmTp('sol', 'SOL') || null;
   if (/^nep141:sui\.|^sui$/.test(s)) return evmTp('sui', 'SUI') || null;
+  if (/^nep141:zec\.|^(zec|zcash|taz)$/.test(s)) return evmTp('zec', 'ZEC') || null;
+  if (/^nep141:btc\.|^(tbtc|bitcoin)$/.test(s)) return evmTp('btc', 'BTC') || tp('wbtc');
   if (/^nep141:stellar[.-]|^(xlm|stellar|lumens?)$|^nep245:.*1100_/.test(s)) return evmTp('stellar', /usdt/.test(s) ? 'USDT' : /usd/.test(s) ? 'USDC' : 'XLM') || null;
   const pick = (sym) => (chain && evmTp(chain, sym)) || tp(sym.toLowerCase());
   if (/usdc|17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1/.test(s)) return pick('USDC');
@@ -184,6 +189,28 @@ export function suiLimits(req, inT, outT, amountIn, amountOut) {
   if (inT.kind === 'sui' && inT.native && amountIn > SUI_CAP_MIST) throw new BadRequest(`SUI is capped at ${CAP_SUI()} SUI (${SUI_CAP_MIST} MIST) per swap on Tidepool's Sui testnet bridge; this quote would take ${fromUnits(amountIn, 9)} SUI. Lower the amount.`, 400, capHint('Lower amount so the SUI leg is at most the cap.', { field: 'amount' }));
 }
 
+// Bitcoin testnet4 / Zcash testnet limits. Native BTC and ZEC are capped per swap leg, payout or refund (the treasuries are funded from
+// small public faucets) and have a minimum (a deposit must cover the network fee of its sweep). Enforced at quote time.
+const UTXO_LIMITS = {
+  btc: { cap: BTC_CAP_SATS, min: BTC_MIN_SATS, symbol: 'BTC', chain: BTC_CHAIN },
+  zec: { cap: ZEC_CAP_ZAT, min: ZEC_MIN_ZAT, symbol: 'ZEC', chain: ZEC_CHAIN },
+};
+export function utxoLimits(req, inT, outT, amountIn, amountOut) {
+  for (const [kind, L] of Object.entries(UTXO_LIMITS)) {
+    const show = (v) => fromUnits(v, 8), capHint = (why, extra = {}) => hint(`${L.symbol} on ${L.chain.name} is capped at ${show(L.cap)} ${L.symbol} per swap, payout or refund, with a minimum of ${show(L.min)} ${L.symbol} (the testnet treasury is funded from small public faucets). ${why}`, req, { cap: L.cap.toString(), min: L.min.toString(), ...extra });
+    if (outT.kind === kind) {
+      if (amountOut > L.cap) throw new BadRequest(`${L.symbol} is capped at ${show(L.cap)} ${L.symbol} (${L.cap} base units) per swap on Tidepool's ${L.chain.name} bridge; this quote would pay out ${show(amountOut)} ${L.symbol}. Lower the amount.`, 400, capHint('Lower amount (or the EXACT_OUTPUT amount) so the leg is at most the cap.', { field: 'amount' }));
+      if (amountOut < L.min) throw new BadRequest(`this quote would pay out ${show(amountOut)} ${L.symbol}; the minimum on Tidepool's ${L.chain.name} bridge is ${show(L.min)} ${L.symbol}. Raise the amount.`, 400, capHint('Raise the amount so the payout is at least the minimum.', { field: 'amount' }));
+      if (req.recipientType === 'DESTINATION_CHAIN' && req.swapType === 'ANY_INPUT') throw new BadRequest(`ANY_INPUT quotes cannot pay out ${L.symbol} on ${L.chain.name} (each deposit would be converted separately and could exceed the ${show(L.cap)} ${L.symbol} cap); use EXACT_INPUT, EXACT_OUTPUT or FLEX_INPUT`);
+    }
+    if (inT.kind === kind) {
+      if (amountIn > L.cap) throw new BadRequest(`${L.symbol} is capped at ${show(L.cap)} ${L.symbol} (${L.cap} base units) per swap on Tidepool's ${L.chain.name} bridge; this quote would take ${show(amountIn)} ${L.symbol}. Lower the amount.`, 400, capHint('Lower amount so the leg is at most the cap.', { field: 'amount' }));
+      if (amountIn < L.min && req.swapType !== 'ANY_INPUT') throw new BadRequest(`${L.symbol} deposits on ${L.chain.name} must be at least ${show(L.min)} ${L.symbol} (the sweep pays a network fee); this quote would take ${show(amountIn)} ${L.symbol}. Raise the amount.`, 400, capHint('Raise the amount so the deposit is at least the minimum.', { field: 'amount' }));
+    }
+  }
+}
+const UTXO = { btc, zec };
+
 export async function quote(req, { authed, maxDeadlineMs = 24 * 3600_000 } = {}) {
   const need = ['dry', 'swapType', 'slippageTolerance', 'originAsset', 'depositType', 'destinationAsset', 'amount', 'refundTo', 'refundType', 'recipient', 'recipientType', 'deadline'];
   const missing = need.filter(k => req[k] === undefined || req[k] === null || req[k] === '');
@@ -203,8 +230,8 @@ export async function quote(req, { authed, maxDeadlineMs = 24 * 3600_000 } = {})
   if (memoMode && ((inT.chain && inT.kind !== 'stellar') || req.depositType !== 'ORIGIN_CHAIN')) throw new BadRequest('depositMode MEMO is supported for ORIGIN_CHAIN deposits of NEAR-native tokens (shared address + ft_transfer memo) and of Stellar assets (shared treasury address + payment memo); use SIMPLE otherwise');
   if (req.swapType === 'ANY_INPUT' && memoMode) throw new BadRequest('ANY_INPUT quotes use depositMode SIMPLE');
   // Address formats follow 1Click: chain-native addresses for *_CHAIN types, NEAR accounts for INTENTS.
-  const addrOk = (t, onChain, v) => (onChain && t.chain ? (t.kind === 'sol' ? isSolAddress(v) : t.kind === 'stellar' ? isStellarAddress(v) : t.kind === 'sui' ? isSuiAddress(v) : isEvmAddress(v)) : isAccount(v));
-  const what = (t, onChain) => (onChain && t.chain ? `a ${chainOf(t.chain).name} address (${t.kind === 'sol' ? 'base58 public key' : t.kind === 'stellar' ? 'G... public key' : t.kind === 'sui' ? '0x + 64 hex characters' : '0x...'})` : 'a NEAR testnet account id');
+  const addrOk = (t, onChain, v) => (onChain && t.chain ? (t.kind === 'sol' ? isSolAddress(v) : t.kind === 'stellar' ? isStellarAddress(v) : t.kind === 'sui' ? isSuiAddress(v) : t.kind === 'btc' ? isBtcAddress(v) : t.kind === 'zec' ? isZecAddress(v) : isEvmAddress(v)) : isAccount(v));
+  const what = (t, onChain) => (onChain && t.chain ? `a ${chainOf(t.chain).name} address (${t.kind === 'sol' ? 'base58 public key' : t.kind === 'stellar' ? 'G... public key' : t.kind === 'sui' ? '0x + 64 hex characters' : t.kind === 'btc' ? 'tb1... testnet4 address' : t.kind === 'zec' ? 'tm... transparent testnet address' : '0x...'})` : 'a NEAR testnet account id');
   for (const f of ['recipient', 'refundTo']) if (isMainnetAcct(req[f])) throw new BadRequest(`${f} ${req[f]} is a mainnet account; Tidepool runs on NEAR testnet. Use a .testnet account such as alice.testnet`, 400, hint('Use a NEAR testnet account (ending in .testnet), or an implicit testnet account. Create one free at https://testnet.mynearwallet.com.', req, { field: f }));
   if (!addrOk(outT, req.recipientType === 'DESTINATION_CHAIN', req.recipient)) throw new BadRequest(`recipient must be ${what(outT, req.recipientType === 'DESTINATION_CHAIN')}`);
   if (!addrOk(inT, req.refundType === 'ORIGIN_CHAIN', req.refundTo)) throw new BadRequest(`refundTo must be ${what(inT, req.refundType === 'ORIGIN_CHAIN')}`);
@@ -238,6 +265,7 @@ export async function quote(req, { authed, maxDeadlineMs = 24 * 3600_000 } = {})
   solLimits(req, inT, outT, amountIn, amountOut);
   stellarLimits(req, inT, outT, amountIn, amountOut);
   suiLimits(req, inT, outT, amountIn, amountOut);
+  utxoLimits(req, inT, outT, amountIn, amountOut);
   if (outT.kind === 'stellar' && req.recipientType === 'DESTINATION_CHAIN') { const e = await stellar.checkDestination(req.recipient, outT, amountOut, 'recipient'); if (e) throw new BadRequest(e, 400, hint(e, req, { field: 'recipient' })); }
   if (inT.kind === 'stellar' && req.refundType === 'ORIGIN_CHAIN') { const e = await stellar.checkDestination(req.refundTo, inT, minAmountIn, 'refundTo'); if (e) throw new BadRequest(e, 400, hint(e, req, { field: 'refundTo' })); }
   const inv = await makerBalance(outT.assetId);
@@ -265,8 +293,15 @@ export async function quote(req, { authed, maxDeadlineMs = 24 * 3600_000 } = {})
       const have = await sui.treasuryBalance(outT).catch(() => 0n);
       if (have < amountOut + 50_000_000n) throw new BadRequest('The Sui testnet treasury is low on SUI right now. Try again later or use a different destination.', 503);
     }
+    for (const k of ['btc', 'zec']) {
+      if ((inT.kind === k || outT.kind === k) && !UTXO[k].relayerConfigured()) throw new BadRequest(`${UTXO_LIMITS[k].chain.name} bridge is not configured on this server`, 503);
+      if (outT.kind === k && req.recipientType === 'DESTINATION_CHAIN') {
+        const have = await UTXO[k].treasuryBalance().catch(() => 0n);
+        if (have < amountOut + UTXO[k].feeEstimate(2, 2) * 2n) throw new BadRequest(`The ${UTXO_LIMITS[k].chain.name} treasury is low on ${UTXO_LIMITS[k].symbol} right now (it is funded from small public faucets). Try again later or use a different destination.`, 503);
+      }
+    }
     if (outT.kind === 'stellar' && req.recipientType === 'DESTINATION_CHAIN' && await stellar.treasuryLow()) throw new BadRequest('The Stellar testnet treasury is low on XLM right now (it refills from Friendbot automatically). Try again in a few minutes.', 503);
-    let depositAddress = inT.chain && req.depositType === 'ORIGIN_CHAIN' ? (inT.kind === 'sol' ? sol.depositAddressFor(MASTER, correlationId) : inT.kind === 'stellar' ? STELLAR_CHAIN.treasury : inT.kind === 'sui' ? sui.depositAddressFor(MASTER, correlationId) : evm.depositAddressFor(inT.chain, correlationId)) : accountId;
+    let depositAddress = inT.chain && req.depositType === 'ORIGIN_CHAIN' ? (inT.kind === 'sol' ? sol.depositAddressFor(MASTER, correlationId) : inT.kind === 'stellar' ? STELLAR_CHAIN.treasury : inT.kind === 'sui' ? sui.depositAddressFor(MASTER, correlationId) : UTXO[inT.kind] ? UTXO[inT.kind].depositAddressFor(MASTER, correlationId) : evm.depositAddressFor(inT.chain, correlationId)) : accountId;
     if (memoMode) { depositAddress = inT.kind === 'stellar' ? STELLAR_CHAIN.treasury : await memoAccount(inT); q.depositAddress = depositAddress; q.depositMemo = newMemo(); }
     Object.assign(q, { depositAddress, deadline: deadline.toISOString(), timeWhenInactive: deadline.toISOString() });
     if (q.depositMemo) { const { depositMemo } = q; delete q.depositMemo; Object.assign(q, { depositAddress, depositMemo }); }
@@ -315,7 +350,7 @@ const newMemo = () => String(crypto.randomInt(100000000, 999999999)) + String(cr
 const acctOf = (addr, s) => s.intentsAccount || addr;
 // explorer link for a tx hash recorded on a swap (NEAR by default, EVM when tagged)
 // (evmTxs holds every non-NEAR hash -> chain key; 'sol' is Solana)
-const urlOf = (s, h) => (s.evmTxs?.[h] === 'sol' ? sol.txUrl(h) : s.evmTxs?.[h] === 'sui' ? sui.txUrl(h) : s.evmTxs?.[h] === 'stellar' ? stellar.txUrl(h) : s.evmTxs?.[h] ? evm.evmTxUrl(s.evmTxs[h], h) : txUrl(h));
+const urlOf = (s, h) => (s.evmTxs?.[h] === 'sol' ? sol.txUrl(h) : s.evmTxs?.[h] === 'sui' ? sui.txUrl(h) : UTXO[s.evmTxs?.[h]] ? UTXO[s.evmTxs[h]].txUrl(h) : s.evmTxs?.[h] === 'stellar' ? stellar.txUrl(h) : s.evmTxs?.[h] ? evm.evmTxUrl(s.evmTxs[h], h) : txUrl(h));
 const tagEvm = (s, chain, h) => { (s.evmTxs ||= {})[h] = chain; return h; };
 
 export function statusOf(depositAddress, depositMemo) {
@@ -354,7 +389,7 @@ export function submitDeposit({ txHash, depositAddress, nearSenderAccount, memo 
 function submitDepositCommon(s, depositAddress, memo, txHash, nearSenderAccount) {
   if (!s.originTxs.includes(txHash)) s.originTxs.push(txHash);
   const inT = byAsset[s.quoteResponse.quoteRequest.originAsset];
-  if (inT.chain && (inT.kind === 'sol' ? /^[1-9A-HJ-NP-Za-km-z]{80,90}$/ : inT.kind === 'stellar' ? /^[0-9a-f]{64}$/ : inT.kind === 'sui' ? /^[1-9A-HJ-NP-Za-km-z]{43,44}$/ : /^0x[0-9a-fA-F]{64}$/).test(txHash)) tagEvm(s, inT.chain, txHash);
+  if (inT.chain && (inT.kind === 'sol' ? /^[1-9A-HJ-NP-Za-km-z]{80,90}$/ : inT.kind === 'stellar' || UTXO[inT.kind] ? /^[0-9a-f]{64}$/ : inT.kind === 'sui' ? /^[1-9A-HJ-NP-Za-km-z]{43,44}$/ : /^0x[0-9a-fA-F]{64}$/).test(txHash)) tagEvm(s, inT.chain, txHash);
   if (nearSenderAccount) s.sender = nearSenderAccount;
   if (s.status === 'PENDING_DEPOSIT') { s.status = 'KNOWN_DEPOSIT_TX'; s.updatedAt = new Date().toISOString(); }
   save();
@@ -387,6 +422,7 @@ function queueRelease(s, tag, t, to, amount) {
   const rel = { id: evm.releaseId(`${s.quoteResponse.correlationId}:${tag}`), chain: t.chain, token: t.evmAddress, to, amount: amount.toString(), tag, done: false };
   if (t.kind === 'sol') Object.assign(rel, { id: `sol:${s.quoteResponse.correlationId}:${tag}`, token: t.mint, assetId: t.assetId, tx: {} });
   if (t.kind === 'sui') Object.assign(rel, { id: `sui:${s.quoteResponse.correlationId}:${tag}`, token: undefined, assetId: t.assetId, tx: {} });
+  if (UTXO[t.kind]) Object.assign(rel, { id: `${t.kind}:${s.quoteResponse.correlationId}:${tag}`, token: undefined, assetId: t.assetId, tx: {} });
   if (t.kind === 'stellar') Object.assign(rel, { id: `stellar:${s.quoteResponse.correlationId}:${tag}`, token: undefined, assetId: t.assetId, tx: {} });
   (s.releases ||= []).push(rel);
 }
@@ -404,6 +440,14 @@ async function processReleases(s) {
       const t = byAsset[r.assetId];
       if ((await sui.drive(r.tx ||= {}, () => sui.preparePayout(t, r.to, BigInt(r.amount)), save)) !== 'confirmed') continue;
       const h = tagEvm(s, 'sui', r.tx.digest);
+      s.txs.push({ label: `${r.tag} payout on ${chainOf(r.chain).name}`, hash: h });
+      s.destTxs.push(h);
+      r.done = true; save(); continue;
+    }
+    if (UTXO[r.chain]) { // sign-first and idempotent (see utxo.drive): the signed raw tx is persisted before broadcast; only a dead tx is ever re-signed
+      const M = UTXO[r.chain];
+      if ((await M.drive(r.tx ||= {}, (ctx) => M.preparePayout(r.to, BigInt(r.amount), ctx), save)) !== 'confirmed') continue;
+      const h = tagEvm(s, r.chain, r.tx.txid);
       s.txs.push({ label: `${r.tag} payout on ${chainOf(r.chain).name}`, hash: h });
       s.destTxs.push(h);
       r.done = true; save(); continue;
@@ -439,7 +483,7 @@ async function execute(signed) {
 
 // ORIGIN_CHAIN: the user sent NEP-141 tokens to the deposit address itself. Move them into the verifier.
 async function sweepOrigin(addr, s, inT) {
-  if (inT.chain) return inT.kind === 'sol' ? bridgeInSol(addr, s, inT) : inT.kind === 'sui' ? bridgeInSui(addr, s, inT) : bridgeIn(addr, s, inT);
+  if (inT.chain) return inT.kind === 'sol' ? bridgeInSol(addr, s, inT) : inT.kind === 'sui' ? bridgeInSui(addr, s, inT) : UTXO[inT.kind] ? bridgeInUtxo(addr, s, inT) : bridgeIn(addr, s, inT);
   const bal = BigInt(await view(inT.nearContract, 'ft_balance_of', { account_id: addr }));
   if (bal === 0n) return;
   const acct = await viewAccount(addr);
@@ -525,6 +569,39 @@ async function bridgeInSui(addr, s, inT) {
   if (st !== 'confirmed') return;
   const h = tagEvm(s, 'sui', sw.tx.digest);
   s.txs.push({ label: `sweep deposit address into treasury (${chainOf('sui').name})`, hash: h });
+  sw.sweepTx = h; sw.stage = 'swept'; delete sw.tx; save();
+  return creditBridgeIn(addr, s, inT);
+}
+
+// Bitcoin testnet4 / Zcash testnet origin: one sweep transaction (signed with the per-quote deposit key) moves every confirmed output of
+// the deposit address into the treasury, which pays the network fee, so exactly what was deposited is minted + credited. The sweep is
+// sign-first/recorded ('sweeping', with the swept outpoints in `inputs`) so a crash, a re-broadcast or a node lag can never lose or double a credit.
+async function bridgeInUtxo(addr, s, inT) {
+  const M = UTXO[inT.kind];
+  await creditBridgeIn(addr, s, inT);
+  let sw = s.bridgeIn.find(b => b.stage === 'sweeping');
+  if (!sw) {
+    const { ready, unconfirmed } = await M.depositUtxos(addr, s);
+    const seen = ready[0] || unconfirmed[0];
+    if (seen && !s.originTxs.some(h => s.evmTxs?.[h])) { s.originTxs.push(seen.txid); tagEvm(s, inT.kind, seen.txid); }
+    if (seen && s.status === 'PENDING_DEPOSIT') set(s, 'KNOWN_DEPOSIT_TX');
+    if (!ready.length) return save();
+    sw = { amount: ready.reduce((a, u) => a + u.value, 0n).toString(), stage: 'sweeping', tx: {}, inputs: ready.map(u => `${u.txid}:${u.vout}`) };
+    s.bridgeIn.push(sw); save();
+  }
+  const dep = M.depositKeypair(MASTER, s.quoteResponse.correlationId);
+  let st;
+  try {
+    st = await M.drive(sw.tx, async () => { // re-read the outputs when (re)signing so the exact set moved is what is credited
+      const { ready } = await M.depositUtxos(addr, s, sw);
+      const p = M.prepareSweep(dep, ready);
+      sw.amount = p.amount.toString(); sw.inputs = p.inputs;
+      return p;
+    }, save);
+  } catch (e) { if (e.fatal) { s.note = `deposit cannot be swept: ${e.message}`.slice(0, 300); save(); return; } throw e; }
+  if (st !== 'confirmed') return;
+  const h = tagEvm(s, inT.kind, sw.tx.txid);
+  s.txs.push({ label: `sweep deposit address into treasury (${chainOf(inT.kind).name})`, hash: h });
   sw.sweepTx = h; sw.stage = 'swept'; delete sw.tx; save();
   return creditBridgeIn(addr, s, inT);
 }
@@ -758,6 +835,8 @@ export const internals = { convert, invert, grossUp, settle: (...a) => settle(..
 const ACTIVE = ['PENDING_DEPOSIT', 'KNOWN_DEPOSIT_TX', 'INCOMPLETE_DEPOSIT', 'PROCESSING'];
 export function startWorker() {
   const busy = new Set();
+  const warmUtxo = () => { if (BTC_CHAIN.deployed) btc.warm(); if (ZEC_CHAIN.deployed) zec.warm(); };
+  warmUtxo(); setInterval(warmUtxo, 60_000);
   setInterval(() => {
     if (!MASTER) return;
     for (const [addr, s] of Object.entries(db.swaps)) {

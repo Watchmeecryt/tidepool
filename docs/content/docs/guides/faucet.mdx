@@ -1,7 +1,7 @@
 ---
 title: Faucet
 seoTitle: "NEAR Testnet Faucet for Intents Test Tokens"
-description: "Free test tokens on NEAR, Ethereum Sepolia, Base Sepolia, Arbitrum Sepolia, Solana devnet, Stellar testnet and Sui testnet: pick a chain, paste an address, and our backend funds it."
+description: "Free test tokens on NEAR, Ethereum Sepolia, Base Sepolia, Arbitrum Sepolia, Solana devnet, Stellar testnet and Sui testnet (native BTC and ZEC are never dripped; see below): pick a chain, paste an address, and our backend funds it."
 ---
 
 <FaucetWidget />
@@ -22,6 +22,7 @@ The widget above and the API are the same faucet. In the UI you **pick a chain f
 
 - **Native gas is never dripped.** ETH, SOL, XLM and SUI come from each chain's own public faucet ([Ethereum Sepolia](https://cloud.google.com/application/web3/faucet/ethereum/sepolia), [Base Sepolia](https://docs.base.org/get-started/get-funds), [Arbitrum Sepolia](https://faucet.quicknode.com/arbitrum/sepolia), [Solana devnet](https://faucet.solana.com), [Stellar Friendbot](https://friendbot.stellar.org), [Sui testnet](https://faucet.sui.io)).
 - **Stellar needs trustlines.** The account must exist (fund it with Friendbot) and add a `changeTrust` operation for each asset: `USDC` and `USDT`, both issued by `GDXABUSRHP4YA5CELHLNJQ4M3TX2BSJ6PEMDFCG2RA4PQLAQLRMFFQAN`. Without them the faucet answers `400` and names the missing one.
+- **Native BTC and ZEC are never dripped, and have no entry in the dropdown.** `{"chain":"btc"}`, `{"chain":"zec"}` and the `btc` / `zec` intents aliases answer `400` and name the external faucets: tBTC (testnet4) from [CypherFaucet](https://cypherfaucet.com/btc-testnet) or [testnet4.info](https://testnet4.info), TAZ from the [Valar Group faucet](https://faucet.testnet.valargroup.dev/). The treasuries behind the [Bitcoin](/docs/guides/bridge-bitcoin-testnet) and [Zcash](/docs/guides/bridge-zcash-testnet) routes are funded the same way, so those routes have caps (0.005 BTC, 0.5 ZEC).
 - **Sui needs nothing but an address.** The coins are minted to your address in one transaction; get SUI for gas from the Sui faucet.
 - **Solana token accounts are created for you.** Our backend creates your associated token accounts for the two test mints and pays the rent, so a fresh wallet works. That costs treasury SOL, so there is a global daily cap.
 - **Bridged tokens on NEAR.** The USDC and USDT on the other chains are also bridged into the NEAR verifier as `nep141:<chain>-….tp-omft.testnet` tokens. To get those into your **intents balance** (not to a wallet on that chain), use the NEAR chain, mode `intents`, and pick a bridged option in the UI, or pass chain aliases in `assets` (below).
@@ -118,6 +119,7 @@ See [POST /v0/faucet](/docs/api-reference/tidepool-faucet) for the full response
 - **EVM:** `{"chain":"base"|"arb"|"eth","address":"0x…"}` mints USDC and USDT (6 decimals). You can also call `faucet()` on the token contracts yourself. Addresses are in each route guide under [Test bridges](/docs/guides/bridges).
 - **Solana devnet:** see the [Solana devnet bridge](/docs/guides/bridge-solana-devnet). SOL swaps are capped at 0.005 SOL.
 - **Stellar testnet:** 7 decimals. See the [Stellar testnet bridge](/docs/guides/bridge-stellar-testnet). Get XLM from [Friendbot](https://friendbot.stellar.org) (10,000 test XLM).
+- **Bitcoin testnet4 and Zcash testnet:** native coins only, no faucet drip. See the [Bitcoin testnet4 bridge](/docs/guides/bridge-bitcoin-testnet) and the [Zcash testnet bridge](/docs/guides/bridge-zcash-testnet).
 - **Sui testnet:** USDC and USDT have 6 decimals. See the [Sui testnet bridge](/docs/guides/bridge-sui-testnet). SUI swaps are capped at 10 SUI. Get SUI from [faucet.sui.io](https://faucet.sui.io).
 
 <Callout type="warn">Test tokens have **no value**. The bridged test tokens are bridged only by Tidepool's own testnet relayer, not by any NEAR or 1Click bridge. Do not list or trade them anywhere.</Callout>

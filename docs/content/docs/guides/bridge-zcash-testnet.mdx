@@ -1,0 +1,86 @@
+---
+title: Zcash testnet bridge
+description: "Swap native Zcash testnet ZEC (TAZ) and NEAR testnet tokens through Tidepool's testnet relayer: per-quote transparent deposit addresses, no memo, status and refunds. Transparent addresses only, capped at 0.5 ZEC per swap."
+---
+
+<Callout type="warn">**Testnet only, custodial, trusted relayer.** This route is run by Tidepool as its own testnet service. It is not a NEAR, Omni Bridge or 1Click bridge, and the TAZ has no value. ZEC is **capped at 0.5 ZEC per swap, payout or refund** because the treasury is funded by a small public faucet. Read [Test bridges](/docs/guides/bridges) for what you are trusting.</Callout>
+
+<Callout>**Availability.** The Zcash route appears in [`GET /v0/tokens`](/docs/api-reference/get-tokens) (`blockchain: "zec"`) and in `/v0/health` under `bridges.chains.zec` only while it is live. If the token is not listed, the route is not active on that deployment yet. Quotes that pay out ZEC answer `503` while the treasury is too low.</Callout>
+
+## Token
+
+Like 1Click mainnet's native `nep141:zec.omft.near`, Tidepool lists native ZEC only, and on **transparent** addresses only (as mainnet 1Click does for deposits and refunds).
+
+| What | Value |
+| --- | --- |
+| Chain | Zcash testnet, `blockchain: "zec"` |
+| Native ZEC (TAZ) | 8 decimals (zatoshis), asset id `nep141:zec.tp-omft.testnet` |
+| Treasury (payouts, refunds, sweep destination) | [`tmQHJUqvNXfXD4DqVm2ohTtfCKCZa83EPt5`](https://testnet.zcashexplorer.app/address/tmQHJUqvNXfXD4DqVm2ohTtfCKCZa83EPt5) |
+| Confirmations required | 1 |
+| Cap / minimum | 0.5 ZEC (50,000,000 zatoshis) / 0.002 ZEC (200,000 zatoshis) per swap leg |
+
+## Deposit model: per-quote transparent addresses, no memo
+
+Every ZEC-origin quote with `depositType: "ORIGIN_CHAIN"` gets its own transparent `tm…` `depositAddress` (a key derived from the quote id and the server master seed). Send the exact `amountIn` in zatoshis to it from any Zcash testnet wallet, **from a transparent or a shielded balance, but to this transparent address**.
+
+- `depositMode` is `SIMPLE` (the default). `ANY_INPUT` deposits are accepted, but an `ANY_INPUT` quote that pays out ZEC is rejected.
+- `POST /v0/deposit/submit` with `txHash` and `depositAddress` is optional: the relayer reads the chain through lightwalletd and detects the deposit anyway.
+- After **1 confirmation** the relayer **sweeps** every confirmed output of the deposit address to the treasury in one transaction (the treasury pays the ZIP-317 fee, so the credited amount equals what you sent), mints the NEP-141 on NEAR and credits it to the verifier. The sweep appears in the swap's `tidepool.explorer` list.
+
+## The ZEC cap and minimum
+
+Any swap with a ZEC leg is rejected at **quote time** with a `400` if the ZEC amount (input or output) is above `0.5 ZEC` or below `0.002 ZEC` (a sweep and a payout each pay a ZIP-317 fee of at least 0.0001 ZEC). It covers swaps, payouts and refunds. Also:
+
+- A payout of ZEC is paid from the treasury, so quotes answer `503` if the treasury cannot cover the payout plus the fee.
+- `ANY_INPUT` quotes that pay out ZEC are rejected.
+- Recipients and `refundTo` must be **transparent testnet addresses**: `tm…` (P2PKH) or `t2…` (P2SH). Shielded (`ztestsapling…`) and unified (`utest1…`) addresses are rejected with a `400`.
+
+## 1. Get TAZ
+
+**The Tidepool faucet never drips ZEC**, to a wallet or to your intents balance (`POST /v0/faucet` with `chain: "zec"` answers `400` and names this link). Use a public Zcash testnet faucet:
+
+- [Valar Group faucet](https://faucet.testnet.valargroup.dev/): 0.125 TAZ per address and day (`POST /api/claim` with `{"address":"tm…"}`).
+- Other Zcash testnet faucets listed on the [Zcash documentation](https://zcash.readthedocs.io/en/latest/rtd_pages/testnet_guide.html).
+
+## 2. ZEC → NEAR
+
+```ts
+const quote = await OneClickService.getQuote({
+  dry: false, swapType: 'EXACT_INPUT', slippageTolerance: 100,
+  originAsset: 'nep141:zec.tp-omft.testnet',
+  destinationAsset: 'nep141:usdc.tidepool-sandbox.testnet',
+  amount: '10000000',                        // 0.1 ZEC in zatoshis
+  depositType: 'ORIGIN_CHAIN',
+  refundTo: 'tmYourTransparentTestnetAddress', refundType: 'ORIGIN_CHAIN',
+  recipient: 'you.testnet', recipientType: 'DESTINATION_CHAIN',
+  deadline: new Date(Date.now() + 60 * 60_000).toISOString(),
+});
+const { depositAddress, amountIn } = quote.quote;
+// Send amountIn zatoshis to depositAddress on Zcash testnet, then (optional):
+await OneClickService.submitDepositTx({ txHash: '<zec txid>', depositAddress });
+// Poll GET /v0/status?depositAddress=...
+```
+
+Zcash testnet blocks take about 75 seconds, but give the quote a generous deadline anyway. Runnable: `RECIPIENT=you.testnet REFUND_TO=tm… npm run zec-deposit` in [tidepool-examples](https://github.com/zer0plugyut-afk/tidepool-examples). It creates the quote, prints the deposit address and exact amount, and waits while you pay it from your own Zcash testnet wallet.
+
+## 3. NEAR → ZEC
+
+Quote with `destinationAsset: 'nep141:zec.tp-omft.testnet'`, `recipient: 'tmYourAddress'` and `recipientType: 'DESTINATION_CHAIN'`, then deposit on NEAR as usual. The verifier `ft_withdraw`s the bridged token to the relayer, which pays out on Zcash testnet from the treasury (a v5 transparent transaction signed with ZIP-244 digests); you receive exactly the quoted amount and the treasury pays the fee. Payouts are signed first and the signed transaction is recorded before it is broadcast, so a retry re-broadcasts the same bytes and never pays twice.
+
+## Refunds
+
+Same reasons as every route (`DEADLINE_PASSED`, `PARTIAL_DEPOSIT`, …). A refund with `refundType: "ORIGIN_CHAIN"` is paid from the treasury to `refundTo` (a transparent address) in the amount you sent.
+
+## Limits
+
+- **Transparent only.** The relayer neither receives nor sends shielded funds. If you pay from a shielded wallet to the deposit address that is fine; a *refund or payout address* must be transparent.
+- **Testnet resets.** Zcash testnet is wiped from time to time. After a reset the balances are gone and the route has to be bootstrapped again.
+- **Fees.** ZIP-317 conventional fee: 0.00005 ZEC per transparent input or output, at least 2 actions. The treasury pays it; it is not deducted from your swap.
+- **Network upgrades.** The relayer reads the consensus branch id from the node, so a testnet upgrade does not stop signing, but a very new upgrade can delay payouts until the relayer is updated.
+- **One treasury-signed transaction at a time.** Payouts share the treasury's coins and are serialized (unconfirmed change is tracked).
+- **Public endpoints.** The relayer reads confirmed blocks through the public lightwalletd `testnet.zec.rocks:443` and broadcasts via a public JSON-RPC (overrides: `ZEC_LWD_URLS`, `ZEC_RPC_URLS`); outages can delay a swap.
+- **Unreachable destinations.** If a payout keeps being rejected, the swap stays in `PROCESSING` with a note and needs operator attention.
+
+## Mapping to mainnet 1Click
+
+Same request and response fields, `blockchain: "zec"`, a plain transparent `depositAddress` and no memo. Mainnet's asset is `nep141:zec.omft.near` (8 decimals); on Tidepool it is `nep141:zec.tp-omft.testnet`. Take the asset id from `GET /v0/tokens` of the environment you are calling. Mainnet has no 0.5 ZEC cap and uses `t1…` addresses.

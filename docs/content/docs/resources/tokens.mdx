@@ -57,6 +57,15 @@ Same split as Solana: the *chain* drip needs trustlines, and native XLM is never
 
 Same split as Solana and Stellar: the *chain* drip mints the Move coins to your wallet (no trustline or token account is needed), and native SUI is never dripped (the 0.5 SUI is the verifier test token only). See the [Sui testnet bridge](/docs/guides/bridge-sui-testnet) and the [Faucet](/docs/guides/faucet).
 
+## Bitcoin testnet4 and Zcash testnet (listed only while the route is live)
+
+| Token | Asset id | Native coin | Decimals | Faucet drip (chain) | Faucet drip (verifier) |
+| --- | --- | --- | --- | --- | --- |
+| BTC | `nep141:btc.tp-omft.testnet` | tBTC on Bitcoin testnet4 | 8 (capped at 0.005 BTC per swap, minimum 0.0001) | none (external: [CypherFaucet](https://cypherfaucet.com/btc-testnet), [testnet4.info](https://testnet4.info)) | none |
+| ZEC | `nep141:zec.tp-omft.testnet` | TAZ on Zcash testnet, transparent addresses only | 8 (capped at 0.5 ZEC per swap, minimum 0.002) | none (external: [Valar Group faucet](https://faucet.testnet.valargroup.dev/)) | none |
+
+Native coins only, like 1Click's `nep141:btc.omft.near` and `nep141:zec.omft.near`. Neither is ever dripped by Tidepool. See the [Bitcoin testnet4 bridge](/docs/guides/bridge-bitcoin-testnet), the [Zcash testnet bridge](/docs/guides/bridge-zcash-testnet) and the [Faucet](/docs/guides/faucet).
+
 ## Admin methods
 
 | Method | Who | Effect |

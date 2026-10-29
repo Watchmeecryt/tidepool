@@ -641,5 +641,83 @@
       }
     },
     "live": true
+  },
+  "zec": {
+    "name": "Zcash Testnet",
+    "network": "testnet",
+    "txs": [
+      {
+        "label": "fund tp-omft.testnet",
+        "hash": "4JtPy2jMBbGi4GxahWSG4C3EmHhXLWrT9ao7cRgSTEjV"
+      },
+      {
+        "label": "create zec.tp-omft.testnet",
+        "hash": "CweNLiJt2eT8yHPYohkEkMtTMQybksDiD6pr5oxvCEMH"
+      },
+      {
+        "label": "deploy zec.tp-omft.testnet",
+        "hash": "AK12KJCS5N2DWek8AKiSRd2JF2r67xbhYAc7UB2Ygqe5"
+      },
+      {
+        "label": "init zec.tp-omft.testnet",
+        "hash": "4kzwVA5Vwe4xKVzYbAjLQSBnDfYF7w7iGte16avZ9MAS"
+      },
+      {
+        "label": "storage verifier.tidepool-sandbox.testnet on ZEC",
+        "hash": "DSqcgnwCuJ5DWNJe1YoNutP8BPc1wpwTCuuz9WjWwTU7"
+      },
+      {
+        "label": "mint maker inventory ZEC",
+        "hash": "B7cnNVDbZYykvDYMLbPWaqvcnXDXLruWNzUXG89t9Ygc"
+      },
+      {
+        "label": "deposit maker inventory ZEC",
+        "hash": "8CSgoC1f4nsyFvrcaTJ7kUvBTmkhCfs8HyDpt586rSN1"
+      }
+    ],
+    "inventory": {
+      "ZEC": "2000"
+    },
+    "treasury": "tmQHJUqvNXfXD4DqVm2ohTtfCKCZa83EPt5",
+    "live": true
+  },
+  "btc": {
+    "name": "Bitcoin Testnet4",
+    "network": "testnet4",
+    "txs": [
+      {
+        "label": "fund tp-omft.testnet",
+        "hash": "7FEBVrP1ndh296B5tcqDzs25rs2wyZ87r37Uv7VTrJsc"
+      },
+      {
+        "label": "create btc.tp-omft.testnet",
+        "hash": "9GAmyiAPnzwf51FVrzFQSYYPoNvG1x1GYYhNLtStrbBB"
+      },
+      {
+        "label": "deploy btc.tp-omft.testnet",
+        "hash": "CeTFGWy6BFJb8hKUvXj29D25UNu9U6F65yz3gFWiFh5R"
+      },
+      {
+        "label": "init btc.tp-omft.testnet",
+        "hash": "6LxyEHmH3YmnWFeDW1mbsCSdfYfMJtNi2hK8YayHbD3Z"
+      },
+      {
+        "label": "storage verifier.tidepool-sandbox.testnet on BTC",
+        "hash": "E6xBfD9KD3zx8gqvwUxX7WRMYPz3E481fSZ3Xq4t2RZ9"
+      },
+      {
+        "label": "mint maker inventory BTC",
+        "hash": "DE6G9b3o4j3WdWuicuRWtrZKkfhSuYM7vSgSEazBfVgt"
+      },
+      {
+        "label": "deposit maker inventory BTC",
+        "hash": "4fK2PzzVaNYkV5LkkUCkPwBhXUM2czCoCREuKdA7KDh9"
+      }
+    ],
+    "inventory": {
+      "BTC": "20"
+    },
+    "treasury": "tb1qy2tthlq2ntnjvk40payyuwpnzaf365h02ze0qr",
+    "live": true
   }
 }

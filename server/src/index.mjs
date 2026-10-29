@@ -13,8 +13,10 @@ import { drip } from './faucet.mjs';
 import { prices } from './prices.mjs';
 import { evmHealth } from './evm.mjs';
 import { solHealth, startTreasuryWatch } from './solana.mjs';
-import { SOL_CHAIN, STELLAR_CHAIN, SUI_CHAIN } from './config.mjs';
+import { SOL_CHAIN, STELLAR_CHAIN, SUI_CHAIN, BTC_CHAIN, ZEC_CHAIN } from './config.mjs';
 import { suiHealth } from './sui.mjs';
+import { btcHealth } from './btc.mjs';
+import { zecHealth } from './zec.mjs';
 import { stellarHealth, startTreasuryWatch as startStellarWatch } from './stellar.mjs';
 import { db } from './store.mjs';
 import { record } from './analytics.mjs';
@@ -90,10 +92,12 @@ async function health() {
   try { const a = await viewAccount(VERIFIER); const code = Buffer.from(a.code_hash ? (await import('bs58')).default.decode(a.code_hash) : []).toString('hex'); out.checks.verifier = { ok: code === VERIFIER_WASM_SHA256, codeHashHex: code }; verifierStorage(out, a); } catch (e) { out.checks.verifier = { ok: false, error: e.message }; }
   const p = await prices(); out.checks.prices = { ok: p.source === 'coingecko', source: p.source, updatedAt: new Date(p.at).toISOString(), error: p.error };
   try { out.checks.makerInventory = { ok: true, balances: Object.fromEntries(await Promise.all(TOKENS.map(async t => [t.symbol, fromUnits(await makerBalance(t.assetId), t.decimals)]))) }; } catch (e) { out.checks.makerInventory = { ok: false, error: e.message }; }
-  out.bridges = { note: 'Testnet bridges (EVM chains, Solana devnet, Stellar testnet and Sui testnet): trusted relayer run by Tidepool, testnet only.', chains: await evmHealth() };
+  out.bridges = { note: 'Testnet bridges (EVM chains, Solana devnet, Stellar testnet, Sui testnet, Bitcoin testnet4 and Zcash testnet): trusted relayer run by Tidepool, testnet only.', chains: await evmHealth() };
   if (SOL_CHAIN.deployed) out.bridges.chains.sol = await solHealth();
   if (STELLAR_CHAIN.deployed) out.bridges.chains.stellar = await stellarHealth();
   if (SUI_CHAIN.deployed) out.bridges.chains.sui = await suiHealth();
+  if (BTC_CHAIN.deployed) out.bridges.chains.btc = await btcHealth();
+  if (ZEC_CHAIN.deployed) out.bridges.chains.zec = await zecHealth();
   const all = Object.values(db.swaps);
   const count = (s) => all.filter(x => x.status === s).length;
   out.swaps = { total: all.length, success: count('SUCCESS'), refunded: count('REFUNDED'), failed: count('FAILED'), active: all.filter(x => ['PENDING_DEPOSIT', 'KNOWN_DEPOSIT_TX', 'INCOMPLETE_DEPOSIT', 'PROCESSING'].includes(x.status)).length };

@@ -1,10 +1,10 @@
 // Resolves the `assets` list of an intents-mode faucet request. Pure (no I/O) so it can be unit tested.
 // Accepts asset ids, NEAR symbols (native tokens only), and chain aliases that expand to the bridged test tokens of that chain
-// (USDC/USDT everywhere, plus the verifier-only test SOL, XLM and SUI): sol, stellar, sui, base, arb, eth, bridged (= every bridged chain).
+// (USDC/USDT everywhere, plus the verifier-only test SOL, XLM and SUI; native BTC and ZEC are never dripped, so btc/zec resolve to nothing): sol, stellar, sui, btc, zec, base, arb, eth, bridged (= every bridged chain).
 import { TOKENS } from './config.mjs';
 
-export const CHAIN_ALIASES = ['sol', 'stellar', 'sui', 'base', 'arb', 'eth', 'bridged'];
-const ALIAS_MAP = { solana: 'sol', xlm: 'stellar' };
+export const CHAIN_ALIASES = ['sol', 'stellar', 'sui', 'btc', 'zec', 'base', 'arb', 'eth', 'bridged'];
+const ALIAS_MAP = { solana: 'sol', xlm: 'stellar', bitcoin: 'btc', zcash: 'zec' };
 
 export function resolveIntentAssets(assets, pool = TOKENS) {
   const out = new Map();
