@@ -38,7 +38,7 @@ export function makeBridge(A) {
     for (const p of [...list]) {
       if (now - p.at < PENDING_KEEP_MS) continue;
       const st = await A.txStatus(p.txid).catch(() => 'error');
-      if (st === 'error') continue;
+      if (st === 'error' || st === 'mempool') continue; // still unconfirmed: keep tracking (its own change stays spendable)
       list.splice(list.indexOf(p), 1); // mined (the node's own view is authoritative now) or dropped
     }
   }
@@ -48,7 +48,8 @@ export function makeBridge(A) {
     const t = A.treasury();
     const listed = await A.utxos(t.address);
     const spent = new Set(pend().flatMap(p => p.spends));
-    const out = listed.filter(u => u.conf >= A.minConf && !spent.has(key(u)));
+    const ours = new Set(pend().map(p => p.txid)); // unconfirmed outputs of our own sweeps/payouts (change) are safe to spend even once the node lists them
+    const out = listed.filter(u => (u.conf >= A.minConf || ours.has(u.txid)) && !spent.has(key(u)));
     const have = new Set(listed.map(key));
     for (const p of pend()) for (const o of p.outs) if (!have.has(`${p.txid}:${o.vout}`) && !spent.has(`${p.txid}:${o.vout}`)) out.push({ txid: p.txid, vout: o.vout, value: BigInt(o.value), conf: 0, own: true });
     return out.sort((a, b) => (a.value < b.value ? 1 : a.value > b.value ? -1 : 0));

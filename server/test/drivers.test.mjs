@@ -129,3 +129,18 @@ test('BTC API: when every endpoint is rate limited the read fails fast and trans
     assert.equal(e.calls.length, n, 'no further requests while all endpoints are backing off');
   } finally { e.restore(); btc.resetApiState(); }
 });
+
+test('UTXO treasury: unconfirmed change of our own txs counts and stays spendable once the node lists it; foreign unconfirmed outputs do not', async () => {
+  const mine = 'c'.repeat(64), foreign = 'd'.repeat(64);
+  const A = { name: 'chg', minConf: 1, dust: 1n, treasury: () => ({ address: 'x' }), txStatus: async () => 'mempool', broadcast: async () => {}, fee: () => 1n,
+    utxos: async () => [{ txid: 'e'.repeat(64), vout: 0, value: 100n, conf: 3 }, { txid: mine, vout: 1, value: 900n, conf: 0 }, { txid: foreign, vout: 0, value: 5000n, conf: 0 }] };
+  const b = makeBridge(A);
+  const rec = {};
+  await b.drive(rec, async () => ({ txid: mine, hex: '00', spends: ['f'.repeat(64) + ':0'], outs: [{ vout: 1, value: '900' }] }), () => {});
+  assert.equal(await b.treasuryBalance(), 1000n);
+  // a tx that is still in the mempool is not forgotten after the keep window
+  const { db } = await import('../src/store.mjs');
+  db.utxoPending.chg[0].at = Date.now() - 3_600_000;
+  assert.equal(await b.treasuryBalance(), 1000n);
+  assert.equal(db.utxoPending.chg.length, 1);
+});
