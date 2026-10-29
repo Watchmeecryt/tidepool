@@ -61,3 +61,34 @@ test('checkDestination rejects malformed addresses without network access', asyn
   const e = await xrp.checkDestination('not-an-address', 1_000_000n, 'recipient');
   assert.ok(e && /XRP/i.test(e));
 });
+
+test('concurrent drive() calls on one payout sign and submit exactly one transaction (no double pay)', async () => {
+  const seed = Wallet.generate().seed;
+  process.env.XRP_TREASURY_KEY = seed;
+  const { Wallet: W } = await import('xrpl');
+  const addr = W.fromSeed(seed).classicAddress;
+  const submitted = new Set();
+  let ledger = 1000;
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (_url, init) => {
+    const body = JSON.parse(init.body); const m = body.method; const p = body.params[0];
+    const res = (r) => ({ ok: true, status: 200, json: async () => ({ result: { status: 'success', ...r } }) });
+    await new Promise(r => setTimeout(r, 5)); // let concurrent callers interleave
+    if (m === 'account_info') return res({ account_data: { Account: addr, Balance: '500000000', Sequence: 7 }, validated: true });
+    if (m === 'fee') return res({ ledger_current_index: ledger++, drops: { open_ledger_fee: '10' } });
+    if (m === 'submit') { submitted.add(p.tx_blob); return res({ engine_result: 'tesSUCCESS' }); }
+    if (m === 'server_info') return res({ info: { validated_ledger: { seq: ledger - 1 } } });
+    if (m === 'tx') return { ok: true, status: 200, json: async () => ({ result: { status: 'error', error: 'txnNotFound' } }) };
+    throw new Error('unexpected rpc ' + m);
+  };
+  try {
+    const rec = {};
+    const a = xrp.drive(rec, () => xrp.prepare(ADDR, 5_000_000n), () => {});
+    const b = xrp.drive(rec, () => xrp.prepare(ADDR, 5_000_000n), () => {});
+    const c = xrp.drive(rec, () => xrp.prepare(ADDR, 5_000_000n), () => {});
+    assert.deepEqual(await Promise.all([a, b, c]), ['pending', 'pending', 'pending']);
+    assert.equal(submitted.size, 1);
+    assert.match(rec.hash, /^[0-9A-F]{64}$/);
+    assert.equal(rec.seq, 7);
+  } finally { globalThis.fetch = realFetch; }
+});

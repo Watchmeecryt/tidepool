@@ -103,7 +103,7 @@ export async function prepare(to, amount, from = relayer()) {
   const tx = { TransactionType: 'Payment', Account: from.address, Destination: p.address, Amount: dropsStr(amount), Fee: String(Math.min(5000, Math.max(12, open * 2))), Sequence: acc.Sequence, LastLedgerSequence: lastLedger };
   if (p.tag !== undefined) tx.DestinationTag = p.tag;
   const signed = from.w.sign(tx);
-  return { hash: signed.hash, blob: signed.tx_blob, lastLedger };
+  return { hash: signed.hash, blob: signed.tx_blob, lastLedger, seq: acc.Sequence };
 }
 async function validatedSeq() { return (await rpc('server_info')).info.validated_ledger.seq; }
 async function txStatus(rec) {
@@ -113,15 +113,41 @@ async function txStatus(rec) {
   return seq > rec.lastLedger && (t.error || !t.validated) ? 'expired' : 'pending';
 }
 // One treasury account means one sequence number: only one signed-but-unresolved transaction at a time.
+const busy = new Set();
 let lock = null, lockAt = 0;
 const release = (rec) => { if (lock === rec) lock = null; };
-const clear = (rec) => { delete rec.hash; delete rec.blob; delete rec.lastLedger; };
+const clear = (rec) => { delete rec.hash; delete rec.blob; delete rec.lastLedger; delete rec.seq; };
 async function submit(rec) { return rpc('submit', { tx_blob: rec.blob }, { allow: ['invalidTransaction'] }); }
+/** Hash of the validated treasury transaction that used rec.seq, null when that sequence number is still unused or used by nobody we can see, undefined when unknown. */
+async function consumedBy(rec) {
+  const addr = relayer().address;
+  const acc = await account(addr, 'validated');
+  if (!acc) return undefined;
+  if (acc.Sequence <= rec.seq) return null; // the sequence number is still free: our tx never landed
+  const r = await rpc('account_tx', { account: addr, ledger_index_min: -1, ledger_index_max: -1, limit: 50, forward: false });
+  for (const t of r.transactions || []) {
+    const tx = t.tx || t.tx_json || {};
+    if (t.validated !== false && tx.Account === addr && tx.Sequence === rec.seq) return t.hash || tx.hash;
+  }
+  return undefined; // consumed but not among the recent transactions: do not guess
+}
 /** Advances rec ({hash,blob,lastLedger,fails}) one step; returns 'confirmed' | 'pending'. Throws after repeated on-chain failures. */
 export async function drive(rec, build, persist) {
+  if (busy.has(rec)) return 'pending'; // one step at a time per payout: concurrent steps could sign two different transactions
+  busy.add(rec);
+  try { return await step(rec, build, persist); } finally { busy.delete(rec); }
+}
+async function step(rec, build, persist) {
   if (rec.hash) {
     const st = await txStatus(rec);
     if (st === 'confirmed') { release(rec); return 'confirmed'; }
+    if (st === 'expired' && rec.seq !== undefined) {
+      // The signed Payment looks absent, but its sequence number may have been consumed by a variant of it (a concurrent signing with a
+      // different LastLedgerSequence): never pay twice. If the treasury's validated Sequence moved past ours, look for the tx that used it.
+      const found = await consumedBy(rec).catch(() => undefined);
+      if (found === undefined) return 'pending'; // cannot tell right now: stay safe and retry
+      if (found) { rec.hash = found; persist(); return step(rec, build, persist); }
+    }
     if (st === 'failed' || st === 'expired') {
       release(rec);
       rec.fails = (rec.fails || 0) + (st === 'failed' ? 1 : 0); // an expired tx never landed: free to re-sign
@@ -132,7 +158,9 @@ export async function drive(rec, build, persist) {
     lockAt = Date.now();
     try {
       const r = await submit(rec); // same signed bytes: idempotent
-      if (/^tefPAST_SEQ$|^tefMAX_LEDGER$/.test(r.engine_result || '') && (await txStatus(rec)) === 'pending') { release(rec); clear(rec); persist(); }
+      // tefPAST_SEQ means the sequence number was used: possibly by this very payment (or a variant of it). Never re-sign on that signal;
+      // adopt the validated tx that used the sequence, and leave anything unclear to the LastLedgerSequence expiry check above.
+      if (r.engine_result === 'tefPAST_SEQ') { const found = await consumedBy(rec).catch(() => undefined); if (found) { rec.hash = found; persist(); } }
     } catch (e) { if (!e.transient) console.error('xrp resubmit:', e.message); }
     return 'pending';
   }
