@@ -401,5 +401,129 @@
       "USDT": "200000"
     },
     "live": true
+  },
+  "stellar": {
+    "name": "Stellar Testnet",
+    "network": "testnet",
+    "txs": [
+      {
+        "label": "treasury trustline USDC",
+        "hash": "56f956ef2e4e1815cc40ff5b9fd35c47dc887b0e013d7445d785d0ab9669ac7f"
+      },
+      {
+        "label": "issue 10000000000000 stroops of USDC to treasury",
+        "hash": "6e87c7e8f4fd6f38478ab3610e81f8ffc1a9910233a141462fe8fa6848a2f1c1"
+      },
+      {
+        "label": "treasury trustline USDT",
+        "hash": "006fe00162034681e090a4fa861d34959fd4e6d43e14631a3f07246a17606b5f"
+      },
+      {
+        "label": "issue 10000000000000 stroops of USDT to treasury",
+        "hash": "c243e9d2590709fed089a2dcf6af1f468535efcaed71ee4aa9f24a4dfb58bc1e"
+      },
+      {
+        "label": "fund tp-omft.testnet",
+        "hash": "8di54qK82p9NC7RyV2GFdX1sVLGafFA5Jdw9YADv9TR8"
+      },
+      {
+        "label": "create stellar.tp-omft.testnet",
+        "hash": "7LC15eQnhFmoyy2XGByD7auvXHzmv8Nz9XoPa8J2PAxY"
+      },
+      {
+        "label": "deploy stellar.tp-omft.testnet",
+        "hash": "GnDU4cDARGQSZZAMdSvizjnC56D94v6fuwCk56SAnYfs"
+      },
+      {
+        "label": "init stellar.tp-omft.testnet",
+        "hash": "Gwm82MtUj1k9PBaUFGRZAGwpHsBewi9EtSN1baUv7wLh"
+      },
+      {
+        "label": "storage verifier.tidepool-sandbox.testnet on XLM",
+        "hash": "5Wan6jZC1937GpWEhQVu3AJghDeYY46qRN8KB5QXu1fZ"
+      },
+      {
+        "label": "mint maker inventory XLM",
+        "hash": "4xQd9NE5TMfgB3a3ETe1fb7oYm6Q3N3APG8Jxd7anTAJ"
+      },
+      {
+        "label": "deposit maker inventory XLM",
+        "hash": "9WiZQEGGmhRGMp1Yhvb6r73ZJ4va4VF16iSfYMNkDsPw"
+      },
+      {
+        "label": "fund tp-omft.testnet",
+        "hash": "BQoQ2RfLekKihF5w3qZha6x4kruqP7RfpXAKtnYmm4D1"
+      },
+      {
+        "label": "create stellar-0da9087074a12ebeb5dcdc8bcf33cf163ab498fc.tp-omft.testnet",
+        "hash": "AxnwrRYfzg8o1mr2RAPsSwTjEuerXRGEU4z81x31Yyey"
+      },
+      {
+        "label": "deploy stellar-0da9087074a12ebeb5dcdc8bcf33cf163ab498fc.tp-omft.testnet",
+        "hash": "6gjpDxCJ7HWHefw2V7NwwFT41wdgygDFpQXtoYc4Rh1A"
+      },
+      {
+        "label": "init stellar-0da9087074a12ebeb5dcdc8bcf33cf163ab498fc.tp-omft.testnet",
+        "hash": "3vbBTM7q1EA1JYMP5Mw4BDr5zXDq43MdDVQfyS78zxjU"
+      },
+      {
+        "label": "storage verifier.tidepool-sandbox.testnet on USDC",
+        "hash": "Bh6rdus13oA93pNoTgM9HJ35i9DYbpaLRUvUYSmX3VUj"
+      },
+      {
+        "label": "mint maker inventory USDC",
+        "hash": "GhTMDJpdJtYZsAL7Gpfdc24Kw6V6AxqdrvBLUJ9wJyUB"
+      },
+      {
+        "label": "deposit maker inventory USDC",
+        "hash": "EF4tPTC73x5DHKqdjWw16s2uqSiywQfkMPZLEU8aq49U"
+      },
+      {
+        "label": "fund tp-omft.testnet",
+        "hash": "HyxYU1cu3D4XC2xfdbAZm5USD9ETBrtkxpDfGX7LNfJa"
+      },
+      {
+        "label": "create stellar-c36e358585c12ac3f684b98be0c6682ca9c4665f.tp-omft.testnet",
+        "hash": "FCXDqy2rUjX7wuqJrnTauJNhbEzak97GyGEoLgT3eQXV"
+      },
+      {
+        "label": "deploy stellar-c36e358585c12ac3f684b98be0c6682ca9c4665f.tp-omft.testnet",
+        "hash": "7izFxAvs5C26fABf2MwezvRYXjckMnV7G14a5iWvyNju"
+      },
+      {
+        "label": "init stellar-c36e358585c12ac3f684b98be0c6682ca9c4665f.tp-omft.testnet",
+        "hash": "7b1saH8HAEySxeU1ibJ8LtAJ5vp2hwJjVF6ynaRm83gt"
+      },
+      {
+        "label": "storage verifier.tidepool-sandbox.testnet on USDT",
+        "hash": "GWnBod722tEvNYF7jpFvbr92QHXZquCCDbj7SnCaNBvr"
+      },
+      {
+        "label": "mint maker inventory USDT",
+        "hash": "14K4aCc9PcQCPWU4b1pZv8rkLTGTEMdCjRakwRM6S3Mi"
+      },
+      {
+        "label": "deposit maker inventory USDT",
+        "hash": "BRkKjJ2dz99pPXH8xeyf13UmuLZtQQBpTryS5WTXYYcz"
+      }
+    ],
+    "treasury": "GBWLJSU3XF6NKHBY25VSDVVKIYS2ATCHHUVYLNWSARHLOLDDXSP2BA4Z",
+    "issuer": "GDXABUSRHP4YA5CELHLNJQ4M3TX2BSJ6PEMDFCG2RA4PQLAQLRMFFQAN",
+    "tokens": {
+      "USDC": {
+        "code": "USDC",
+        "issuer": "GDXABUSRHP4YA5CELHLNJQ4M3TX2BSJ6PEMDFCG2RA4PQLAQLRMFFQAN"
+      },
+      "USDT": {
+        "code": "USDT",
+        "issuer": "GDXABUSRHP4YA5CELHLNJQ4M3TX2BSJ6PEMDFCG2RA4PQLAQLRMFFQAN"
+      }
+    },
+    "inventory": {
+      "XLM": "100000",
+      "USDC": "200000",
+      "USDT": "200000"
+    },
+    "live": true
   }
 }

@@ -15,6 +15,8 @@ Tidepool can swap between NEAR testnet and three EVM testnets, with the same API
 
 Solana devnet is also available as a separate, same-style bridge (SOL capped at 0.005 SOL): [Solana devnet bridge](/docs/guides/bridge-solana-devnet). It is devnet only and custodial, and is listed in `/v0/tokens` only while it is live.
 
+Stellar testnet is another separate bridge (XLM capped at 100 XLM, deposits use `depositMode: "MEMO"`): [Stellar testnet bridge](/docs/guides/bridge-stellar-testnet). It is testnet only, custodial and listed in `/v0/tokens` only while it is live.
+
 ## What matches 1Click
 
 - **Asset ids.** Bridged tokens look like 1Click's omft ids: `nep141:<chain>-<erc20 address>.tp-omft.testnet`. `/v0/tokens` lists them with `blockchain` and `contractAddress`.

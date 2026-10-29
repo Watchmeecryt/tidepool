@@ -59,4 +59,8 @@ You get 100 USDC and 100 USDT (6 decimals) on that chain, with the same limits (
 
 `{"chain":"sol","address":"YourSolanaAddress"}` mints test USDC and USDT to your associated token accounts on Solana devnet (not SOL: bring your own devnet SOL; SOL swaps are capped at 0.005 SOL). See the [Solana devnet bridge](/docs/guides/bridge-solana-devnet).
 
+## Stellar testnet
+
+`{"chain":"stellar","address":"G..."}` pays test USDC and USDT (Tidepool's own classic assets) from the treasury to a Stellar testnet account. The account must already exist and trust both assets (a `changeTrust` operation for each); otherwise the faucet answers `400` and says which is missing. It does not drip XLM: get 10,000 test XLM from [Friendbot](https://friendbot.stellar.org). One drip per address per hour. See the [Stellar testnet bridge](/docs/guides/bridge-stellar-testnet).
+
 <Callout type="warn">Test tokens have **no value**. The EVM test tokens are bridged only by Tidepool's own testnet relayer, not by any NEAR or 1Click bridge. Do not list or trade them anywhere.</Callout>

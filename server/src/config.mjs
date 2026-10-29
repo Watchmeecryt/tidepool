@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import bs58 from 'bs58';
 import { keccak256 } from 'ethers';
+import { Asset, Networks, StrKey } from '@stellar/stellar-base';
 // Tidepool deployment config: testnet accounts and the test token list.
 export const ROOT = process.env.TIDEPOOL_ROOT || 'tidepool-sandbox.testnet';
 export const VERIFIER = `verifier.${ROOT}`;
@@ -72,7 +73,31 @@ if (SD?.relayer) {
     return { ...b, ...common, sub: `sol-${b.symbol.toLowerCase()}`, mint, contractAddress: mint, nearContract: `${sub}.${OMFT}`, assetId: `nep141:${sub}.${OMFT}`, name: `Tidepool Testnet ${b.symbol} on Solana Devnet (bridged, no value)` }; });
   for (const t of [sol, ...spl]) { if (SOL_CHAIN.deployed) TOKENS.push(t); SOL_CHAIN.tokens.push(t); }
 }
-export const chainOf = (key) => key === 'sol' ? SOL_CHAIN : EVM_CHAINS.find(c => c.key === key);
+// ---- Stellar testnet bridge (trusted relayer run by Tidepool; testnet only) ----
+// 1Click lists Stellar as nep245 (HOT) assets and requires depositMode MEMO (one shared deposit address + a numeric memo). Tidepool
+// keeps the memo model but uses OMFT-style nep141 ids like the other bridges: native XLM is nep141:stellar.<OMFT>; a classic
+// issued asset is nep141:stellar-<last 20 bytes of keccak256(32-byte Stellar Asset Contract id, hex)>.<OMFT> (the SAC id is the
+// stellar analogue of a Solana mint address: C... strkey of sha256 over the network id and the asset).
+export const STELLAR_DECIMALS = 7;
+export const stellarSacId = (code, issuer) => new Asset(code, issuer).contractId(Networks.TESTNET);
+export const stellarOmftSub = (code, issuer) => 'stellar-' + keccak256(StrKey.decodeContract(stellarSacId(code, issuer))).slice(-40);
+export const XLM_CAP_STROOPS = BigInt(process.env.STELLAR_XLM_CAP_STROOPS || 1_000_000_000); // 100 XLM cap on any XLM swap leg, payout or refund (enforced at quote time)
+export const XLM_CREATE_MIN_STROOPS = 10_000_000n; // a payout to a not-yet-existing account must fund it with >= 1 XLM (2 x base reserve)
+export const STELLAR_CHAIN = { key: 'stellar', blockchain: 'stellar', kind: 'stellar', name: 'Stellar Testnet', network: 'testnet', explorer: 'https://stellar.expert/explorer/testnet', friendbot: 'https://friendbot.stellar.org' };
+export const isStellarAddress = (s) => typeof s === 'string' && StrKey.isValidEd25519PublicKey(s);
+const XD = DEPLOYED.stellar;
+STELLAR_CHAIN.deployed = Boolean(XD?.treasury && XD.live && XD.tokens?.USDC && XD.tokens?.USDT);
+if (XD?.treasury) {
+  STELLAR_CHAIN.treasury = XD.treasury; STELLAR_CHAIN.issuer = XD.issuer;
+  STELLAR_CHAIN.tokens = [];
+  const common = { chain: 'stellar', kind: 'stellar', blockchain: 'stellar' };
+  const xlm = { ...common, sub: 'stellar', symbol: 'XLM', decimals: STELLAR_DECIMALS, coingeckoId: 'stellar', fallback: 0.17, drip: '0', inventory: XD.inventory?.XLM || '1', native: true,
+    nearContract: `stellar.${OMFT}`, assetId: `nep141:stellar.${OMFT}`, name: 'Tidepool Testnet XLM on Stellar Testnet (bridged, no value)' };
+  const classic = BRIDGED.filter(b => XD.tokens?.[b.symbol]).map(b => { const { code, issuer } = XD.tokens[b.symbol], sub = stellarOmftSub(code, issuer);
+    return { ...b, ...common, decimals: STELLAR_DECIMALS, inventory: XD.inventory?.[b.symbol] || b.inventory, sub: `stellar-${b.symbol.toLowerCase()}`, code, issuer, contractAddress: issuer, sacId: stellarSacId(code, issuer), nearContract: `${sub}.${OMFT}`, assetId: `nep141:${sub}.${OMFT}`, name: `Tidepool Testnet ${b.symbol} on Stellar Testnet (bridged, no value)` }; });
+  for (const t of [xlm, ...classic]) { if (STELLAR_CHAIN.deployed) TOKENS.push(t); STELLAR_CHAIN.tokens.push(t); }
+}
+export const chainOf = (key) => key === 'sol' ? SOL_CHAIN : key === 'stellar' ? STELLAR_CHAIN : EVM_CHAINS.find(c => c.key === key);
 export const isEvmAddress = (s) => typeof s === 'string' && /^0x[0-9a-fA-F]{40}$/.test(s);
 
 export const toUnits = (s, d) => { const [i, f = ''] = String(s).split('.'); return BigInt(i + (f + '0'.repeat(d)).slice(0, d)); };
