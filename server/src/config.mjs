@@ -50,6 +50,8 @@ for (const c of EVM_CHAINS) {
   }
 }
 
+// NOTE: the SOL/XLM `drip` values below apply ONLY to the verifier (intents-mode) test tokens nep141:sol.<OMFT> / nep141:stellar.<OMFT>.
+// Native SOL/XLM are never dripped to wallets (solDrip/stellarDrip skip `native`): gas comes from each chain's own faucet.
 // ---- Solana devnet bridge (trusted relayer run by Tidepool; devnet only) ----
 // Official 1Click/omft naming for Solana: native SOL is nep141:sol.omft.near; an SPL token is
 // nep141:sol-<last 20 bytes of keccak256(mint pubkey bytes), hex>.omft.near. We mirror it under tp-omft.testnet.
@@ -67,7 +69,7 @@ if (SD?.relayer) {
   SOL_CHAIN.relayer = SD.relayer;
   SOL_CHAIN.tokens = [];
   const common = { chain: 'sol', kind: 'sol', blockchain: 'sol' };
-  const sol = { ...common, sub: 'sol', symbol: 'SOL', decimals: 9, coingeckoId: 'solana', fallback: 150, drip: '0', inventory: SD.inventory?.SOL || '1', native: true,
+  const sol = { ...common, sub: 'sol', symbol: 'SOL', decimals: 9, coingeckoId: 'solana', fallback: 150, drip: '0.05', inventory: SD.inventory?.SOL || '1', native: true,
     nearContract: `sol.${OMFT}`, assetId: `nep141:sol.${OMFT}`, name: 'Tidepool Testnet SOL on Solana Devnet (bridged, no value)' };
   const spl = BRIDGED.filter(b => SD.tokens?.[b.symbol]).map(b => { const mint = SD.tokens[b.symbol], sub = solOmftSub(mint);
     return { ...b, ...common, sub: `sol-${b.symbol.toLowerCase()}`, mint, contractAddress: mint, nearContract: `${sub}.${OMFT}`, assetId: `nep141:${sub}.${OMFT}`, name: `Tidepool Testnet ${b.symbol} on Solana Devnet (bridged, no value)` }; });
@@ -91,7 +93,7 @@ if (XD?.treasury) {
   STELLAR_CHAIN.treasury = XD.treasury; STELLAR_CHAIN.issuer = XD.issuer;
   STELLAR_CHAIN.tokens = [];
   const common = { chain: 'stellar', kind: 'stellar', blockchain: 'stellar' };
-  const xlm = { ...common, sub: 'stellar', symbol: 'XLM', decimals: STELLAR_DECIMALS, coingeckoId: 'stellar', fallback: 0.17, drip: '0', inventory: XD.inventory?.XLM || '1', native: true,
+  const xlm = { ...common, sub: 'stellar', symbol: 'XLM', decimals: STELLAR_DECIMALS, coingeckoId: 'stellar', fallback: 0.17, drip: '5', inventory: XD.inventory?.XLM || '1', native: true,
     nearContract: `stellar.${OMFT}`, assetId: `nep141:stellar.${OMFT}`, name: 'Tidepool Testnet XLM on Stellar Testnet (bridged, no value)' };
   const classic = BRIDGED.filter(b => XD.tokens?.[b.symbol]).map(b => { const { code, issuer } = XD.tokens[b.symbol], sub = stellarOmftSub(code, issuer);
     return { ...b, ...common, decimals: STELLAR_DECIMALS, inventory: XD.inventory?.[b.symbol] || b.inventory, sub: `stellar-${b.symbol.toLowerCase()}`, code, issuer, contractAddress: issuer, sacId: stellarSacId(code, issuer), nearContract: `${sub}.${OMFT}`, assetId: `nep141:${sub}.${OMFT}`, name: `Tidepool Testnet ${b.symbol} on Stellar Testnet (bridged, no value)` }; });

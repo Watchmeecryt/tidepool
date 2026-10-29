@@ -7,9 +7,9 @@ description: "POST /v0/faucet · Tidepool extension"
 
 <Callout title="Tidepool extension">This endpoint is not part of the 1Click API. Do not call it on mainnet.</Callout>
 
-Limits: one drip per account per mode per hour, six per IP per hour. Response lists all drips (trimmed here). See [Faucet](/docs/guides/faucet).
+Limits: one drip per account per mode per hour (plus a separate hourly limit for bridged intents drips), one per address per chain per hour, six per IP per hour. Other chains: send `{"chain":"base","address":"0x…"}` (also eth, arb, sol, stellar). Bridged tokens into the verifier: `{"accountId":"alice.testnet","mode":"intents","assets":["sol"]}`. Response lists all drips (trimmed here). See [Faucet](/docs/guides/faucet).
 
-Drips Tidepool test tokens. NEAR: pass accountId; mode=wallet mints NEP-141 tokens to the account; mode=intents credits the account inside the Tidepool verifier. EVM testnets: pass chain (base, arb or eth) and a 0x address to mint test USDC and USDT ERC-20s on Base Sepolia, Arbitrum Sepolia or Ethereum Sepolia (gas not included; bridged by Tidepool's own trusted testnet relayer). One drip per account (or address) and mode/chain per hour; 6 per IP per hour.
+Drips Tidepool test tokens; the same faucet backs the dropdown on /docs/guides/faucet. NEAR (no chain): pass accountId; mode=wallet mints the six NEP-141 test tokens to the account; mode=intents credits them inside the Tidepool verifier. With mode=intents, assets also accepts chain aliases (sol, stellar, base, arb, eth, bridged) that credit that chain's bridged test tokens to the intents balance: USDC and USDT 100 each, plus verifier-only test SOL (0.05) for sol and test XLM (5) for stellar; bridged drips have their own hourly limit. Other chains: pass chain (eth, base, arb, sol or stellar) and the address on that chain to send 100 test USDC and 100 test USDT there (ERC-20, SPL with token accounts created for you, or Stellar classic assets; Stellar needs an existing account with trustlines to issuer GDXABUSRHP4YA5CELHLNJQ4M3TX2BSJ6PEMDFCG2RA4PQLAQLRMFFQAN). Native gas (ETH, SOL, XLM) is never dripped: use each chain's own faucet. One drip per account (or address) and mode/chain per hour; 6 per IP per hour.
 
 **Operation id:** `TidepoolFaucet`
 
@@ -51,9 +51,9 @@ const data = await res.json();
 | --- | --- | --- | --- |
 | `accountId` | string |  | NEAR testnet account. Required unless chain/address are set. |
 | `mode` | "wallet" \\| "intents" |  |  |
-| `assets` | string[] |  | Optional subset (assetId or symbol) |
-| `chain` | "base" \\| "arb" \\| "eth" |  | EVM testnet to drip on (Base Sepolia, Arbitrum Sepolia, Ethereum Sepolia). |
-| `address` | string |  | 0x address on the EVM testnet. Required with chain. |
+| `assets` | string[] |  | Optional subset: asset ids, NEAR symbols, or (mode=intents) chain aliases sol, stellar, base, arb, eth, bridged. Default: the six NEAR tokens. |
+| `chain` | "base" \\| "arb" \\| "eth" \\| "sol" \\| "stellar" |  | Chain to drip USDC and USDT on (Base Sepolia, Arbitrum Sepolia, Ethereum Sepolia, Solana devnet, Stellar testnet). Omit for NEAR. |
+| `address` | string |  | Address on that chain: 0x… (eth, base, arb), base58 (sol) or G… (stellar). Required with chain. |
 
 ## Responses
 

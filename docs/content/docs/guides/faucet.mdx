@@ -1,12 +1,80 @@
 ---
 title: Faucet
 seoTitle: "NEAR Testnet Faucet for Intents Test Tokens"
-description: Free test tokens for any NEAR testnet account or EVM testnet address, with exact amounts and limits.
+description: "Free test tokens on NEAR, Ethereum Sepolia, Base Sepolia, Arbitrum Sepolia, Solana devnet and Stellar testnet: pick a chain, paste an address, and our backend funds it."
 ---
 
 <FaucetWidget />
 
-## What you get per drip
+## How the faucet works
+
+The widget above and the API are the same faucet. In the UI you **pick a chain from the dropdown, paste your address on that chain, and press the button**: our backend signs and sends the tokens, you never sign anything. Through the API you send the same request yourself (examples below).
+
+| Chain (`chain`) | Address you paste | What our backend sends | Where it lands | You still bring |
+| --- | --- | --- | --- | --- |
+| NEAR testnet (no `chain`) | `you.testnet` | Six NEAR test tokens | `wallet`: NEP-141 balance. `intents`: your balance inside the verifier | Nothing |
+| Ethereum Sepolia (`eth`) | `0x…` | 100 test USDC + 100 test USDT (ERC-20) | Your address on Ethereum Sepolia | Sepolia ETH for gas |
+| Base Sepolia (`base`) | `0x…` | 100 test USDC + 100 test USDT (ERC-20) | Your address on Base Sepolia | Base Sepolia ETH for gas |
+| Arbitrum Sepolia (`arb`) | `0x…` | 100 test USDC + 100 test USDT (ERC-20) | Your address on Arbitrum Sepolia | Arbitrum Sepolia ETH for gas |
+| Solana devnet (`sol`) | base58 wallet | 100 test USDC + 100 test USDT (SPL) | Your wallet's token accounts on Solana devnet (our backend creates them) | Devnet SOL for fees |
+| Stellar testnet (`stellar`) | `G…` | 100 test USDC + 100 test USDT (classic assets) | Your account on Stellar testnet | An existing account with trustlines |
+
+- **Native gas is never dripped.** ETH, SOL and XLM come from each chain's own public faucet ([Ethereum Sepolia](https://cloud.google.com/application/web3/faucet/ethereum/sepolia), [Base Sepolia](https://docs.base.org/base-chain/network-information/network-faucets), [Arbitrum Sepolia](https://faucet.quicknode.com/arbitrum/sepolia), [Solana devnet](https://faucet.solana.com), [Stellar Friendbot](https://friendbot.stellar.org)).
+- **Stellar needs trustlines.** The account must exist (fund it with Friendbot) and add a `changeTrust` operation for each asset: `USDC` and `USDT`, both issued by `GDXABUSRHP4YA5CELHLNJQ4M3TX2BSJ6PEMDFCG2RA4PQLAQLRMFFQAN`. Without them the faucet answers `400` and names the missing one.
+- **Solana token accounts are created for you.** Our backend creates your associated token accounts for the two test mints and pays the rent, so a fresh wallet works. That costs treasury SOL, so there is a global daily cap.
+- **Bridged tokens on NEAR.** The USDC and USDT on the other chains are also bridged into the NEAR verifier as `nep141:<chain>-….tp-omft.testnet` tokens. To get those into your **intents balance** (not to a wallet on that chain), use the NEAR chain, mode `intents`, and pick a bridged option in the UI, or pass chain aliases in `assets` (below).
+- Test tokens have no value. They are minted by Tidepool's own testnet relayer, not by any NEAR or 1Click bridge.
+
+### Pick the right door
+
+| I want… | Use |
+| --- | --- |
+| Tokens to swap from a wallet on Base, Solana, Stellar… | That chain's entry in the dropdown (or `{"chain":…,"address":…}`) |
+| Tokens ready to swap right now, inside the verifier | NEAR, mode `intents` (six NEAR tokens by default, or `assets` with chain aliases for bridged ones) |
+| NEP-141 tokens in a NEAR wallet | NEAR, mode `wallet` |
+
+### Call it from the API
+
+```bash
+# NEAR wallet (the default)
+curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: application/json' \
+  -d '{"accountId":"alice.testnet","mode":"wallet"}'
+
+# NEAR intents balance, default six tokens
+curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: application/json' \
+  -d '{"accountId":"alice.testnet","mode":"intents"}'
+
+# NEAR intents balance, bridged USDC + USDT of one chain (plus test SOL / XLM for sol / stellar)
+curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: application/json' \
+  -d '{"accountId":"alice.testnet","mode":"intents","assets":["base"]}'
+
+# Ethereum Sepolia, Base Sepolia or Arbitrum Sepolia (eth, base, arb)
+curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: application/json' \
+  -d '{"chain":"eth","address":"0xYourAddress"}'
+
+# Solana devnet
+curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: application/json' \
+  -d '{"chain":"sol","address":"YourSolanaAddress"}'
+
+# Stellar testnet (account exists and trusts USDC and USDT)
+curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: application/json' \
+  -d '{"chain":"stellar","address":"GYourStellarAddress"}'
+```
+
+### Bridged tokens into the verifier (`assets` chain aliases)
+
+With `mode: "intents"`, `assets` accepts asset ids, NEAR symbols (`"USDC"` means the NEAR USDC) and these **chain aliases**: `sol`, `stellar`, `base`, `arb`, `eth`, `bridged` (every chain at once). Each alias credits that chain's bridged test tokens to your intents balance. The default with no `assets` stays the six NEAR tokens.
+
+| Alias | Tokens credited |
+| --- | --- |
+| `base`, `arb`, `eth` | 100 USDC + 100 USDT |
+| `sol` | 100 USDC + 100 USDT + **0.05 test SOL** (`nep141:sol.tp-omft.testnet`) |
+| `stellar` | 100 USDC + 100 USDT + **5 test XLM** (`nep141:stellar.tp-omft.testnet`) |
+| `bridged` | All of the above |
+
+The test SOL and XLM exist **only inside the verifier**: they are not native coins and are never sent to a wallet. Bridged drips use their own hourly limit, so taking them does not use up your default intents drip. Bridged tokens cannot be requested in `wallet` mode (`400`).
+
+## NEAR: what you get per drip
 
 | Token | Amount | Contract |
 | --- | --- | --- |
@@ -19,48 +87,29 @@ description: Free test tokens for any NEAR testnet account or EVM testnet addres
 
 Pass `"assets": ["USDC", "wNEAR"]` (symbols or asset ids) to drip only some tokens.
 
-## Modes
+## NEAR modes
 
 | `mode` | Where tokens land | Needs |
 | --- | --- | --- |
 | `wallet` | NEP-141 wallet balance. Minted fresh by the root account, one `mint` tx per token. | The account must exist on testnet. Storage is registered automatically. |
 | `intents` | Your intents balance inside the verifier. One `mt_batch_transfer` from the maker. | Nothing. Works for any account id, even one that does not exist yet. |
 
-## Limits
-
-- **One drip per account per mode per hour.** `alice.testnet` can take one `wallet` and one `intents` drip each hour.
-- **Six drips per IP per hour.**
-- Over the limit returns **HTTP 429** with the time you can retry.
-- If a transfer fails, the limit is not consumed.
-
 Supply is not capped, but the faucet can only mint these fixed amounts. Only the token owner (`privacei.testnet`) and the two allowed minters (`tidepool-sandbox.testnet`, `maker.tidepool-sandbox.testnet`) can call `mint`.
-
-## API
-
-```bash
-curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: application/json' \
-  -d '{"accountId":"alice.testnet","mode":"wallet"}'
-```
 
 See [POST /v0/faucet](/docs/api-reference/tidepool-faucet) for the full response.
 
-## EVM testnets
+## Limits
 
-Pass `chain` (`base`, `arb` or `eth`) and a `0x` `address` to mint test USDC and USDT on Base Sepolia, Arbitrum Sepolia or Ethereum Sepolia:
+- **NEAR:** one drip per account per mode per hour, and one bridged intents drip per account per hour (separate limit). `alice.testnet` can take one `wallet`, one `intents` and one bridged drip each hour.
+- **Other chains:** one drip per address per chain per hour.
+- **Six drips per IP per hour**, across everything. Over the limit returns **HTTP 429** with the time you can retry. If a transfer fails, the limit is not consumed.
+- Global daily caps protect the treasuries: Solana (it pays for token accounts) and Stellar. Over the cap returns `429`.
+- Supply is not capped, but the faucet only sends these fixed amounts. Do not loop it.
 
-```bash
-curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: application/json' \
-  -d '{"chain":"base","address":"0xYourAddress"}'
-```
+## Details per chain
 
-You get 100 USDC and 100 USDT (6 decimals) on that chain, with the same limits (one drip per address per chain per hour, six per IP per hour). Gas ETH is **not** included; use the chain's public faucet. You can also call `faucet()` on the token contracts directly. Addresses are in each route guide under [Test bridges](/docs/guides/bridges).
+- **EVM:** `{"chain":"base"|"arb"|"eth","address":"0x…"}` mints USDC and USDT (6 decimals). You can also call `faucet()` on the token contracts yourself. Addresses are in each route guide under [Test bridges](/docs/guides/bridges).
+- **Solana devnet:** see the [Solana devnet bridge](/docs/guides/bridge-solana-devnet). SOL swaps are capped at 0.005 SOL.
+- **Stellar testnet:** 7 decimals. See the [Stellar testnet bridge](/docs/guides/bridge-stellar-testnet). Get XLM from [Friendbot](https://friendbot.stellar.org) (10,000 test XLM).
 
-## Solana devnet
-
-`{"chain":"sol","address":"YourSolanaAddress"}` mints test USDC and USDT to your associated token accounts on Solana devnet (not SOL: bring your own devnet SOL; SOL swaps are capped at 0.005 SOL). See the [Solana devnet bridge](/docs/guides/bridge-solana-devnet).
-
-## Stellar testnet
-
-`{"chain":"stellar","address":"G..."}` pays test USDC and USDT (Tidepool's own classic assets) from the treasury to a Stellar testnet account. The account must already exist and trust both assets (a `changeTrust` operation for each); otherwise the faucet answers `400` and says which is missing. It does not drip XLM: get 10,000 test XLM from [Friendbot](https://friendbot.stellar.org). One drip per address per hour. See the [Stellar testnet bridge](/docs/guides/bridge-stellar-testnet).
-
-<Callout type="warn">Test tokens have **no value**. The EVM test tokens are bridged only by Tidepool's own testnet relayer, not by any NEAR or 1Click bridge. Do not list or trade them anywhere.</Callout>
+<Callout type="warn">Test tokens have **no value**. The bridged test tokens are bridged only by Tidepool's own testnet relayer, not by any NEAR or 1Click bridge. Do not list or trade them anywhere.</Callout>

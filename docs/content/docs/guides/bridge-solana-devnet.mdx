@@ -35,7 +35,7 @@ curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: applicatio
   -d '{"chain":"sol","address":"YourSolanaAddress"}'
 ```
 
-This mints test USDC and USDT to your associated token accounts. The faucet does **not** drip SOL: get devnet SOL from your own RPC provider or a faucet. (The public `api.devnet.solana.com` RPC faucet is currently closed.)
+This mints 100 test USDC and 100 test USDT to your associated token accounts (our backend creates the accounts and pays the rent, so a fresh wallet works). The same faucet is in the dropdown on the [Faucet](/docs/guides/faucet) page. To get the bridged USDC, USDT and **0.05 test SOL** into your NEAR intents balance instead, call it with `{"accountId":"alice.testnet","mode":"intents","assets":["sol"]}`; that test SOL lives only inside the verifier. The faucet does **not** drip native SOL: get devnet SOL from your own RPC provider or a faucet. (The public `api.devnet.solana.com` RPC faucet is currently closed.)
 
 ## 2. Solana → NEAR
 

@@ -29,7 +29,7 @@ curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: applicatio
   -d '{"chain":"arb","address":"0xYourAddress"}'
 ```
 
-This mints 100 test USDC and 100 test USDT on Arbitrum Sepolia. You can also call `faucet()` on either token contract yourself (once per hour per address). Gas is **not** included: get Arbitrum Sepolia ETH from a [public faucet](https://docs.arbitrum.io/for-devs/dev-tools-and-resources/chain-info#faucets).
+This mints 100 test USDC and 100 test USDT on Arbitrum Sepolia. It is also in the dropdown on the [Faucet](/docs/guides/faucet) page. To get the bridged USDC and USDT into your NEAR intents balance instead, use `{"accountId":"alice.testnet","mode":"intents","assets":["arb"]}`. You can also call `faucet()` on either token contract yourself (once per hour per address). Gas is **not** included: get Arbitrum Sepolia ETH from a [public faucet](https://docs.arbitrum.io/for-devs/dev-tools-and-resources/chain-info#faucets).
 
 ## 2. Arbitrum Sepolia → NEAR
 

@@ -41,7 +41,7 @@ Any swap with an XLM leg is rejected at **quote time** with a `400` if the XLM a
 
 ## 1. Get tokens
 
-XLM: [Friendbot](https://friendbot.stellar.org/?addr=YourStellarAddress) gives 10,000 test XLM. USDC and USDT: add a trustline for each, then use the faucet.
+XLM: [Friendbot](https://friendbot.stellar.org/?addr=YourStellarAddress) gives 10,000 test XLM (the faucet never drips native XLM). USDC and USDT: add a trustline for each (codes `USDC` and `USDT`, issuer `GDXABUSRHP4YA5CELHLNJQ4M3TX2BSJ6PEMDFCG2RA4PQLAQLRMFFQAN`), then use the faucet (also in the dropdown on the [Faucet](/docs/guides/faucet) page). It sends 100 of each. To get the bridged USDC, USDT and **5 test XLM** into your NEAR intents balance instead, use `{"accountId":"alice.testnet","mode":"intents","assets":["stellar"]}`; that test XLM lives only inside the verifier.
 
 ```bash
 curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: application/json' \

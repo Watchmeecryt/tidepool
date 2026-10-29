@@ -7,8 +7,10 @@ import * as stellar from './stellar.mjs';
 import { mintErc20, evmTxUrl } from './evm.mjs';
 import { db, save } from './store.mjs';
 import { withSigner, BadRequest } from './engine.mjs';
+import { resolveIntentAssets, isBridgedToken, CHAIN_ALIASES } from './faucet-assets.mjs';
 
 const ACCOUNT_COOLDOWN_MS = 60 * 60_000; // one drip per account per hour
+const INTENTS_CHUNK = 6;
 const IP_LIMIT = 6; // drips per IP per hour
 const ipHits = new Map();
 
@@ -97,24 +99,33 @@ async function stellarDrip({ address, accountId, assets }, ip) {
 async function nearDrip({ accountId, mode = 'wallet', assets }, ip) {
   if (typeof accountId !== 'string' || !/^[a-z0-9._-]{2,64}$/.test(accountId)) throw new BadRequest('accountId must be a NEAR testnet account id');
   if (!['wallet', 'intents'].includes(mode)) throw new BadRequest('mode must be "wallet" or "intents"');
-  // NEAR faucet: native Tidepool tokens by default; bridged assets only into the verifier (intents mode) on request.
-  const pool = mode === 'intents' ? TOKENS : NEAR_TOKENS;
-  const list = (assets?.length ? pool.filter(t => assets.includes(t.assetId) || (t.blockchain === 'near' && assets.includes(t.symbol))) : NEAR_TOKENS).filter(t => Number(t.drip) > 0);
-  if (!list.length) throw new BadRequest('no matching assets');
-  const key = `${accountId}:${mode}`;
-  const last = db.faucet[key] || 0;
-  if (Date.now() - last < ACCOUNT_COOLDOWN_MS) throw new BadRequest(`Rate limited: ${accountId} can use the ${mode} faucet again after ${new Date(last + ACCOUNT_COOLDOWN_MS).toISOString()}`, 429);
+  // NEAR faucet: native Tidepool tokens by default; bridged test tokens (USDC/USDT on every chain, plus verifier-only test SOL and XLM)
+  // go only into the verifier (intents mode) and only on request: asset ids or chain aliases (sol, stellar, base, arb, eth, bridged).
+  if (mode === 'wallet' && assets?.some(a => CHAIN_ALIASES.includes(String(a).toLowerCase()) || String(a).includes('tp-omft'))) throw new BadRequest('Bridged test tokens can only be sent to an intents balance: use mode "intents", or pass chain and address to receive USDC/USDT on that chain');
+  const list = assets?.length ? resolveIntentAssets(assets, mode === 'intents' ? TOKENS : NEAR_TOKENS) : NEAR_TOKENS.filter(t => Number(t.drip) > 0);
+  if (!list.length) throw new BadRequest(`no matching assets${mode === 'intents' ? ` (use asset ids, NEAR symbols, or chain aliases: ${CHAIN_ALIASES.join(', ')})` : ''}`);
+  // Native and bridged drips have separate hourly limits, so taking bridged tokens does not use up the native drip.
+  const keys = [...new Set(list.map(t => isBridgedToken(t) ? `${accountId}:intents-bridged` : `${accountId}:${mode}`))];
+  for (const key of keys) {
+    const last = db.faucet[key] || 0;
+    if (Date.now() - last < ACCOUNT_COOLDOWN_MS) throw new BadRequest(`Rate limited: ${accountId} can use the ${key.endsWith('intents-bridged') ? 'bridged intents' : mode} faucet again after ${new Date(last + ACCOUNT_COOLDOWN_MS).toISOString()}`, 429);
+  }
   const hits = (ipHits.get(ip) || []).filter(t => Date.now() - t < 3600_000);
   if (hits.length >= IP_LIMIT) throw new BadRequest('Rate limited: too many faucet requests from this IP, try again within the hour', 429);
   if (mode === 'wallet' && !(await viewAccount(accountId))) throw new BadRequest(`${accountId} does not exist on testnet. Create it first (wallet or https://helper.nearprotocol.com) or use mode "intents"`);
-  db.faucet[key] = Date.now(); hits.push(Date.now()); ipHits.set(ip, hits); save();
+  for (const key of keys) db.faucet[key] = Date.now();
+  hits.push(Date.now()); ipHits.set(ip, hits); save();
 
   const out = [];
   try {
     if (mode === 'intents') {
-      const r = await withSigner(MAKER, () => call(MAKER, VERIFIER, 'mt_batch_transfer', { receiver_id: accountId, token_ids: list.map(t => t.assetId), amounts: list.map(t => toUnits(t.drip, t.decimals).toString()), memo: 'tidepool faucet' }, { deposit: 1n, gas: 100n * TGAS }));
-      if (!r.ok) throw new Error(r.failures.join('; '));
-      out.push({ assets: list.map(t => t.assetId), txHash: r.txHash });
+      // One mt_batch_transfer per chunk of up to 6 tokens (the default six-token drip stays a single tx); 200 Tgas per call.
+      for (let i = 0; i < list.length; i += INTENTS_CHUNK) {
+        const part = list.slice(i, i + INTENTS_CHUNK);
+        const r = await withSigner(MAKER, () => call(MAKER, VERIFIER, 'mt_batch_transfer', { receiver_id: accountId, token_ids: part.map(t => t.assetId), amounts: part.map(t => toUnits(t.drip, t.decimals).toString()), memo: 'tidepool faucet' }, { deposit: 1n, gas: 200n * TGAS }));
+        if (!r.ok) throw new Error(r.failures.join('; '));
+        out.push({ assets: part.map(t => t.assetId), txHash: r.txHash });
+      }
     } else {
       for (const t of list) {
         const r = await withSigner(ROOT, () => call(ROOT, t.nearContract, 'mint', { account_id: accountId, amount: toUnits(t.drip, t.decimals).toString() }));
@@ -122,6 +133,6 @@ async function nearDrip({ accountId, mode = 'wallet', assets }, ip) {
         out.push({ assetId: t.assetId, amount: t.drip, txHash: r.txHash });
       }
     }
-  } catch (e) { delete db.faucet[key]; save(); throw new Error('faucet transfer failed: ' + String(e.message).slice(0, 200)); }
+  } catch (e) { if (!out.length) { for (const key of keys) delete db.faucet[key]; save(); } throw new Error('faucet transfer failed: ' + String(e.message).slice(0, 200)); }
   return { accountId, mode, drips: list.map(t => ({ assetId: t.assetId, symbol: t.symbol, amount: t.drip })), transactions: out.map(o => ({ ...o, explorerUrl: `https://testnet.nearblocks.io/txns/${o.txHash}` })) };
 }

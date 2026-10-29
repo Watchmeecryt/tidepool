@@ -29,7 +29,7 @@ curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: applicatio
   -d '{"chain":"base","address":"0xYourAddress"}'
 ```
 
-This mints 100 test USDC and 100 test USDT on Base Sepolia. You can also call `faucet()` on either token contract yourself (once per hour per address). Gas is **not** included: get Base Sepolia ETH from a [public faucet](https://docs.base.org/base-chain/tools/network-faucets).
+This mints 100 test USDC and 100 test USDT on Base Sepolia. It is also in the dropdown on the [Faucet](/docs/guides/faucet) page. To get the bridged USDC and USDT into your NEAR intents balance instead, use `{"accountId":"alice.testnet","mode":"intents","assets":["base"]}`. You can also call `faucet()` on either token contract yourself (once per hour per address). Gas is **not** included: get Base Sepolia ETH from a [public faucet](https://docs.base.org/base-chain/tools/network-faucets).
 
 ## 2. Base Sepolia → NEAR
 

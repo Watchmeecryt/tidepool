@@ -3,6 +3,14 @@ title: Changelog
 description: What changed in Tidepool and when.
 ---
 
+## 2026-10-29 · Faucet: every chain in one place, bridged tokens into the verifier
+
+- **New faucet UI:** the [Faucet](/docs/guides/faucet) page now has a chain dropdown: NEAR testnet (default), Ethereum Sepolia, Base Sepolia, Arbitrum Sepolia, Solana devnet and Stellar testnet. Paste an address for that chain (validated per chain) and our backend sends the tokens. NEAR keeps Wallet and Intents modes, and Intents mode can now receive a chosen chain's bridged tokens. The page has a new "How the faucet works" section with curl examples per chain.
+- **What each chain gets:** 100 test USDC and 100 test USDT at your address on that chain. Native gas (ETH, SOL, XLM) is never dripped: use each chain's own faucet. Stellar needs an existing account with trustlines to `GDXABUSRHP4YA5CELHLNJQ4M3TX2BSJ6PEMDFCG2RA4PQLAQLRMFFQAN`; Solana token accounts are created for you.
+- **API:** `POST /v0/faucet` with `mode: "intents"` now accepts chain aliases in `assets`: `sol`, `stellar`, `base`, `arb`, `eth` and `bridged` (all chains). They credit that chain's bridged USDC and USDT (100 each) to your intents balance. The default with no `assets` is unchanged: the six NEAR tokens. Bridged drips have a separate hourly limit and are rejected in `wallet` mode.
+- **Verifier test SOL and XLM:** the bridged test SOL (`nep141:sol.tp-omft.testnet`, 0.05 per drip) and test XLM (`nep141:stellar.tp-omft.testnet`, 5 per drip) can be credited to an intents balance through the `sol` and `stellar` aliases. They exist only inside the verifier. Native SOL and XLM are still never sent to wallets.
+- Large intents drips are split into chunks of six tokens per `mt_batch_transfer`, each with 200 Tgas.
+
 ## 2026-10-29 · Stellar testnet bridge (XLM, USDC, USDT), capped at 100 XLM
 
 - **New chain:** Stellar testnet, `blockchain: "stellar"`, a trusted-relayer bridge run by Tidepool. Testnet only, custodial: the tokens have no value. Guide: [Stellar testnet bridge](/docs/guides/bridge-stellar-testnet). The route is listed in `/v0/tokens` and `/v0/health` (`bridges.chains.stellar`) only while it is live.

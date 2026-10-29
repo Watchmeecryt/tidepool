@@ -18,34 +18,34 @@ All are standard NEP-141 tokens (with NEP-145 storage) and use the same contract
 
 These are listed in `/v0/tokens` with `blockchain` set to `base`, `arb` or `eth` and `contractAddress` set to the ERC-20. The NEP-141 side is a Tidepool token contract owned by `tidepool-sandbox.testnet` (the bridge account). Both sides are minted by Tidepool's testnet relayer; see [Test bridges](/docs/guides/bridges).
 
-| Token | Asset id | ERC-20 | Decimals | Faucet drip |
-| --- | --- | --- | --- | --- |
-| USDC on Base Sepolia | `nep141:base-0x38d81431b9f76d9699af7517040d5221d9dea252.tp-omft.testnet` | [`0x38d81431B9f76d9699AF7517040D5221D9dEA252`](https://sepolia.basescan.org/address/0x38d81431B9f76d9699AF7517040D5221D9dEA252) | 6 | 100 |
-| USDT on Base Sepolia | `nep141:base-0xc15cf5600225302675604310094f134e88705e62.tp-omft.testnet` | [`0xC15Cf5600225302675604310094f134e88705E62`](https://sepolia.basescan.org/address/0xC15Cf5600225302675604310094f134e88705E62) | 6 | 100 |
-| USDC on Arbitrum Sepolia | `nep141:arb-0x38d81431b9f76d9699af7517040d5221d9dea252.tp-omft.testnet` | [`0x38d81431B9f76d9699AF7517040D5221D9dEA252`](https://sepolia.arbiscan.io/address/0x38d81431B9f76d9699AF7517040D5221D9dEA252) | 6 | 100 |
-| USDT on Arbitrum Sepolia | `nep141:arb-0xc15cf5600225302675604310094f134e88705e62.tp-omft.testnet` | [`0xC15Cf5600225302675604310094f134e88705E62`](https://sepolia.arbiscan.io/address/0xC15Cf5600225302675604310094f134e88705E62) | 6 | 100 |
-| USDC on Ethereum Sepolia | `nep141:eth-0x2e6ad9e6d59bb4585ea0e6762c3b637dde29dad2.tp-omft.testnet` | [`0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2`](https://sepolia.etherscan.io/address/0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2) | 6 | 100 |
-| USDT on Ethereum Sepolia | `nep141:eth-0x650f12ba31777de8ded47287a8cc86be737646fe.tp-omft.testnet` | [`0x650F12bA31777DE8Ded47287a8CC86bE737646fe`](https://sepolia.etherscan.io/address/0x650F12bA31777DE8Ded47287a8CC86bE737646fe) | 6 | 100 |
+| Token | Asset id | ERC-20 | Decimals | Faucet drip (chain) | Faucet drip (verifier) |
+| --- | --- | --- | --- | --- | --- |
+| USDC on Base Sepolia | `nep141:base-0x38d81431b9f76d9699af7517040d5221d9dea252.tp-omft.testnet` | [`0x38d81431B9f76d9699AF7517040D5221D9dEA252`](https://sepolia.basescan.org/address/0x38d81431B9f76d9699AF7517040D5221D9dEA252) | 6 | 100 | 100, `assets: ["base"]` |
+| USDT on Base Sepolia | `nep141:base-0xc15cf5600225302675604310094f134e88705e62.tp-omft.testnet` | [`0xC15Cf5600225302675604310094f134e88705E62`](https://sepolia.basescan.org/address/0xC15Cf5600225302675604310094f134e88705E62) | 6 | 100 | 100, `assets: ["base"]` |
+| USDC on Arbitrum Sepolia | `nep141:arb-0x38d81431b9f76d9699af7517040d5221d9dea252.tp-omft.testnet` | [`0x38d81431B9f76d9699AF7517040D5221D9dEA252`](https://sepolia.arbiscan.io/address/0x38d81431B9f76d9699AF7517040D5221D9dEA252) | 6 | 100 | 100, `assets: ["arb"]` |
+| USDT on Arbitrum Sepolia | `nep141:arb-0xc15cf5600225302675604310094f134e88705e62.tp-omft.testnet` | [`0xC15Cf5600225302675604310094f134e88705E62`](https://sepolia.arbiscan.io/address/0xC15Cf5600225302675604310094f134e88705E62) | 6 | 100 | 100, `assets: ["arb"]` |
+| USDC on Ethereum Sepolia | `nep141:eth-0x2e6ad9e6d59bb4585ea0e6762c3b637dde29dad2.tp-omft.testnet` | [`0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2`](https://sepolia.etherscan.io/address/0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2) | 6 | 100 | 100, `assets: ["eth"]` |
+| USDT on Ethereum Sepolia | `nep141:eth-0x650f12ba31777de8ded47287a8cc86be737646fe.tp-omft.testnet` | [`0x650F12bA31777DE8Ded47287a8CC86bE737646fe`](https://sepolia.etherscan.io/address/0x650F12bA31777DE8Ded47287a8CC86bE737646fe) | 6 | 100 | 100, `assets: ["eth"]` |
 
 ## Solana devnet (listed only while the route is live)
 
-| Token | Asset id | Mint | Decimals |
-| --- | --- | --- | --- |
-| SOL | `nep141:sol.tp-omft.testnet` | native | 9 (capped at 0.005 SOL per swap) |
-| USDC on Solana devnet | `nep141:sol-d48c1adc423a64867ac91ed2e1c0df76da323235.tp-omft.testnet` | `7pafEGXSmR35rLKNaD6inpfLYuEnRX9DyBc1c7M8r4Xr` | 6 |
-| USDT on Solana devnet | `nep141:sol-4c5179da74eb695eb57e01b787c4937157cf2833.tp-omft.testnet` | `H9ERDhrU8KDeXkMna2Lw6hYJT3LSyhvypiktDc6zmoeJ` | 6 |
+| Token | Asset id | Mint | Decimals | Faucet drip (chain) | Faucet drip (verifier) |
+| --- | --- | --- | --- | --- | --- |
+| SOL | `nep141:sol.tp-omft.testnet` | native | 9 (capped at 0.005 SOL per swap) | none (native coin: bring your own, [Solana faucet](https://faucet.solana.com)) | 0.05 test SOL, `assets: ["sol"]` |
+| USDC on Solana devnet | `nep141:sol-d48c1adc423a64867ac91ed2e1c0df76da323235.tp-omft.testnet` | `7pafEGXSmR35rLKNaD6inpfLYuEnRX9DyBc1c7M8r4Xr` | 6 | 100 (`chain: "sol"`) | 100, `assets: ["sol"]` |
+| USDT on Solana devnet | `nep141:sol-4c5179da74eb695eb57e01b787c4937157cf2833.tp-omft.testnet` | `H9ERDhrU8KDeXkMna2Lw6hYJT3LSyhvypiktDc6zmoeJ` | 6 | 100 (`chain: "sol"`) | 100, `assets: ["sol"]` |
 
-See the [Solana devnet bridge](/docs/guides/bridge-solana-devnet).
+The faucet's *chain* drip sends the SPL tokens to your wallet; the *verifier* drip credits the bridged NEP-141 to your intents balance. Native SOL is never dripped (the 0.05 SOL is the verifier test token only). See the [Solana devnet bridge](/docs/guides/bridge-solana-devnet) and the [Faucet](/docs/guides/faucet).
 
 ## Stellar testnet (listed only while the route is live)
 
-| Token | Asset id | Stellar asset | Decimals |
-| --- | --- | --- | --- |
-| XLM | `nep141:stellar.tp-omft.testnet` | native | 7 (capped at 100 XLM per swap) |
-| USDC on Stellar testnet | `nep141:stellar-0da9087074a12ebeb5dcdc8bcf33cf163ab498fc.tp-omft.testnet` | `USDC:GDXABUSRHP4YA5CELHLNJQ4M3TX2BSJ6PEMDFCG2RA4PQLAQLRMFFQAN` | 7 |
-| USDT on Stellar testnet | `nep141:stellar-c36e358585c12ac3f684b98be0c6682ca9c4665f.tp-omft.testnet` | `USDT:GDXABUSRHP4YA5CELHLNJQ4M3TX2BSJ6PEMDFCG2RA4PQLAQLRMFFQAN` | 7 |
+| Token | Asset id | Stellar asset | Decimals | Faucet drip (chain) | Faucet drip (verifier) |
+| --- | --- | --- | --- | --- | --- |
+| XLM | `nep141:stellar.tp-omft.testnet` | native | 7 (capped at 100 XLM per swap) | none (native coin: [Friendbot](https://friendbot.stellar.org)) | 5 test XLM, `assets: ["stellar"]` |
+| USDC on Stellar testnet | `nep141:stellar-0da9087074a12ebeb5dcdc8bcf33cf163ab498fc.tp-omft.testnet` | `USDC:GDXABUSRHP4YA5CELHLNJQ4M3TX2BSJ6PEMDFCG2RA4PQLAQLRMFFQAN` | 7 | 100 (`chain: "stellar"`) | 100, `assets: ["stellar"]` |
+| USDT on Stellar testnet | `nep141:stellar-c36e358585c12ac3f684b98be0c6682ca9c4665f.tp-omft.testnet` | `USDT:GDXABUSRHP4YA5CELHLNJQ4M3TX2BSJ6PEMDFCG2RA4PQLAQLRMFFQAN` | 7 | 100 (`chain: "stellar"`) | 100, `assets: ["stellar"]` |
 
-See the [Stellar testnet bridge](/docs/guides/bridge-stellar-testnet).
+Same split as Solana: the *chain* drip needs trustlines, and native XLM is never dripped (the 5 XLM is the verifier test token only). See the [Stellar testnet bridge](/docs/guides/bridge-stellar-testnet) and the [Faucet](/docs/guides/faucet).
 
 ## Admin methods
 

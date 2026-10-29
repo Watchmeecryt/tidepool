@@ -1,18 +1,18 @@
 // Idempotent devnet SOL top-up for the Tidepool Solana treasury (the relayer). Testnet only.
-//  - requests devnet airdrops (~2 SOL per try) with polite, backing-off retries
+//  - requests devnet airdrops (1 SOL per try) with retries (providers often answer "Internal error" about half the time) and prints every signature
 //  - stops as soon as the treasury holds TARGET SOL (default 5), and does nothing if it already does
 //  - prints ONLY the balance before and after (never keys or RPC URLs)
 // Uses requestAirdrop on your SOLANA_DEVNET_RPC provider, then the public devnet RPC (api.devnet.solana.com). Does NOT use faucet.solana.com
 // (it asks AI agents not to). NOTE: the public node's RPC faucet is currently closed, so set SOLANA_DEVNET_RPC to a provider with a devnet faucet.
 // The treasury is found from SOLANA_RELAYER_KEY, .secrets/solana-relayer.key, SOLANA_TREASURY or bridge-deployments.json.
-// Usage:  node scripts/sol-airdrop-topup.mjs            (TARGET_SOL=5 MAX_TRIES=8 AIRDROP_SOL=2 to override)
+// Usage:  node scripts/sol-airdrop-topup.mjs            (TARGET_SOL=5 MAX_TRIES=20 AIRDROP_SOL=1 to override)
 import fs from 'node:fs';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 
 const TARGET = Number(process.env.TARGET_SOL || 5) * 1e9;
-const PER_TRY = Math.min(2, Number(process.env.AIRDROP_SOL || 2)) * 1e9; // public devnet caps a single airdrop at 2 SOL
-const MAX_TRIES = Number(process.env.MAX_TRIES || 8);
+const PER_TRY = Math.min(2, Number(process.env.AIRDROP_SOL || 1)) * 1e9; // 1 SOL steps by default: provider faucets grant 1 SOL far more reliably than 2 (public devnet caps a request at 2 SOL)
+const MAX_TRIES = Number(process.env.MAX_TRIES || 20);
 // Tries SOLANA_AIRDROP_RPC, then your SOLANA_DEVNET_RPC provider (Alchemy/Helius/QuickNode/Triton run devnet faucets), then the public node.
 const ENDPOINTS = [...(process.env.SOLANA_AIRDROP_RPC || '').split(','), process.env.SOLANA_DEVNET_RPC, 'https://api.devnet.solana.com'].map(s => s?.trim()).filter(Boolean);
 const ROOT = new URL('../', import.meta.url);
@@ -56,6 +56,7 @@ for (let i = 0; i < MAX_TRIES && bal < TARGET; i++) {
   const want = Math.min(PER_TRY, TARGET - bal + 1e6);
   try {
     const sig = await rpc('requestAirdrop', [addr, Math.floor(Math.max(want, 1e8))]);
+    console.log(`airdrop signature: ${sig}`);
     for (let w = 0; w < 30; w++) { // wait up to ~60s for the airdrop to land
       await sleep(2000);
       const st = (await rpc('getSignatureStatuses', [[sig]])).value[0];
@@ -64,7 +65,8 @@ for (let i = 0; i < MAX_TRIES && bal < TARGET; i++) {
     }
     bal = await balance(addr);
   } catch (e) {
-    const wait = Math.min(120, 15 * 2 ** i);
+    const transient = /internal error|timeout|fetch failed/i.test(String(e.message));
+    const wait = transient ? 10 : Math.min(120, 15 * 2 ** i); // transient provider errors: short fixed pause, otherwise back off
     console.log(`airdrop try ${i + 1}/${MAX_TRIES} not granted (${String(e.message).slice(0, 80)}); waiting ${wait}s`);
     await sleep(wait * 1000);
     bal = await balance(addr).catch(() => bal);

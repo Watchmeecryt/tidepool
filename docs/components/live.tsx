@@ -3,35 +3,95 @@ import { useEffect, useState } from 'react';
 
 const ORIGIN = process.env.NEXT_PUBLIC_TIDEPOOL_URL || '';
 
+type FaucetChain = 'near' | 'eth' | 'base' | 'arb' | 'sol' | 'stellar';
+const ISSUER = 'GDXABUSRHP4YA5CELHLNJQ4M3TX2BSJ6PEMDFCG2RA4PQLAQLRMFFQAN';
+const CHAINS: Record<FaucetChain, { label: string; placeholder: string; valid: (v: string) => boolean; hint: string; gas?: string; gasUrl?: string }> = {
+  near: { label: 'NEAR testnet', placeholder: 'you.testnet', valid: v => /^[a-z0-9._-]{2,64}$/.test(v), hint: 'a NEAR testnet account id like you.testnet' },
+  eth: { label: 'Ethereum Sepolia', placeholder: '0x… (40 hex characters)', valid: v => /^0x[0-9a-fA-F]{40}$/.test(v), hint: 'an EVM address (0x…)', gas: 'Sepolia ETH', gasUrl: 'https://cloud.google.com/application/web3/faucet/ethereum/sepolia' },
+  base: { label: 'Base Sepolia', placeholder: '0x… (40 hex characters)', valid: v => /^0x[0-9a-fA-F]{40}$/.test(v), hint: 'an EVM address (0x…)', gas: 'Base Sepolia ETH', gasUrl: 'https://docs.base.org/base-chain/network-information/network-faucets' },
+  arb: { label: 'Arbitrum Sepolia', placeholder: '0x… (40 hex characters)', valid: v => /^0x[0-9a-fA-F]{40}$/.test(v), hint: 'an EVM address (0x…)', gas: 'Arbitrum Sepolia ETH', gasUrl: 'https://faucet.quicknode.com/arbitrum/sepolia' },
+  sol: { label: 'Solana devnet', placeholder: 'Base58 wallet address', valid: v => /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(v), hint: 'a Solana wallet address (base58)', gas: 'devnet SOL', gasUrl: 'https://faucet.solana.com' },
+  stellar: { label: 'Stellar testnet', placeholder: 'G… (56 characters)', valid: v => /^G[A-Z2-7]{55}$/.test(v), hint: 'a Stellar public key (G…) that already exists and trusts USDC and USDT', gas: 'test XLM (Friendbot)', gasUrl: 'https://friendbot.stellar.org' },
+};
+const BRIDGED_CHOICES: [string, string][] = [
+  ['native', 'Default: the six NEAR test tokens'],
+  ['eth', 'Bridged from Ethereum Sepolia: USDC + USDT (100 each)'],
+  ['base', 'Bridged from Base Sepolia: USDC + USDT (100 each)'],
+  ['arb', 'Bridged from Arbitrum Sepolia: USDC + USDT (100 each)'],
+  ['sol', 'Bridged from Solana devnet: USDC + USDT (100 each) + test SOL (0.05)'],
+  ['stellar', 'Bridged from Stellar testnet: USDC + USDT (100 each) + test XLM (5)'],
+  ['bridged', 'Bridged from every chain above (bridged tokens only)'],
+];
+
 export function FaucetWidget() {
+  const [chain, setChain] = useState<FaucetChain>('near');
   const [accountId, setAccount] = useState('');
   const [mode, setMode] = useState('wallet');
+  const [bridged, setBridged] = useState('native');
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<{ ok: boolean; text: string; txs?: { assetId?: string; amount: string; explorerUrl: string }[] } | null>(null);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string; txs?: { assetId?: string; amount?: string; explorerUrl: string }[] } | null>(null);
+  const c = CHAINS[chain];
+  const value = accountId.trim();
+  const invalid = value.length > 0 && !c.valid(value);
   async function go(e: React.FormEvent) {
-    e.preventDefault(); setBusy(true); setMsg(null);
+    e.preventDefault(); setMsg(null);
+    if (!c.valid(value)) { setMsg({ ok: false, text: `That does not look like ${c.hint}.` }); return; }
+    setBusy(true);
     try {
-      const r = await fetch(`${ORIGIN}/v0/faucet`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ accountId: accountId.trim(), mode }) });
+      const body = chain === 'near'
+        ? { accountId: value, mode, ...(mode === 'intents' && bridged !== 'native' ? { assets: [bridged] } : {}) }
+        : { chain, address: value };
+      const r = await fetch(`${ORIGIN}/v0/faucet`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
       const j = await r.json();
       if (!r.ok) setMsg({ ok: false, text: j.message || `Error ${r.status}` });
-      else setMsg({ ok: true, text: `Sent ${j.drips.map((d: { amount: string; symbol: string }) => `${d.amount} ${d.symbol}`).join(', ')} to ${j.accountId} (${j.mode}).`, txs: j.transactions });
+      else setMsg({ ok: true, text: `Sent ${j.drips.map((d: { amount: string; symbol: string }) => `${d.amount} ${d.symbol}`).join(', ')} to ${j.accountId || j.address} (${chain === 'near' ? j.mode : c.label}).`, txs: j.transactions });
     } catch (err) { setMsg({ ok: false, text: String(err) }); }
     setBusy(false);
   }
+  const field = 'mt-1.5 w-full rounded-lg border bg-fd-background px-3 py-2 text-sm';
   return (
     <form onSubmit={go} className="not-prose my-6 rounded-2xl border bg-fd-card p-5 shadow-sm">
-      <div className="grid gap-3 sm:grid-cols-[1fr_190px_auto] sm:items-end">
-        <label className="text-sm font-medium">Testnet account
-          <input required value={accountId} onChange={e => setAccount(e.target.value)} placeholder="you.testnet" className="mt-1.5 w-full rounded-lg border bg-fd-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-fd-ring" />
-        </label>
-        <label className="text-sm font-medium">Send to
-          <select value={mode} onChange={e => setMode(e.target.value)} className="mt-1.5 w-full rounded-lg border bg-fd-background px-3 py-2 text-sm">
-            <option value="wallet">Wallet (NEP-141)</option>
-            <option value="intents">Intents balance</option>
+      <div className="grid gap-3 sm:grid-cols-[210px_1fr] sm:items-end">
+        <label className="text-sm font-medium">1. Pick a chain
+          <select value={chain} onChange={e => { setChain(e.target.value as FaucetChain); setMsg(null); }} className={field}>
+            <option value="near">NEAR testnet (default)</option>
+            <option value="eth">Ethereum Sepolia</option>
+            <option value="base">Base Sepolia</option>
+            <option value="arb">Arbitrum Sepolia</option>
+            <option value="sol">Solana devnet</option>
+            <option value="stellar">Stellar testnet</option>
           </select>
         </label>
-        <button disabled={busy} className="rounded-lg bg-fd-primary px-4 py-2 text-sm font-semibold text-fd-primary-foreground disabled:opacity-60">{busy ? 'Sending…' : 'Get test tokens'}</button>
+        <label className="text-sm font-medium">2. Paste {chain === 'near' ? 'your testnet account' : 'your address on that chain'}
+          <input required value={accountId} onChange={e => setAccount(e.target.value)} placeholder={c.placeholder} spellCheck={false} autoComplete="off" aria-invalid={invalid} className={`${field} outline-none focus:ring-2 focus:ring-fd-primary ${invalid ? 'border-red-500' : ''}`} />
+          {invalid && <span className="mt-1 block text-xs font-normal text-red-600">Expected {c.hint}.</span>}
+        </label>
       </div>
+      {chain === 'near' && (
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <label className="text-sm font-medium">3. Where should they land?
+            <select value={mode} onChange={e => setMode(e.target.value)} className={field}>
+              <option value="wallet">Wallet (NEP-141 balance)</option>
+              <option value="intents">Intents balance (inside the verifier)</option>
+            </select>
+          </label>
+          {mode === 'intents' && (
+            <label className="text-sm font-medium">4. Which tokens?
+              <select value={bridged} onChange={e => setBridged(e.target.value)} className={field}>
+                {BRIDGED_CHOICES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+              </select>
+            </label>
+          )}
+        </div>
+      )}
+      <div className="mt-3 rounded-lg bg-fd-muted/50 p-3 text-sm leading-relaxed">
+        {chain === 'near' && mode === 'wallet' && <p><b>NEAR wallet:</b> mints the six NEAR test tokens (100 USDC, 100 USDT, 40 wNEAR, 0.001 wBTC, 0.03 ETH, 0.03 XAUT) into the account's NEP-141 wallet balances. The account must already exist on testnet.</p>}
+        {chain === 'near' && mode === 'intents' && bridged === 'native' && <p><b>NEAR intents balance:</b> credits the same six NEAR test tokens inside the Tidepool verifier, ready to swap. Works for any account id, even one that does not exist yet. Pick a bridged option to receive USDC and USDT from another chain instead.</p>}
+        {chain === 'near' && mode === 'intents' && bridged !== 'native' && <p><b>Bridged tokens in your verifier balance:</b> the maker credits the chosen chain's test tokens (<code>nep141:…tp-omft.testnet</code>) to your intents balance on NEAR. They are not sent to any wallet on that chain; to receive them on a chain, pick that chain above. Bridged drips have their own hourly limit, so they do not use up your default drip.</p>}
+        {chain !== 'near' && <p><b>{c.label}:</b> our backend sends <b>100 test USDC and 100 test USDT</b> straight to that address on {c.label}. {chain === 'sol' && 'Your token accounts are created for you.'}{chain === 'stellar' && <>The account must already exist and trust both assets (issuer <code className="break-all">{ISSUER}</code>, codes <code>USDC</code> and <code>USDT</code>): add a <code>changeTrust</code> for each first.</>} Native gas is <b>not</b> included: get {c.gas} from <a className="underline" href={c.gasUrl} target="_blank" rel="noreferrer">the chain's own faucet</a>.</p>}
+        <p className="mt-2 text-xs opacity-80">Limits: one drip per address {chain === 'near' ? 'per mode (and one bridged drip) ' : ''}per hour, six per IP per hour. Test tokens have no value.</p>
+      </div>
+      <button disabled={busy} className="mt-3 rounded-lg bg-fd-primary px-4 py-2 text-sm font-semibold text-fd-primary-foreground disabled:opacity-60">{busy ? 'Sending…' : 'Get test tokens'}</button>
       {msg && <div className={`mt-3 text-sm ${msg.ok ? 'text-fd-primary' : 'text-red-600'}`}>{msg.text}
         {msg.txs && <ul className="mt-2 list-disc ps-5">{msg.txs.map(t => <li key={t.explorerUrl}><a className="underline" href={t.explorerUrl} target="_blank" rel="noreferrer">{t.assetId ? t.assetId.split(':')[1].split('.')[0] : 'batch'} transaction</a></li>)}</ul>}
       </div>}

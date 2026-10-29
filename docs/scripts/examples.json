@@ -292,7 +292,7 @@
         "message": "Rate limited: alice.testnet can use the wallet faucet again after 2026-10-24T22:20:00.000Z"
       }
     },
-    "notes": "Limits: one drip per account per mode per hour, six per IP per hour. Response lists all drips (trimmed here). See [Faucet](/docs/guides/faucet)."
+    "notes": "Limits: one drip per account per mode per hour (plus a separate hourly limit for bridged intents drips), one per address per chain per hour, six per IP per hour. Other chains: send `{\"chain\":\"base\",\"address\":\"0x…\"}` (also eth, arb, sol, stellar). Bridged tokens into the verifier: `{\"accountId\":\"alice.testnet\",\"mode\":\"intents\",\"assets\":[\"sol\"]}`. Response lists all drips (trimmed here). See [Faucet](/docs/guides/faucet)."
   },
   "TidepoolHealth": {
     "tryIt": true,

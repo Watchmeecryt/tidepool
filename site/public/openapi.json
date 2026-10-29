@@ -1441,7 +1441,7 @@
           "Tidepool"
         ],
         "summary": "Get testnet tokens (Tidepool extension, not part of 1Click)",
-        "description": "Drips Tidepool test tokens. NEAR: pass accountId; mode=wallet mints NEP-141 tokens to the account; mode=intents credits the account inside the Tidepool verifier. EVM testnets: pass chain (base, arb or eth) and a 0x address to mint test USDC and USDT ERC-20s on Base Sepolia, Arbitrum Sepolia or Ethereum Sepolia (gas not included; bridged by Tidepool's own trusted testnet relayer). One drip per account (or address) and mode/chain per hour; 6 per IP per hour.",
+        "description": "Drips Tidepool test tokens; the same faucet backs the dropdown on /docs/guides/faucet. NEAR (no chain): pass accountId; mode=wallet mints the six NEP-141 test tokens to the account; mode=intents credits them inside the Tidepool verifier. With mode=intents, assets also accepts chain aliases (sol, stellar, base, arb, eth, bridged) that credit that chain's bridged test tokens to the intents balance: USDC and USDT 100 each, plus verifier-only test SOL (0.05) for sol and test XLM (5) for stellar; bridged drips have their own hourly limit. Other chains: pass chain (eth, base, arb, sol or stellar) and the address on that chain to send 100 test USDC and 100 test USDT there (ERC-20, SPL with token accounts created for you, or Stellar classic assets; Stellar needs an existing account with trustlines to issuer GDXABUSRHP4YA5CELHLNJQ4M3TX2BSJ6PEMDFCG2RA4PQLAQLRMFFQAN). Native gas (ETH, SOL, XLM) is never dripped: use each chain's own faucet. One drip per account (or address) and mode/chain per hour; 6 per IP per hour.",
         "requestBody": {
           "required": true,
           "content": {
@@ -1467,21 +1467,23 @@
                     "items": {
                       "type": "string"
                     },
-                    "description": "Optional subset (assetId or symbol)"
+                    "description": "Optional subset: asset ids, NEAR symbols, or (mode=intents) chain aliases sol, stellar, base, arb, eth, bridged. Default: the six NEAR tokens."
                   },
                   "chain": {
                     "type": "string",
                     "enum": [
                       "base",
                       "arb",
-                      "eth"
+                      "eth",
+                      "sol",
+                      "stellar"
                     ],
-                    "description": "EVM testnet to drip on (Base Sepolia, Arbitrum Sepolia, Ethereum Sepolia)."
+                    "description": "Chain to drip USDC and USDT on (Base Sepolia, Arbitrum Sepolia, Ethereum Sepolia, Solana devnet, Stellar testnet). Omit for NEAR."
                   },
                   "address": {
                     "type": "string",
                     "example": "0x38A9D3dB2Daf0f623c0b9777B64d3Fbc42e444Ad",
-                    "description": "0x address on the EVM testnet. Required with chain."
+                    "description": "Address on that chain: 0x\u2026 (eth, base, arb), base58 (sol) or G\u2026 (stellar). Required with chain."
                   }
                 }
               }
