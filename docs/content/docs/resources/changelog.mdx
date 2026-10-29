@@ -3,6 +3,17 @@ title: Changelog
 description: What changed in Tidepool and when.
 ---
 
+## 2026-10-29 · XRP Ledger testnet bridge (native XRP)
+
+- **New chain:** XRP Ledger testnet (`blockchain: "xrp"`), a trusted-relayer bridge run by Tidepool. Testnet only, custodial: the coins have no value. Guide: [XRP Ledger testnet bridge](/docs/guides/bridge-xrp-testnet). The route is listed in `/v0/tokens` and `/v0/health` (`bridges.chains.xrp`) only while it is live.
+- **Asset (native only, like 1Click):** `nep141:xrp.tp-omft.testnet`, 6 decimals (drops). 1Click has no issued XRPL tokens, so there is no USDC or USDT on this chain.
+- **Deposit model:** like 1Click, `depositMode: "MEMO"` is required: every quote shares one treasury `depositAddress` and gets a numeric `depositMemo`, which you send as the Payment's `DestinationTag`. Deposits are detected from the XRPL testnet and credited as soon as the Payment is validated (no sweep).
+- **Treasury:** XRP [`rwJx1hzscZ6THJwhDwmtPQj4YjhvysFyLd`](https://testnet.xrpl.org/accounts/rwJx1hzscZ6THJwhDwmtPQj4YjhvysFyLd), funded from the official XRPL testnet faucet. Payouts and refunds are signed on the server; the signed transaction is recorded before it is submitted, payout steps are serialized, and a retry never pays twice.
+- **Caps:** XRP is capped at **100 XRP** per swap, payout or refund, enforced at quote time with a `400`. A payout to a new account must be at least 1 XRP. `ANY_INPUT` quotes that take or pay out XRP are rejected. Payout quotes answer `503` while the treasury cannot cover them.
+- **Addresses:** `recipient` / `refundTo` are classic `r…` addresses or testnet X-addresses (`T…`); destinations with Deposit Authorization, or that require a destination tag when none is given, are rejected at quote time.
+- **Faucet:** native XRP is never dripped. `POST /v0/faucet` with `chain: "xrp"`, and the `xrp` intents alias, answer `400` and point to the official XRPL testnet faucet (`https://faucet.altnet.rippletest.net/accounts`).
+- New examples `xrp-deposit.ts` and `e2e-xrp.ts` in tidepool-examples, and `scripts/bridge-xrp-bootstrap.mjs`.
+
 ## 2026-10-29 · Bitcoin testnet4 bridge (native BTC); Zcash testnet bridge removed again
 
 - **New chain:** Bitcoin testnet4 (`blockchain: "btc"`), a trusted-relayer bridge run by Tidepool. Testnet only, custodial: the coins have no value. Guide: [Bitcoin testnet4 bridge](/docs/guides/bridge-bitcoin-testnet). The route is listed in `/v0/tokens` and `/v0/health` (`bridges.chains.btc`) only while it is live.

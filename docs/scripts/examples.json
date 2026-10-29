@@ -25,7 +25,7 @@
         }
       ]
     },
-    "notes": "Returns the six NEAR test tokens plus every live bridged token (USDC and USDT on Base, Arbitrum and Ethereum Sepolia; SOL, USDC and USDT on Solana devnet; XLM, USDC and USDT on Stellar testnet; SUI, USDC and USDT on Sui testnet; native BTC on Bitcoin testnet4), with live USD prices. Two are shown below. Each bridged route appears only while it is live. `ondoTokens` is accepted and ignored."
+    "notes": "Returns the six NEAR test tokens plus every live bridged token (USDC and USDT on Base, Arbitrum and Ethereum Sepolia; SOL, USDC and USDT on Solana devnet; XLM, USDC and USDT on Stellar testnet; SUI, USDC and USDT on Sui testnet; native BTC on Bitcoin testnet4; native XRP on the XRP Ledger testnet), with live USD prices. Two are shown below. Each bridged route appears only while it is live. `ondoTokens` is accepted and ignored."
   },
   "getQuote": {
     "tryIt": true,
@@ -256,7 +256,7 @@
         "message": "txHash and depositAddress are required"
       }
     },
-    "notes": "Optional. Returns **HTTP 200** and the current status object. Moves `PENDING_DEPOSIT` to `KNOWN_DEPOSIT_TX`; the worker detects deposits on its own either way. For a `depositMode: \"MEMO\"` quote (NEAR-native origin tokens and Stellar) also pass `memo` (the quote's `depositMemo`). For a NEAR-native MEMO deposit also pass `nearSenderAccount`, which Tidepool uses to look the transaction up. `/v0/status` takes the same memo as the query parameter `depositMemo`.\n\n**Settlement distinction.** On mainnet, 1Click now settles every swap confidentially on the NEAR Private Shard, so `swapDetails.nearTxHashes` lists only the public shield and unshield transactions ([NEAR changelog, Oct 27, 2026](https://docs.near-intents.org/changelog/entries/2026-10-27-1click-confidential.md)). Tidepool testnet swaps settle publicly on the testnet verifier, so `nearTxHashes` also includes the swap's own hash. This is not a choice by Tidepool: confidential settlement (NEAR Private Shard / Confidential Intents) runs on NEAR's private infrastructure, which isn't exposed to outside builders. Rely on `status` (`SUCCESS` means delivered), not on the presence of a swap hash, so the same code works on both."
+    "notes": "Optional. Returns **HTTP 200** and the current status object. Moves `PENDING_DEPOSIT` to `KNOWN_DEPOSIT_TX`; the worker detects deposits on its own either way. For a `depositMode: \"MEMO\"` quote (NEAR-native origin tokens, Stellar and XRP) also pass `memo` (the quote's `depositMemo`). For a NEAR-native MEMO deposit also pass `nearSenderAccount`, which Tidepool uses to look the transaction up. `/v0/status` takes the same memo as the query parameter `depositMemo`.\n\n**Settlement distinction.** On mainnet, 1Click now settles every swap confidentially on the NEAR Private Shard, so `swapDetails.nearTxHashes` lists only the public shield and unshield transactions ([NEAR changelog, Oct 27, 2026](https://docs.near-intents.org/changelog/entries/2026-10-27-1click-confidential.md)). Tidepool testnet swaps settle publicly on the testnet verifier, so `nearTxHashes` also includes the swap's own hash. This is not a choice by Tidepool: confidential settlement (NEAR Private Shard / Confidential Intents) runs on NEAR's private infrastructure, which isn't exposed to outside builders. Rely on `status` (`SUCCESS` means delivered), not on the presence of a swap hash, so the same code works on both."
   },
   "TidepoolFaucet": {
     "request": {
@@ -292,7 +292,7 @@
         "message": "Rate limited: alice.testnet can use the wallet faucet again after 2026-10-24T22:20:00.000Z"
       }
     },
-    "notes": "Limits: one drip per account per mode per hour (plus a separate hourly limit for bridged intents drips), one per address per chain per hour, six per IP per hour. Other chains: send `{\"chain\":\"base\",\"address\":\"0x…\"}` (also eth, arb, sol, stellar, sui; btc answer 400 with the external faucet to use, since native BTC is never dripped). Bridged tokens into the verifier: `{\"accountId\":\"alice.testnet\",\"mode\":\"intents\",\"assets\":[\"sol\"]}`. Response lists all drips (trimmed here). See [Faucet](/docs/guides/faucet)."
+    "notes": "Limits: one drip per account per mode per hour (plus a separate hourly limit for bridged intents drips), one per address per chain per hour, six per IP per hour. Other chains: send `{\"chain\":\"base\",\"address\":\"0x…\"}` (also eth, arb, sol, stellar, sui; btc and xrp answer 400 with the external faucet to use, since native BTC and XRP are never dripped). Bridged tokens into the verifier: `{\"accountId\":\"alice.testnet\",\"mode\":\"intents\",\"assets\":[\"sol\"]}`. Response lists all drips (trimmed here). See [Faucet](/docs/guides/faucet)."
   },
   "TidepoolHealth": {
     "tryIt": true,

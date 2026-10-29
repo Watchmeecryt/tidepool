@@ -21,7 +21,7 @@ const covered = [
   { t: 'Limit orders', d: 'Create, list, fetch and cancel orders on /v0/orders.', href: '/docs/api-reference/create-order' },
   { t: 'appFees', d: 'App fees in bps, settled in the same execute_intents call.', href: '/docs/resources/compatibility' },
   { t: 'ANY_INPUT', d: 'Open-amount deposits, plus the withdrawals endpoint.', href: '/docs/api-reference/get-any-input-quote-withdrawals' },
-  { t: 'MEMO deposits', d: 'depositMode MEMO for NEAR-native origin-chain tokens and Stellar.', href: '/docs/resources/compatibility' },
+  { t: 'MEMO deposits', d: 'depositMode MEMO for NEAR-native origin-chain tokens, Stellar and XRP Ledger.', href: '/docs/resources/compatibility' },
   { t: 'Auth', d: 'authenticate and refresh JWTs. Any API key is accepted.', href: '/docs/api-reference/authenticate' },
   { t: 'Stuck & failed swaps', d: 'Reproduce partial deposits, expired quotes and simulated stuck or failed swaps.', href: '/docs/guides/failure-cases' },
   { t: '31/31 spec checks', d: 'Response codes and schemas checked against the official 1Click OpenAPI.', href: 'https://github.com/zer0plugyut-afk/tidepool-examples/blob/main/CONFORMANCE.md' },

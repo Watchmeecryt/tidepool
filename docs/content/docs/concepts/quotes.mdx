@@ -5,7 +5,7 @@ description: How Tidepool produces a quote, what each amount means and how fees 
 
 ## Where prices come from
 
-USD prices come from **CoinGecko** (`usd-coin`, `tether`, `near`, `bitcoin`, `ethereum`, `tether-gold`, plus `solana`, `stellar`, `sui`, and `bitcoin` (already used for wBTC) for the bridged native BTC), cached briefly. If CoinGecko is unreachable, fixed fallback prices are used and `/v0/health` shows a non-`coingecko` source. The rate for a pair is `priceIn / priceOut`, computed with 18 decimals of fixed-point precision and integer (BigInt) maths in base units.
+USD prices come from **CoinGecko** (`usd-coin`, `tether`, `near`, `bitcoin`, `ethereum`, `tether-gold`, plus `solana`, `stellar`, `sui`, `ripple` (XRP), and `bitcoin` (already used for wBTC) for the bridged native BTC), cached briefly. If CoinGecko is unreachable, fixed fallback prices are used and `/v0/health` shows a non-`coingecko` source. The rate for a pair is `priceIn / priceOut`, computed with 18 decimals of fixed-point precision and integer (BigInt) maths in base units.
 
 ## Fees
 

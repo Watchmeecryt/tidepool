@@ -65,6 +65,14 @@ Same split as Solana and Stellar: the *chain* drip mints the Move coins to your 
 
 Native coin only, like 1Click's `nep141:btc.omft.near`. It is never dripped by Tidepool. See the [Bitcoin testnet4 bridge](/docs/guides/bridge-bitcoin-testnet) and the [Faucet](/docs/guides/faucet).
 
+## XRP Ledger testnet (listed only while the route is live)
+
+| Token | Asset id | Native coin | Decimals | Faucet drip (chain) | Faucet drip (verifier) |
+| --- | --- | --- | --- | --- | --- |
+| XRP | `nep141:xrp.tp-omft.testnet` | XRP on the XRP Ledger testnet | 6 (drops; capped at 100 XRP per swap) | none (official: [faucet.altnet.rippletest.net](https://faucet.altnet.rippletest.net/accounts), 100 XRP per request) | none |
+
+Native XRP only, like 1Click's `nep141:xrp.omft.near` (1Click has no issued XRPL tokens either, so there is no USDC or USDT on this chain). It is never dripped by Tidepool. Deposits use `depositMode: "MEMO"` with the destination tag. See the [XRP Ledger testnet bridge](/docs/guides/bridge-xrp-testnet) and the [Faucet](/docs/guides/faucet).
+
 ## Admin methods
 
 | Method | Who | Effect |

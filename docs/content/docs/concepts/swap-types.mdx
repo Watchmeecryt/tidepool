@@ -42,7 +42,7 @@ The deposit address accepts any number of deposits, of any size (`minAmountIn` i
 { "swapType": "ANY_INPUT", "amount": "10000000", "slippageTolerance": 100 }
 ```
 
-On mainnet 1Click, `ANY_INPUT` is only available to authorized partners. Tidepool allows it for everyone, so check access before you rely on it in production. Limits on testnet: `depositMode` must be `SIMPLE`, so Stellar deposits are rejected; `simulate` is rejected; and payouts of native SOL, XLM, SUI or BTC are rejected, because each deposit would be converted separately and could exceed that asset's [cap](/docs/guides/bridges).
+On mainnet 1Click, `ANY_INPUT` is only available to authorized partners. Tidepool allows it for everyone, so check access before you rely on it in production. Limits on testnet: `depositMode` must be `SIMPLE`, so Stellar and XRP deposits are rejected; `simulate` is rejected; and payouts of native SOL, XLM, SUI, BTC or XRP are rejected, because each deposit would be converted separately and could exceed that asset's [cap](/docs/guides/bridges).
 </Tab>
 </Tabs>
 

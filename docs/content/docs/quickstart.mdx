@@ -60,7 +60,7 @@ curl -X POST https://www.usetidepool.tech/v0/quote \
 
 ### Go live
 
-Send the same request with `"dry": false` and a deadline a few minutes ahead. The response's `quote.depositAddress` is a fresh address used by this quote only (a NEAR account for NEAR tokens; an address on the origin chain for bridged tokens, except Stellar, which uses a shared address plus a memo). Deposit `quote.amountIn` of the origin token to it ([how](/docs/concepts/deposits)), then poll:
+Send the same request with `"dry": false` and a deadline a few minutes ahead. The response's `quote.depositAddress` is a fresh address used by this quote only (a NEAR account for NEAR tokens; an address on the origin chain for bridged tokens, except Stellar and XRP Ledger, which use a shared address plus a memo). Deposit `quote.amountIn` of the origin token to it ([how](/docs/concepts/deposits)), then poll:
 
 ```bash
 curl "https://www.usetidepool.tech/v0/status?depositAddress=<depositAddress>"
@@ -98,7 +98,7 @@ Auth is optional. Any `X-API-Key` header or `Authorization: Bearer <token>` valu
 ## Differences from mainnet 1Click
 
 - Tokens are Tidepool test tokens with no value. Most live on NEAR testnet (`blockchain: "near"`). Test USDC and USDT also exist on Base Sepolia (`base`), Arbitrum Sepolia (`arb`), Ethereum Sepolia (`eth`), Solana devnet (`sol`), Stellar testnet (`stellar`) and Sui testnet (`sui`), and the three native tokens SOL, XLM and SUI exist on their own chains, all through Tidepool's [test bridges](/docs/guides/bridges), a trusted relayer run by Tidepool on testnets only.
-- Supported: `EXACT_INPUT`, `EXACT_OUTPUT`, `FLEX_INPUT`, `ANY_INPUT`; `appFees`; `depositMode` `SIMPLE` and `MEMO` (MEMO for NEAR-native and Stellar `ORIGIN_CHAIN` deposits only; Stellar requires it); deposit and refund types `ORIGIN_CHAIN` and `INTENTS`; recipient types `DESTINATION_CHAIN` and `INTENTS`; signed intents (`/v0/generate-intent`, `/v0/submit-intent`), limit orders (`/v0/orders`), free JWTs (`/v0/auth/*`) and `/v0/account/*`.
+- Supported: `EXACT_INPUT`, `EXACT_OUTPUT`, `FLEX_INPUT`, `ANY_INPUT`; `appFees`; `depositMode` `SIMPLE` and `MEMO` (MEMO for NEAR-native, Stellar and XRP `ORIGIN_CHAIN` deposits only; Stellar and XRP require it); deposit and refund types `ORIGIN_CHAIN` and `INTENTS`; recipient types `DESTINATION_CHAIN` and `INTENTS`; signed intents (`/v0/generate-intent`, `/v0/submit-intent`), limit orders (`/v0/orders`), free JWTs (`/v0/auth/*`) and `/v0/account/*`.
 - Confidentiality: the `confidentiality` quote parameter is accepted and ignored, so every swap settles publicly on the testnet verifier and `swapDetails.nearTxHashes` includes the swap's own hash. The `CONFIDENTIAL_INTENTS` deposit, refund and recipient types are a separate thing: they are not supported and `POST /v0/quote` returns 400. On mainnet, 1Click now settles every swap confidentially and `nearTxHashes` lists only the shield and unshield transactions ([NEAR's Oct 27, 2026 update](https://docs.near-intents.org/changelog/entries/2026-10-27-1click-confidential.md)). Confidential settlement runs on NEAR's private infrastructure, which isn't exposed to outside builders. Rely on `status`, not on a swap hash. See the [Compatibility](/docs/resources/compatibility) page.
 - One maker (Tidepool's) fills every quote. There is no solver competition.
 - The quote `signature` is Tidepool's maker key over the quote body, not 1Click's.

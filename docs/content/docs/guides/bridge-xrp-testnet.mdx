@@ -1,0 +1,97 @@
+---
+title: XRP Ledger testnet bridge
+description: Swap between XRP Ledger testnet and NEAR testnet through Tidepool's testnet relayer, with 1Click-style MEMO deposits (a destination tag), status and refunds. Native XRP only, capped at 100 XRP.
+---
+
+<Callout type="warn">**Testnet only, custodial, trusted relayer.** This route is run by Tidepool as its own testnet service. It is not a NEAR, Omni Bridge or 1Click bridge, and the tokens have no value. XRP is **capped at 100 XRP per swap, payout or refund** because the treasury is funded by the official XRPL testnet faucet. See [Trust model](/docs/resources/trust-model).</Callout>
+
+<Callout>**Availability.** The XRP route appears in [`GET /v0/tokens`](/docs/api-reference/get-tokens) (`blockchain: "xrp"`) and in `/v0/health` under `bridges.chains.xrp` only while it is live. If the token is not listed, the route is not active on that deployment yet.</Callout>
+
+## Token
+
+| What | Value |
+| --- | --- |
+| Chain | XRP Ledger testnet (public JSON-RPC, explorer [testnet.xrpl.org](https://testnet.xrpl.org)), `blockchain: "xrp"` |
+| Native XRP | 6 decimals (drops, 1 XRP = 1,000,000 drops), asset id `nep141:xrp.tp-omft.testnet`, no `contractAddress`. 1Click's mainnet id is `nep141:xrp.omft.near` |
+| Treasury (deposit address, payouts, refunds) | [`rwJx1hzscZ6THJwhDwmtPQj4YjhvysFyLd`](https://testnet.xrpl.org/accounts/rwJx1hzscZ6THJwhDwmtPQj4YjhvysFyLd) |
+| Issued tokens | None. 1Click has no issued XRPL tokens either, so there is no USDC or USDT on the XRP Ledger route |
+
+## Deposit model: MEMO with a destination tag
+
+The XRP Ledger has no cheap per-quote deposit accounts, and 1Click itself requires **`depositMode: "MEMO"`** for XRP. Tidepool does the same: every XRP-origin quote shares the one treasury `depositAddress` and gets a unique numeric `depositMemo`, which is the Payment's **`DestinationTag`** (an unsigned 32-bit integer). The relayer matches the payment to your swap by tag. Consequences:
+
+- Quotes with an XRP `originAsset` and `depositType: "ORIGIN_CHAIN"` **must** send `depositMode: "MEMO"` (otherwise `400`), and `ANY_INPUT` is not allowed.
+- `GET /v0/status` takes `depositAddress` **and** `depositMemo`; `POST /v0/deposit/submit` takes `txHash`, `depositAddress` and `memo`. Submitting is optional: the relayer watches the treasury and detects the payment anyway.
+- A payment with no tag or an unknown tag is not credited and stays in the treasury (it is not auto-refunded). Always set the `DestinationTag`.
+- There is no sweep: deposits already land in the treasury, so the NEP-141 is minted and credited to the verifier as soon as the payment is validated.
+- Only native XRP counts. Payments in issued currencies are ignored.
+
+## The XRP cap (100 XRP)
+
+Any swap with an XRP leg is rejected at **quote time** with a `400` if the XRP amount (input or output) exceeds `100 XRP` (100,000,000 drops). It covers swaps, payouts and refunds. Why: the official faucet gives 100 XRP per request, so a small cap keeps one user from draining the treasury. Also:
+
+- A payout to an account that does not exist yet must be at least `1 XRP` (the base reserve). Fund it first or raise the amount.
+- Payout and refund destinations are checked at quote time. An account with **Deposit Authorization** enabled, or one that **requires a destination tag** when none was given, is rejected with a `400` that names the problem. Pass the tag by using a testnet X-address.
+- `ANY_INPUT` quotes that pay out XRP to an XRP address are rejected.
+- Recipients and `refundTo` are classic `r...` addresses or testnet X-addresses (`T...`, an address plus a destination tag in one string, as 1Click accepts).
+
+## 1. Get test XRP
+
+Tidepool never drips native XRP (the faucet page answers `400` and points here). Use the **official XRPL testnet faucet**, which needs no sign-up and no captcha:
+
+```bash
+curl -X POST https://faucet.altnet.rippletest.net/accounts -H 'content-type: application/json' \
+  -d '{"destination":"rYourXrpAddress"}'   # 100 test XRP per request
+```
+
+The web version is at [xrpl.org/resources/dev-tools/xrp-faucets](https://xrpl.org/resources/dev-tools/xrp-faucets). To get the bridged XRP into a NEAR intents balance there is no drip either: swap into it, or deposit from the XRP Ledger.
+
+## 2. XRP → NEAR
+
+```ts
+const quote = await OneClickService.getQuote({
+  dry: false, swapType: 'EXACT_INPUT', slippageTolerance: 100,
+  originAsset: 'nep141:xrp.tp-omft.testnet',
+  destinationAsset: 'nep141:usdc.tidepool-sandbox.testnet',
+  amount: '5000000',                        // 5 XRP in drops
+  depositType: 'ORIGIN_CHAIN', depositMode: 'MEMO',
+  refundTo: 'rYourXrpAddress', refundType: 'ORIGIN_CHAIN',
+  recipient: 'you.testnet', recipientType: 'DESTINATION_CHAIN',
+  deadline: new Date(Date.now() + 30 * 60_000).toISOString(),
+});
+const { depositAddress, depositMemo } = quote.quote;
+// Send a Payment of quote.quote.amountIn drops to depositAddress with DestinationTag = Number(depositMemo).
+await OneClickService.submitDepositTx({ txHash: '<xrpl tx hash>', depositAddress, memo: depositMemo });
+// Poll with both: GET /v0/status?depositAddress=...&depositMemo=...
+```
+
+Runnable: `RECIPIENT=you.testnet npm run xrp-deposit` in [tidepool-examples](https://github.com/zer0plugyut-afk/tidepool-examples) (it creates and faucet-funds a throwaway wallet unless you set `XRP_SEED`).
+
+## 3. NEAR → XRP
+
+Quote with an XRP `destinationAsset`, `recipient: 'rYourXrpAddress'` and `recipientType: 'DESTINATION_CHAIN'`, then deposit on NEAR as usual. The verifier `ft_withdraw`s the bridged token to the relayer, which pays out on the XRP Ledger from the treasury. Payouts are signed first and the signed transaction (with a deterministic hash and a `LastLedgerSequence`, about 2.5 minutes) is recorded before it is sent, so a crash or retry never pays twice: the hash is looked up first and a new transaction is only signed after the ledger window has provably passed and the sequence number is confirmed unused. Payouts are serialized, one transaction at a time.
+
+## Refunds
+
+Same reasons as every route (`DEADLINE_PASSED`, `PARTIAL_DEPOSIT`, …). A refund with `refundType: "ORIGIN_CHAIN"` is paid from the treasury to `refundTo` on the XRP Ledger.
+
+## Limits
+
+- **Testnet resets.** The XRPL testnet is reset from time to time. After a reset the accounts and balances are gone and the route has to be bootstrapped again.
+- **Reserves.** An XRP account needs a 1 XRP base reserve (plus 0.2 XRP per owned object), so you cannot send out the last XRP of an account.
+- **Treasury XRP.** The server tops the treasury up from the official faucet (through a temporary account whose balance is forwarded) when it drops below 150 XRP. If XRP is critically short, XRP payout quotes answer `503`.
+- **Unreachable destinations.** If a payout keeps failing on-chain (for example the recipient enabled Deposit Authorization after the quote), the swap stays in `PROCESSING` with a note and needs operator attention.
+- **RPC.** The relayer uses public testnet JSON-RPC servers with fallbacks; congestion or rate limits can delay a swap.
+
+## Mapping to mainnet 1Click
+
+Same request and response fields, `blockchain: "xrp"`, `depositMode: "MEMO"` and a numeric `depositMemo` used as the destination tag, 6 decimals. The asset id differs (`nep141:xrp.tp-omft.testnet` on Tidepool, `nep141:xrp.omft.near` on mainnet 1Click): take it from `GET /v0/tokens` of the environment you are calling. Mainnet has no 100 XRP cap and uses real XRP Ledger addresses.
+
+## Verified flows
+
+These ran end to end on the live Tidepool testnet against the **XRP Ledger testnet** (real XRPL transactions, real NEAR testnet settlement) on 2026-10-29:
+
+- **XRP → NEAR USDC** (5 XRP, MEMO deposit): [XRPL deposit tx](https://testnet.xrpl.org/transactions/F1D017F2AAFE6FB702A1F9F0C24AF76EDC2D1D99221045C3F383A76D45B55323), [NEAR settlement tx](https://testnet.nearblocks.io/txns/HQ2Bne9tfqUbJzVZG6AQsscvJPcELFmVt53TPUS76EMq).
+- **NEAR USDC → XRP payout** (5 USDC): [NEAR deposit tx](https://testnet.nearblocks.io/txns/8RtqY1fkSkbLYj225Lc8cBpjua2agvVQHT9qKxjuFRxW), [NEAR settlement tx](https://testnet.nearblocks.io/txns/5VQ3uZNaBkJRY8pYV3xEdz2LDAVbZDrzg4rDbQ7Sz4t6), [XRPL payout tx](https://testnet.xrpl.org/transactions/54084AD0184A8A428953988116DE68565CC57EA82D3729482DAFE5C20C1C84C0).
+- **`PARTIAL_DEPOSIT` refund** (quoted 10 XRP, sent 4 XRP): [XRPL deposit tx](https://testnet.xrpl.org/transactions/526DB26E0AF68C6AB15468869C952675D3514DE40F4E1D30C2E47600C8F065E0), [NEAR refund tx](https://testnet.nearblocks.io/txns/C1pQFvX9JrEMqxkSxrc8ghj4gMik1Hr2N183sEqxGnmD), [XRPL refund tx](https://testnet.xrpl.org/transactions/896E8752BD93A305240E1409A4E25BEC58FC00C03C6D86AD493F70F744248BB4). Final status `REFUNDED`.
+- **Over the cap:** a 100.000001 XRP quote is rejected with `400` ("XRP is capped at 100 XRP ... per swap"), and so is a quote that would pay out more than 100 XRP, before any deposit tag is issued.

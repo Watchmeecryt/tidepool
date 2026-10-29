@@ -3,7 +3,7 @@ title: Roadmap
 description: What Tidepool has shipped and what is not planned.
 ---
 
-Tidepool now covers the full public 1Click v0 surface on NEAR testnet, plus test bridges to Base Sepolia, Arbitrum Sepolia, Ethereum Sepolia, Solana devnet, Stellar testnet, Sui testnet and Bitcoin testnet4. See [Compatibility](/docs/resources/compatibility) for the differences that remain.
+Tidepool now covers the full public 1Click v0 surface on NEAR testnet, plus test bridges to Base Sepolia, Arbitrum Sepolia, Ethereum Sepolia, Solana devnet, Stellar testnet, Sui testnet, Bitcoin testnet4 and XRP Ledger testnet. See [Compatibility](/docs/resources/compatibility) for the differences that remain.
 
 ## Planned
 
@@ -18,13 +18,14 @@ Nothing is in progress. If you need something, say so. Demand decides the order.
 | `appFees` | 2026-10-27 | Fee transfers settle in the same `execute_intents` call as the swap. |
 | `ANY_INPUT` + `/v0/any-input/withdrawals` | 2026-10-27 | See [Swap types](/docs/concepts/swap-types). |
 | `/v0/auth/*` and `/v0/account/*` | 2026-10-27 | Free JWTs. See [Authenticate](/docs/api-reference/authenticate). |
-| `depositMode: MEMO` | 2026-10-27 | NEAR-native `ORIGIN_CHAIN`, and required for Stellar since 2026-10-29. See [Deposits](/docs/concepts/deposits). |
+| `depositMode: MEMO` | 2026-10-27 | NEAR-native `ORIGIN_CHAIN`, and required for Stellar since 2026-10-29 and XRP Ledger since 2026-10-29. See [Deposits](/docs/concepts/deposits). |
 | Test bridges for Base Sepolia, Arbitrum Sepolia and Ethereum Sepolia | 2026-10-26 | A trusted relayer run by Tidepool, testnet only. See [Test bridges](/docs/guides/bridges). |
 | Solana devnet bridge (SOL, USDC, USDT) | 2026-10-28 | SOL capped at 0.005 SOL per swap. See [Solana devnet bridge](/docs/guides/bridge-solana-devnet). |
 | `simulate` (stuck or failed swaps) | 2026-10-28 | Tidepool-only quote field. See [Testing failure cases](/docs/guides/failure-cases). |
 | Stellar testnet bridge (XLM, USDC, USDT) | 2026-10-29 | XLM capped at 100 XLM per swap, deposits use `depositMode: MEMO`. See [Stellar testnet bridge](/docs/guides/bridge-stellar-testnet). |
 | Sui testnet bridge (SUI, USDC, USDT) | 2026-10-29 | SUI capped at 10 SUI per swap. See [Sui testnet bridge](/docs/guides/bridge-sui-testnet). |
 | Bitcoin testnet4 bridge (native tBTC) | 2026-10-29 | Capped at 0.005 BTC per swap, 1 confirmation. See [Bitcoin testnet4 bridge](/docs/guides/bridge-bitcoin-testnet). |
+| XRP Ledger testnet bridge (native XRP) | 2026-10-29 | Capped at 100 XRP per swap, deposits use `depositMode: MEMO` with a destination tag. See [XRP Ledger testnet bridge](/docs/guides/bridge-xrp-testnet). |
 | Faucet chain dropdown and bridged intents drips | 2026-10-29 | See [Faucet](/docs/guides/faucet). |
 
 ## Not planned
