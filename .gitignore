@@ -5,3 +5,4 @@ contracts/token/target/
 *.log
 .example-account.json
 scripts/sui-coins/build/
+data/

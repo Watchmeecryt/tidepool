@@ -92,7 +92,7 @@ async function health() {
   try { const a = await viewAccount(VERIFIER); const code = Buffer.from(a.code_hash ? (await import('bs58')).default.decode(a.code_hash) : []).toString('hex'); out.checks.verifier = { ok: code === VERIFIER_WASM_SHA256, codeHashHex: code }; verifierStorage(out, a); } catch (e) { out.checks.verifier = { ok: false, error: e.message }; }
   const p = await prices(); out.checks.prices = { ok: p.source === 'coingecko', source: p.source, updatedAt: new Date(p.at).toISOString(), error: p.error };
   try { out.checks.makerInventory = { ok: true, balances: Object.fromEntries(await Promise.all(TOKENS.map(async t => [t.symbol, fromUnits(await makerBalance(t.assetId), t.decimals)]))) }; } catch (e) { out.checks.makerInventory = { ok: false, error: e.message }; }
-  out.bridges = { note: 'Testnet bridges (EVM chains, Solana devnet, Stellar testnet, Sui testnet, Bitcoin testnet4 and Zcash testnet): trusted relayer run by Tidepool, testnet only.', chains: await evmHealth() };
+  out.bridges = { note: 'Testnet bridges (EVM chains, Solana devnet, Stellar testnet, Sui testnet and Bitcoin testnet4): trusted relayer run by Tidepool, testnet only.', chains: await evmHealth() };
   if (SOL_CHAIN.deployed) out.bridges.chains.sol = await solHealth();
   if (STELLAR_CHAIN.deployed) out.bridges.chains.stellar = await stellarHealth();
   if (SUI_CHAIN.deployed) out.bridges.chains.sui = await suiHealth();
