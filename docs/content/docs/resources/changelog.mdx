@@ -13,6 +13,7 @@ description: What changed in Tidepool and when.
 - **Addresses:** `recipient` / `refundTo` must be testnet addresses (`tb1…`, `m…`/`n…`/`2…`).
 - **Faucet:** native BTC is never dripped. `POST /v0/faucet` with `chain: "btc"`, and the `btc` intents alias, answer `400` with the external faucet to use (CypherFaucet or testnet4.info).
 - **Zcash testnet removed (not shipped):** a Zcash testnet bridge (native TAZ, transparent addresses) was built and briefly listed, then taken out of `/v0/tokens`, the docs and the API spec the same day, because no public Zcash testnet faucet could fund its treasury (the Valar faucet's wallet cannot currently pay transparent addresses, the Jino Labs faucet is paused for the NU7 upgrade, and Fauzec only pays shielded addresses behind a captcha). The code stays in the repo, disabled behind `ZEC_ENABLED`; it will be re-enabled when TAZ can be sourced. Quotes for `nep141:zec.tp-omft.testnet` are rejected as an unknown asset.
+- **Domain:** requests to the bare `usetidepool.tech` now get a `301` redirect to `https://www.usetidepool.tech` with the same path and query. The API base URL is `https://www.usetidepool.tech`.
 - New examples `btc-deposit.ts` and `e2e-btc.ts` in tidepool-examples, and `scripts/bridge-btc-bootstrap.mjs`.
 
 ## 2026-10-29 · Docs audit against the official 1Click API

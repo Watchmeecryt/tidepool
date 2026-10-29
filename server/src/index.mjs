@@ -111,6 +111,8 @@ let healthCache = { at: 0 };
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   const p = url.pathname;
+  // Bare apex -> www (301). Only the exact apex host; www and *.up.railway.app (health checks) are untouched.
+  if (String(req.headers.host || '').toLowerCase().replace(/:\d+$/, '') === 'usetidepool.tech') { res.writeHead(301, { location: `https://www.usetidepool.tech${req.url}` }); return res.end(); }
   res.on('finish', () => { try { record(req, res, p, req._body, url); } catch (e) { console.error('analytics', e.message); } });
   try {
     if (await admin(req, res, p, url)) return;
