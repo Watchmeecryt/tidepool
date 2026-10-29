@@ -719,5 +719,56 @@
     },
     "treasury": "tb1qy2tthlq2ntnjvk40payyuwpnzaf365h02ze0qr",
     "live": true
+  },
+  "xrp": {
+    "name": "XRP Ledger Testnet",
+    "network": "testnet",
+    "txs": [
+      {
+        "label": "fund treasury from the official XRPL faucet (+100 XRP)",
+        "hash": "41BEBC01089A52802F0ACD66D9B4D07A27EAD7BCE6B51D8EBDC501056358D2D7"
+      },
+      {
+        "label": "fund treasury from the official XRPL faucet (+100 XRP)",
+        "hash": "260EFD8F3C93A5055312875DDD941C734E15E0A32294096D035849904DA2E027"
+      },
+      {
+        "label": "fund treasury from the official XRPL faucet (+100 XRP)",
+        "hash": "BAFACB65369F44E4DDCE9C5AC6CA5AB2009FF73555FADC3324D93CDC0F64B925"
+      },
+      {
+        "label": "fund tp-omft.testnet",
+        "hash": "DBF5fKv91nnAp3cCgoNQL6bzDDYYtYMT8aNxapYUeZWX"
+      },
+      {
+        "label": "create xrp.tp-omft.testnet",
+        "hash": "6n5pAQPV7CagQNE3DQt3hhzAgTHzBtaoRFrze9qrZY6d"
+      },
+      {
+        "label": "deploy xrp.tp-omft.testnet",
+        "hash": "Evc1E5Mpyxx6CHh2ZgorHcXhenYFZfaW5LEGgpa9JWG2"
+      },
+      {
+        "label": "init xrp.tp-omft.testnet",
+        "hash": "BMxdum1vQH9jzzvSsycqpdW655PhhEWAzfdxuunAy8q9"
+      },
+      {
+        "label": "storage verifier.tidepool-sandbox.testnet on XRP",
+        "hash": "41ecWp5PqFottDVoyEh3cZbidCt5eeCU5aP9g1bQ3jwC"
+      },
+      {
+        "label": "mint maker inventory XRP",
+        "hash": "85nM1EiFzFR5S8Tn4YZGKQqN1bVK8UMCZcBaACPgYToe"
+      },
+      {
+        "label": "deposit maker inventory XRP",
+        "hash": "Fh8eg9TXR4QAdnZ8vwsUwRHR6RM7cfYDwrQo2ugRZaVs"
+      }
+    ],
+    "inventory": {
+      "XRP": "20000"
+    },
+    "treasury": "rwJx1hzscZ6THJwhDwmtPQj4YjhvysFyLd",
+    "live": true
   }
 }

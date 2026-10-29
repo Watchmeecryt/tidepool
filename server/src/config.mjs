@@ -4,6 +4,7 @@ import { keccak256 } from 'ethers';
 import bs58check from 'bs58check';
 import * as bitcoin from 'bitcoinjs-lib';
 import { Asset, Networks, StrKey } from '@stellar/stellar-base';
+import { isValidClassicAddress, isValidXAddress, xAddressToClassicAddress } from 'xrpl';
 // Tidepool deployment config: testnet accounts and the test token list.
 export const ROOT = process.env.TIDEPOOL_ROOT || 'tidepool-sandbox.testnet';
 export const VERIFIER = `verifier.${ROOT}`;
@@ -126,6 +127,36 @@ if (UD?.treasury) {
   for (const t of [sui, ...coins]) { if (SUI_CHAIN.deployed) TOKENS.push(t); SUI_CHAIN.tokens.push(t); }
 }
 
+// ---- XRP Ledger testnet bridge (trusted relayer run by Tidepool; testnet only) ----
+// 1Click lists native XRP as nep141:xrp.omft.near (6 decimals) and requires depositMode MEMO: ONE shared deposit address plus a
+// numeric destination tag as the memo. Tidepool mirrors the Stellar bridge: native XRP is nep141:xrp.tp-omft.testnet, the treasury
+// credits a deposit when a validated Payment carries the quote's destination tag (no sweep), and payouts/refunds are signed by the
+// treasury. Native XRP only: 1Click has no issued XRPL tokens, so Tidepool has no test USDC/USDT on XRPL either.
+export const XRP_DECIMALS = 6;
+export const XRP_CAP_DROPS = BigInt(process.env.XRP_CAP_DROPS || 100_000_000); // 100 XRP cap on any XRP swap leg, payout or refund (enforced at quote time)
+export const XRP_RESERVE_DROPS = 1_000_000n; // base reserve on XRPL testnet: a payout to a not-yet-existing account must deliver >= 1 XRP
+export const XRP_CHAIN = { key: 'xrp', blockchain: 'xrp', kind: 'xrp', name: 'XRP Ledger Testnet', network: 'testnet', explorer: 'https://testnet.xrpl.org', faucet: 'https://faucet.altnet.rippletest.net/accounts', symbol: 'XRP' };
+// Classic r... addresses, or testnet X-addresses (T..., a classic address plus an optional destination tag in one string, as 1Click accepts).
+export const parseXrpAddress = (s) => {
+  if (typeof s !== 'string') return null;
+  try {
+    if (isValidClassicAddress(s)) return { address: s, tag: undefined };
+    if (isValidXAddress(s)) { const x = xAddressToClassicAddress(s); return x.test ? { address: x.classicAddress, tag: x.tag === false ? undefined : x.tag } : null; }
+  } catch { /* invalid */ }
+  return null;
+};
+export const isXrpAddress = (s) => Boolean(parseXrpAddress(s));
+const XRD = DEPLOYED.xrp;
+XRP_CHAIN.deployed = Boolean(XRD?.treasury && XRD.live);
+if (XRD?.treasury) {
+  XRP_CHAIN.treasury = XRD.treasury;
+  XRP_CHAIN.tokens = [];
+  const xrp = { chain: 'xrp', kind: 'xrp', blockchain: 'xrp', sub: 'xrp', symbol: 'XRP', decimals: XRP_DECIMALS, coingeckoId: 'ripple', fallback: 2, drip: '0', inventory: XRD.inventory?.XRP || '1', native: true,
+    nearContract: `xrp.${OMFT}`, assetId: `nep141:xrp.${OMFT}`, name: 'Tidepool Testnet XRP on XRP Ledger Testnet (bridged, no value)' };
+  if (XRP_CHAIN.deployed) TOKENS.push(xrp);
+  XRP_CHAIN.tokens.push(xrp);
+}
+
 // ---- Bitcoin testnet4 and Zcash testnet bridges (trusted relayer run by Tidepool; testnet only) ----
 // Same shape as the Sui bridge and as 1Click's mainnet BTC/ZEC support: NATIVE only, a PER-QUOTE plain deposit address (no memo), swept
 // into the treasury by the relayer. Ids mirror 1Click's nep141:btc.omft.near / nep141:zec.omft.near under tp-omft.testnet. Both
@@ -162,7 +193,7 @@ for (const [C, k, symbol, coingeckoId, fallback, label] of UTXO_NATIVE) {
   if (C.deployed) TOKENS.push(t);
   C.tokens.push(t);
 }
-export const chainOf = (key) => key === 'sol' ? SOL_CHAIN : key === 'stellar' ? STELLAR_CHAIN : key === 'sui' ? SUI_CHAIN : key === 'btc' ? BTC_CHAIN : key === 'zec' ? ZEC_CHAIN : EVM_CHAINS.find(c => c.key === key);
+export const chainOf = (key) => key === 'sol' ? SOL_CHAIN : key === 'stellar' ? STELLAR_CHAIN : key === 'sui' ? SUI_CHAIN : key === 'btc' ? BTC_CHAIN : key === 'zec' ? ZEC_CHAIN : key === 'xrp' ? XRP_CHAIN : EVM_CHAINS.find(c => c.key === key);
 export const isEvmAddress = (s) => typeof s === 'string' && /^0x[0-9a-fA-F]{40}$/.test(s);
 
 export const toUnits = (s, d) => { const [i, f = ''] = String(s).split('.'); return BigInt(i + (f + '0'.repeat(d)).slice(0, d)); };

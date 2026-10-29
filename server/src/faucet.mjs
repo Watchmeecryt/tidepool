@@ -1,7 +1,7 @@
 // Faucet: drips every test token to a testnet account, either to the wallet (mint) or straight into
 // the account's balance inside the Tidepool verifier (transfer from maker inventory).
 import { call, viewAccount, TGAS } from './near.mjs';
-import { ROOT, VERIFIER, MAKER, TOKENS, NEAR_TOKENS, EVM_CHAINS, SOL_CHAIN, STELLAR_CHAIN, SUI_CHAIN, BTC_CHAIN, ZEC_CHAIN, isBtcAddress, isZecAddress, chainOf, isEvmAddress, isSolAddress, isStellarAddress, isSuiAddress, normSuiAddress, toUnits } from './config.mjs';
+import { ROOT, VERIFIER, MAKER, TOKENS, NEAR_TOKENS, EVM_CHAINS, SOL_CHAIN, STELLAR_CHAIN, SUI_CHAIN, BTC_CHAIN, ZEC_CHAIN, XRP_CHAIN, isXrpAddress, isBtcAddress, isZecAddress, chainOf, isEvmAddress, isSolAddress, isStellarAddress, isSuiAddress, normSuiAddress, toUnits } from './config.mjs';
 import { faucetMint, txUrl as solTxUrl } from './solana.mjs';
 import * as stellar from './stellar.mjs';
 import * as sui from './sui.mjs';
@@ -22,9 +22,11 @@ for (const k of Object.keys(db.faucet || {})) { const m = /^(base|arb|eth|sol|st
 // Native BTC (testnet4) and ZEC (testnet) are never dripped (small public faucets fund the treasuries): answer with where to get them.
 const UTXO_FAUCETS = {
   btc: `Tidepool does not drip native testnet BTC (the ${BTC_CHAIN.name} treasury is funded by public faucets). Get tBTC from ${BTC_CHAIN.faucet} (CypherFaucet) or https://testnet4.info, then deposit it to a quote's depositAddress (originAsset nep141:btc.tp-omft.testnet).`,
+  xrp: `Tidepool does not drip native testnet XRP (the ${XRP_CHAIN.name} treasury is funded by the official faucet, and so can you). Get free test XRP from ${XRP_CHAIN.faucet} (the official XRPL Testnet faucet, no captcha: POST {"destination": "r..."} or use https://xrpl.org/resources/dev-tools/xrp-faucets), then deposit it to a quote's depositAddress with depositMode MEMO and the quote's depositMemo as the DestinationTag (originAsset nep141:xrp.tp-omft.testnet).`,
   zec: `Tidepool does not drip native testnet ZEC (the ${ZEC_CHAIN.name} treasury is funded by public faucets). Get TAZ from ${ZEC_CHAIN.faucet} (Valar Group faucet) to a tm... transparent address, then deposit it to a quote's depositAddress (originAsset nep141:zec.tp-omft.testnet).`,
 };
 export async function drip(body, ip) {
+  if (body.chain === 'xrp' || body.chain === 'ripple' || (!body.chain && (isXrpAddress(body.address) || isXrpAddress(body.accountId)))) throw new BadRequest(UTXO_FAUCETS.xrp, 400, { faucet: XRP_CHAIN.faucet, chain: 'xrp' });
   const utxo = ['btc', 'zec'].filter(k => k === 'btc' || ZEC_CHAIN.deployed).find(k => body.chain === k || (!body.chain && (k === 'btc' ? isBtcAddress(body.address) || isBtcAddress(body.accountId) : isZecAddress(body.address) || isZecAddress(body.accountId))));
   if (utxo) throw new BadRequest(UTXO_FAUCETS[utxo], 400, { faucet: utxo === 'btc' ? BTC_CHAIN.faucet : ZEC_CHAIN.faucet, chain: utxo });
   if (body.chain === 'sui' || (!body.chain && (isSuiAddress(body.address) || isSuiAddress(body.accountId)))) return suiDrip(body, ip);
@@ -143,7 +145,7 @@ async function nearDrip({ accountId, mode = 'wallet', assets }, ip) {
   // go only into the verifier (intents mode) and only on request: asset ids or chain aliases (sol, stellar, base, arb, eth, bridged).
   if (mode === 'wallet' && assets?.some(a => CHAIN_ALIASES.includes(String(a).toLowerCase()) || String(a).includes('tp-omft'))) throw new BadRequest('Bridged test tokens can only be sent to an intents balance: use mode "intents", or pass chain and address to receive USDC/USDT on that chain');
   const list = assets?.length ? resolveIntentAssets(assets, mode === 'intents' ? TOKENS : NEAR_TOKENS) : NEAR_TOKENS.filter(t => Number(t.drip) > 0);
-  if (!list.length && assets?.length && assets.every(a => ['btc', ...(ZEC_CHAIN.deployed ? ['zec'] : [])].includes(String(a).toLowerCase()) || (ZEC_CHAIN.deployed ? /^nep141:(btc|zec)\.tp-omft/ : /^nep141:btc\.tp-omft/).test(String(a)))) throw new BadRequest(UTXO_FAUCETS[/zec/i.test(String(assets[0])) ? 'zec' : 'btc']);
+  if (!list.length && assets?.length && assets.every(a => ['btc', 'xrp', 'ripple', ...(ZEC_CHAIN.deployed ? ['zec'] : [])].includes(String(a).toLowerCase()) || (ZEC_CHAIN.deployed ? /^nep141:(btc|xrp|zec)\.tp-omft/ : /^nep141:(btc|xrp)\.tp-omft/).test(String(a)))) throw new BadRequest(UTXO_FAUCETS[/xrp|ripple/i.test(String(assets[0])) ? 'xrp' : /zec/i.test(String(assets[0])) ? 'zec' : 'btc']);
   if (!list.length) throw new BadRequest(`no matching assets${mode === 'intents' ? ` (use asset ids, NEAR symbols, or chain aliases: ${CHAIN_ALIASES.join(', ')})` : ''}`);
   // Native and bridged drips have separate hourly limits, so taking bridged tokens does not use up the native drip.
   const keys = [...new Set(list.map(t => isBridgedToken(t) ? `${accountId}:intents-bridged` : `${accountId}:${mode}`))];
