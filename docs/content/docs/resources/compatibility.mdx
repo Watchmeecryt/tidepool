@@ -23,17 +23,17 @@ Checked against the official 1Click OpenAPI (`https://1click.chaindefuser.com/do
 
 | Area | Mainnet 1Click | Tidepool |
 | --- | --- | --- |
-| Network | NEAR mainnet + many chains | NEAR testnet; Base, Arbitrum and Ethereum Sepolia, Solana devnet, Stellar testnet, Sui testnet, Bitcoin testnet4 and Zcash testnet |
+| Network | NEAR mainnet + many chains | NEAR testnet; Base, Arbitrum and Ethereum Sepolia, Solana devnet, Stellar testnet, Sui testnet, Bitcoin testnet4 |
 | Solvers | Competing solvers via the solver relay | One Tidepool maker quotes and fills every swap (CoinGecko prices + fixed fee) |
 | Verifier | `intents.near` | Official `defuse` v0.4.2 wasm (byte-identical) at `verifier.tidepool-sandbox.testnet` |
-| Cross-chain | Production bridges | Tidepool-run trusted relayer bridges to Base / Arbitrum / Ethereum Sepolia, Solana devnet, Stellar testnet, Sui testnet, Bitcoin testnet4 and Zcash testnet |
-| `blockchain` values | 38 chains, listed in the spec enum | `near`, `eth`, `base`, `arb`, `sol`, `stellar`, `sui`, `btc`, `zec` |
+| Cross-chain | Production bridges | Tidepool-run trusted relayer bridges to Base / Arbitrum / Ethereum Sepolia, Solana devnet, Stellar testnet, Sui testnet, Bitcoin testnet4 |
+| `blockchain` values | 38 chains, listed in the spec enum | `near`, `eth`, `base`, `arb`, `sol`, `stellar`, `sui`, `btc` |
 | Stellar asset ids | `nep245:` ids from the HOT bridge, 7 decimals | `nep141:` OMFT-style ids; always read ids from `/v0/tokens` |
-| Tokens | Real assets | Six NEAR test tokens, plus bridged USDC and USDT and native SOL, XLM, SUI, BTC and ZEC; test USDC and USDT come from a public faucet; no value |
+| Tokens | Real assets | Six NEAR test tokens, plus bridged USDC and USDT and native SOL, XLM, SUI and BTC; test USDC and USDT come from a public faucet; no value |
 | Deposit addresses | Run by 1Click | Keys derived by the Tidepool server (custodial, testnet) |
 | Auth | JWT required for fee-free quotes | Free JWTs from `/v0/auth/authenticate` (`nep413`, `raw_ed25519`, `erc191`); for swaps any `x-api-key` / Bearer value gets the lower fee |
 | `depositMode: MEMO` | Memo chains | NEAR-native `ORIGIN_CHAIN` tokens and Stellar testnet (required there); a NEAR-native submit also needs `nearSenderAccount`. Not allowed with `ANY_INPUT` |
-| `ANY_INPUT` | Authorized partners only | Open to everyone on testnet. Not available with Stellar deposits or SOL, XLM, SUI, BTC and ZEC payouts |
+| `ANY_INPUT` | Authorized partners only | Open to everyone on testnet. Not available with Stellar deposits or SOL, XLM, SUI and BTC payouts |
 | `ANY_INPUT` withdrawals | `withdrawals` object | Spec's single object (newest), plus the full page in `tidepool.withdrawals` |
 | Orders | Solver-filled | Tidepool maker fills once (no partial fills); deadline 7d default, 30d max |
 | generate-intent | All standards | `INTENTS`-deposit quotes only; `webauthn`/`ton_connect` submit-only |

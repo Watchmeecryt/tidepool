@@ -18,11 +18,11 @@ description: Exactly what you are trusting when you use Tidepool, and what it do
 - **Liveness.** If the server is down, deposits wait. Funds are not lost; they are refunded once the worker runs again and the deadline has passed.
 - **Token admin.** The six token contracts are owned by `privacei.testnet`, which can mint any amount and change minters. The root and maker accounts are minters.
 - **Contract keys.** The token accounts still hold full-access keys controlled by the Tidepool deployer, so their code could be upgraded. Treat balances as test data.
-- **The test bridges.** Bridged routes go through a trusted relayer run by Tidepool, testnet only. One relayer key sweeps EVM deposits, mints the bridged NEP-141s (through the root account) and releases EVM payouts from the vault. The Solana, Stellar, Sui, Bitcoin and Zcash routes use Tidepool-held keys and a treasury in the same way. There are no proofs or light clients. See [Test bridges](/docs/guides/bridges).
+- **The test bridges.** Bridged routes go through a trusted relayer run by Tidepool, testnet only. One relayer key sweeps EVM deposits, mints the bridged NEP-141s (through the root account) and releases EVM payouts from the vault. The Solana, Stellar, Sui and Bitcoin routes use Tidepool-held keys and a treasury in the same way. There are no proofs or light clients. See [Test bridges](/docs/guides/bridges).
 
 ## Limitations (v1)
 
-- Testnets only: NEAR testnet, plus Base, Arbitrum and Ethereum Sepolia, Solana devnet (SOL capped at 0.005 SOL per swap), Stellar testnet (XLM capped at 100 XLM per swap) Sui testnet (SUI capped at 10 SUI per swap), Bitcoin testnet4 (0.005 BTC) and Zcash testnet (0.5 ZEC) through the custodial test bridges.
+- Testnets only: NEAR testnet, plus Base, Arbitrum and Ethereum Sepolia, Solana devnet (SOL capped at 0.005 SOL per swap), Stellar testnet (XLM capped at 100 XLM per swap) Sui testnet (SUI capped at 10 SUI per swap), Bitcoin testnet4 (0.005 BTC) through the custodial test bridges.
 - No confidential settlement: `CONFIDENTIAL_INTENTS` types return 400 and `confidentiality` is ignored, because it runs on NEAR's private infrastructure, which isn't exposed to outside builders ([NEAR's Oct 27, 2026 update](https://docs.near-intents.org/changelog/entries/2026-10-27-1click-confidential.md)). See the [Roadmap](/docs/resources/roadmap).
 - Single maker with finite inventory. Large quotes fail with `Not enough maker liquidity`.
 - Faucet: one drip per account per mode per hour, one per address per chain per hour, six per IP per hour.

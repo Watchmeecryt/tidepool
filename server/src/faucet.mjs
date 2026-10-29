@@ -25,7 +25,7 @@ const UTXO_FAUCETS = {
   zec: `Tidepool does not drip native testnet ZEC (the ${ZEC_CHAIN.name} treasury is funded by public faucets). Get TAZ from ${ZEC_CHAIN.faucet} (Valar Group faucet) to a tm... transparent address, then deposit it to a quote's depositAddress (originAsset nep141:zec.tp-omft.testnet).`,
 };
 export async function drip(body, ip) {
-  const utxo = ['btc', 'zec'].find(k => body.chain === k || (!body.chain && (k === 'btc' ? isBtcAddress(body.address) || isBtcAddress(body.accountId) : isZecAddress(body.address) || isZecAddress(body.accountId))));
+  const utxo = ['btc', 'zec'].filter(k => k === 'btc' || ZEC_CHAIN.deployed).find(k => body.chain === k || (!body.chain && (k === 'btc' ? isBtcAddress(body.address) || isBtcAddress(body.accountId) : isZecAddress(body.address) || isZecAddress(body.accountId))));
   if (utxo) throw new BadRequest(UTXO_FAUCETS[utxo], 400, { faucet: utxo === 'btc' ? BTC_CHAIN.faucet : ZEC_CHAIN.faucet, chain: utxo });
   if (body.chain === 'sui' || (!body.chain && (isSuiAddress(body.address) || isSuiAddress(body.accountId)))) return suiDrip(body, ip);
   if (body.chain === 'stellar' || body.chain === 'xlm' || (!body.chain && (isStellarAddress(body.address) || isStellarAddress(body.accountId)))) return stellarDrip(body, ip);
@@ -143,7 +143,7 @@ async function nearDrip({ accountId, mode = 'wallet', assets }, ip) {
   // go only into the verifier (intents mode) and only on request: asset ids or chain aliases (sol, stellar, base, arb, eth, bridged).
   if (mode === 'wallet' && assets?.some(a => CHAIN_ALIASES.includes(String(a).toLowerCase()) || String(a).includes('tp-omft'))) throw new BadRequest('Bridged test tokens can only be sent to an intents balance: use mode "intents", or pass chain and address to receive USDC/USDT on that chain');
   const list = assets?.length ? resolveIntentAssets(assets, mode === 'intents' ? TOKENS : NEAR_TOKENS) : NEAR_TOKENS.filter(t => Number(t.drip) > 0);
-  if (!list.length && assets?.length && assets.every(a => ['btc', 'zec'].includes(String(a).toLowerCase()) || /^nep141:(btc|zec)\.tp-omft/.test(String(a)))) throw new BadRequest(UTXO_FAUCETS[/zec/i.test(String(assets[0])) ? 'zec' : 'btc']);
+  if (!list.length && assets?.length && assets.every(a => ['btc', ...(ZEC_CHAIN.deployed ? ['zec'] : [])].includes(String(a).toLowerCase()) || (ZEC_CHAIN.deployed ? /^nep141:(btc|zec)\.tp-omft/ : /^nep141:btc\.tp-omft/).test(String(a)))) throw new BadRequest(UTXO_FAUCETS[/zec/i.test(String(assets[0])) ? 'zec' : 'btc']);
   if (!list.length) throw new BadRequest(`no matching assets${mode === 'intents' ? ` (use asset ids, NEAR symbols, or chain aliases: ${CHAIN_ALIASES.join(', ')})` : ''}`);
   // Native and bridged drips have separate hourly limits, so taking bridged tokens does not use up the native drip.
   const keys = [...new Set(list.map(t => isBridgedToken(t) ? `${accountId}:intents-bridged` : `${accountId}:${mode}`))];

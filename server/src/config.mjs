@@ -153,7 +153,8 @@ export const isZecAddress = (s) => Boolean(decodeZecAddress(s));
 const UTXO_NATIVE = [[BTC_CHAIN, 'btc', 'BTC', 'bitcoin', 100000, 'Bitcoin Testnet4'], [ZEC_CHAIN, 'zec', 'ZEC', 'zcash', 40, 'Zcash Testnet']];
 for (const [C, k, symbol, coingeckoId, fallback, label] of UTXO_NATIVE) {
   const D = DEPLOYED[k];
-  C.deployed = Boolean(D?.treasury && D.live);
+  // Zcash is built but DISABLED unless ZEC_ENABLED=1 (no public TAZ faucet could fund the treasury, so it is not listed anywhere)
+  C.deployed = Boolean(D?.treasury && D.live && (k !== 'zec' || process.env.ZEC_ENABLED === '1'));
   if (!D?.treasury) continue;
   C.treasury = D.treasury; C.tokens = [];
   const t = { chain: k, kind: k, blockchain: k, sub: k, symbol, decimals: 8, coingeckoId, fallback, drip: '0', inventory: D.inventory?.[symbol] || '1', native: true,

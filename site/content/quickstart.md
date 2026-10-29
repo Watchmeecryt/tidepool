@@ -56,7 +56,7 @@ Auth is optional. Any `X-API-Key` header or `Authorization: Bearer <token>` valu
 
 ## How it differs from mainnet
 
-- NEAR tokens are Tidepool test tokens on NEAR testnet. Tokens bridged from Base, Arbitrum and Ethereum Sepolia, Solana devnet, Stellar testnet, Sui testnet, Bitcoin testnet4 and Zcash testnet also appear in `/v0/tokens`, with their own `blockchain`.
+- NEAR tokens are Tidepool test tokens on NEAR testnet. Tokens bridged from Base, Arbitrum and Ethereum Sepolia, Solana devnet, Stellar testnet, Sui testnet, Bitcoin testnet4 also appear in `/v0/tokens`, with their own `blockchain`.
 - Supported: `EXACT_INPUT`, `EXACT_OUTPUT`, `FLEX_INPUT`, `ANY_INPUT`; deposit and refund types `ORIGIN_CHAIN` and `INTENTS`; recipient types `DESTINATION_CHAIN` and `INTENTS`; `appFees`; `depositMode: MEMO` (NEAR-native and Stellar `ORIGIN_CHAIN` deposits only; Stellar requires it); `/v0/auth/*`.
 - Confidentiality: the `confidentiality` quote parameter is accepted and ignored, so every swap settles publicly on the testnet verifier and `swapDetails.nearTxHashes` includes the swap's own hash. The `CONFIDENTIAL_INTENTS` deposit, refund and recipient types are a separate thing: they are not supported and `POST /v0/quote` returns 400. On mainnet, 1Click now settles every swap confidentially and `nearTxHashes` lists only the shield and unshield transactions ([NEAR's Oct 27, 2026 update](https://docs.near-intents.org/changelog/entries/2026-10-27-1click-confidential.md)). Confidential settlement runs on NEAR's private infrastructure, which isn't exposed to outside builders. Rely on `status`, not on a swap hash.
 - One maker (Tidepool's) fills every quote. There is no solver competition.
