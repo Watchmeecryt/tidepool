@@ -4,3 +4,4 @@ contracts/token/target/
 .env
 *.log
 .example-account.json
+scripts/sui-coins/build/

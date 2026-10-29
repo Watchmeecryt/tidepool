@@ -99,7 +99,31 @@ if (XD?.treasury) {
     return { ...b, ...common, decimals: STELLAR_DECIMALS, inventory: XD.inventory?.[b.symbol] || b.inventory, sub: `stellar-${b.symbol.toLowerCase()}`, code, issuer, contractAddress: issuer, sacId: stellarSacId(code, issuer), nearContract: `${sub}.${OMFT}`, assetId: `nep141:${sub}.${OMFT}`, name: `Tidepool Testnet ${b.symbol} on Stellar Testnet (bridged, no value)` }; });
   for (const t of [xlm, ...classic]) { if (STELLAR_CHAIN.deployed) TOKENS.push(t); STELLAR_CHAIN.tokens.push(t); }
 }
-export const chainOf = (key) => key === 'sol' ? SOL_CHAIN : key === 'stellar' ? STELLAR_CHAIN : EVM_CHAINS.find(c => c.key === key);
+// ---- Sui testnet bridge (trusted relayer run by Tidepool; testnet only) ----
+// Same shape as the Solana bridge: a PER-QUOTE deposit address (Sui needs no memo, and 1Click uses plain deposit addresses for Sui),
+// swept into the treasury with gas sponsored by the treasury. Native SUI is nep141:sui.<OMFT>; a Move coin is
+// nep141:sui-<last 20 bytes of keccak256(utf8 coin type "0x<package>::<module>::<NAME>")>.<OMFT> (this reproduces 1Click's mainnet
+// id for Sui USDC). Test USDC/USDT are Tidepool's own Move coins (the treasury holds the TreasuryCaps and mints payouts).
+export const SUI_DECIMALS = 9;
+export const SUI_COIN_TYPE = '0x2::sui::SUI';
+export const suiOmftSub = (coinType) => 'sui-' + keccak256(Buffer.from(coinType, 'utf8')).slice(-40);
+export const SUI_CAP_MIST = BigInt(process.env.SUI_CAP_MIST || 10_000_000_000); // 10 SUI cap on any SUI swap leg, payout or refund (enforced at quote time)
+export const SUI_CHAIN = { key: 'sui', blockchain: 'sui', kind: 'sui', name: 'Sui Testnet', network: 'testnet', explorer: 'https://suiscan.xyz/testnet', faucet: 'https://faucet.sui.io' };
+export const isSuiAddress = (s) => typeof s === 'string' && /^0x[0-9a-fA-F]{64}$/.test(s);
+export const normSuiAddress = (s) => s.toLowerCase();
+const UD = DEPLOYED.sui;
+SUI_CHAIN.deployed = Boolean(UD?.treasury && UD.live && UD.tokens?.USDC && UD.tokens?.USDT);
+if (UD?.treasury) {
+  SUI_CHAIN.treasury = UD.treasury; SUI_CHAIN.package = UD.package;
+  SUI_CHAIN.tokens = [];
+  const common = { chain: 'sui', kind: 'sui', blockchain: 'sui' };
+  const sui = { ...common, sub: 'sui', symbol: 'SUI', decimals: SUI_DECIMALS, coingeckoId: 'sui', fallback: 3, drip: '0.5', inventory: UD.inventory?.SUI || '1', native: true, coinType: SUI_COIN_TYPE,
+    nearContract: `sui.${OMFT}`, assetId: `nep141:sui.${OMFT}`, name: 'Tidepool Testnet SUI on Sui Testnet (bridged, no value)' };
+  const coins = BRIDGED.filter(b => UD.tokens?.[b.symbol]).map(b => { const { coinType, treasuryCap } = UD.tokens[b.symbol], sub = suiOmftSub(coinType);
+    return { ...b, ...common, inventory: UD.inventory?.[b.symbol] || b.inventory, sub: `sui-${b.symbol.toLowerCase()}`, coinType, treasuryCap, contractAddress: coinType, nearContract: `${sub}.${OMFT}`, assetId: `nep141:${sub}.${OMFT}`, name: `Tidepool Testnet ${b.symbol} on Sui Testnet (bridged, no value)` }; });
+  for (const t of [sui, ...coins]) { if (SUI_CHAIN.deployed) TOKENS.push(t); SUI_CHAIN.tokens.push(t); }
+}
+export const chainOf = (key) => key === 'sol' ? SOL_CHAIN : key === 'stellar' ? STELLAR_CHAIN : key === 'sui' ? SUI_CHAIN : EVM_CHAINS.find(c => c.key === key);
 export const isEvmAddress = (s) => typeof s === 'string' && /^0x[0-9a-fA-F]{40}$/.test(s);
 
 export const toUnits = (s, d) => { const [i, f = ''] = String(s).split('.'); return BigInt(i + (f + '0'.repeat(d)).slice(0, d)); };

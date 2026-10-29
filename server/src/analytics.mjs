@@ -31,6 +31,8 @@ export function record(req, res, path, body, url) {
   const wallets = new Set();
   if (body && path === '/v0/quote') { if (isAcct(body.refundTo)) wallets.add(body.refundTo); if (isAcct(body.recipient)) wallets.add(body.recipient); }
   if (body && path === '/v0/faucet' && isAcct(body.accountId)) wallets.add(body.accountId);
+  // direct-chain drips (chain + address): record the recipient address (EVM and Sui addresses lowercased like the faucet's cooldown key)
+  if (body && path === '/v0/faucet' && typeof body.address === 'string' && /^[A-Za-z0-9]{20,100}$/.test(body.address)) wallets.add(/^0x/i.test(body.address) ? body.address.toLowerCase() : body.address);
   if (body && path === '/v0/deposit/submit') { if (isAcct(body.nearSenderAccount)) wallets.add(body.nearSenderAccount); const s = db.swaps[body.depositAddress]; if (s) wallets.add(s.quoteResponse.quoteRequest.refundTo); }
   if (path === '/v0/status') { const s = db.swaps[url.searchParams.get('depositAddress')]; if (s) wallets.add(s.quoteResponse.quoteRequest.refundTo); }
   const ev = { t: Date.now(), ep, m: req.method, s: res.statusCode, ip: crypto.createHash('sha256').update(log.salt + (String(req.headers['x-forwarded-for'] || req.socket.remoteAddress).split(',')[0].trim())).digest('hex').slice(0, 12), ua: String(req.headers['user-agent'] || '').slice(0, 160) };

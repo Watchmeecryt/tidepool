@@ -17,6 +17,8 @@ Solana devnet is also available as a separate, same-style bridge (SOL capped at 
 
 Stellar testnet is another separate bridge (XLM capped at 100 XLM, deposits use `depositMode: "MEMO"`): [Stellar testnet bridge](/docs/guides/bridge-stellar-testnet). It is testnet only, custodial and listed in `/v0/tokens` only while it is live.
 
+Sui testnet is another separate bridge (SUI capped at 10 SUI, per-quote deposit addresses, no memo): [Sui testnet bridge](/docs/guides/bridge-sui-testnet). It is testnet only, custodial and listed in `/v0/tokens` only while it is live.
+
 ## What matches 1Click
 
 - **Asset ids.** Bridged tokens look like 1Click's omft ids: `nep141:<chain>-<erc20 address>.tp-omft.testnet`. `/v0/tokens` lists them with `blockchain` and `contractAddress`.
@@ -42,4 +44,4 @@ Do not send mainnet assets to any of these addresses. Contracts on these chains 
 
 ## Gas and faucets
 
-`POST /v0/faucet` with `{"chain":"base","address":"0x…"}` mints test USDC and USDT on that chain. It does not send gas: get testnet ETH from each chain's public faucet. The same call works for `sol` and `stellar`, and `mode: "intents"` with `assets` chain aliases credits the bridged tokens to a NEAR intents balance. Pick a chain in the dropdown on the [Faucet](/docs/guides/faucet) page, or see its "How the faucet works" section.
+`POST /v0/faucet` with `{"chain":"base","address":"0x…"}` mints test USDC and USDT on that chain. It does not send gas: get testnet ETH from each chain's public faucet. The same call works for `sol`, `stellar` and `sui`, and `mode: "intents"` with `assets` chain aliases credits the bridged tokens to a NEAR intents balance. Pick a chain in the dropdown on the [Faucet](/docs/guides/faucet) page, or see its "How the faucet works" section.

@@ -1,9 +1,10 @@
 // Faucet: drips every test token to a testnet account, either to the wallet (mint) or straight into
 // the account's balance inside the Tidepool verifier (transfer from maker inventory).
 import { call, viewAccount, TGAS } from './near.mjs';
-import { ROOT, VERIFIER, MAKER, TOKENS, NEAR_TOKENS, EVM_CHAINS, SOL_CHAIN, STELLAR_CHAIN, chainOf, isEvmAddress, isSolAddress, isStellarAddress, toUnits } from './config.mjs';
+import { ROOT, VERIFIER, MAKER, TOKENS, NEAR_TOKENS, EVM_CHAINS, SOL_CHAIN, STELLAR_CHAIN, SUI_CHAIN, chainOf, isEvmAddress, isSolAddress, isStellarAddress, isSuiAddress, normSuiAddress, toUnits } from './config.mjs';
 import { faucetMint, txUrl as solTxUrl } from './solana.mjs';
 import * as stellar from './stellar.mjs';
+import * as sui from './sui.mjs';
 import { mintErc20, evmTxUrl } from './evm.mjs';
 import { db, save } from './store.mjs';
 import { withSigner, BadRequest } from './engine.mjs';
@@ -14,7 +15,12 @@ const INTENTS_CHUNK = 6;
 const IP_LIMIT = 6; // drips per IP per hour
 const ipHits = new Map();
 
+// Direct-chain cooldown keys are `<address>:<chain>` (like the intents-mode keys `<account>:<mode>`), so the admin wallets list shows the
+// recipient. Older builds stored `<chain>:<address>`: rename those once at startup so existing cooldowns keep working.
+for (const k of Object.keys(db.faucet || {})) { const m = /^(base|arb|eth|sol|stellar):(.+)$/.exec(k); if (m) { db.faucet[`${m[2]}:${m[1]}`] = db.faucet[k]; delete db.faucet[k]; } }
+
 export async function drip(body, ip) {
+  if (body.chain === 'sui' || (!body.chain && (isSuiAddress(body.address) || isSuiAddress(body.accountId)))) return suiDrip(body, ip);
   if (body.chain === 'stellar' || body.chain === 'xlm' || (!body.chain && (isStellarAddress(body.address) || isStellarAddress(body.accountId)))) return stellarDrip(body, ip);
   if (body.chain === 'sol' || body.chain === 'solana' || (!body.chain && isSolAddress(body.address))) return solDrip(body, ip);
   if (body.chain || isEvmAddress(body.accountId) || isEvmAddress(body.address)) return evmDrip(body, ip);
@@ -30,7 +36,7 @@ async function evmDrip({ chain = 'base', address, accountId, assets }, ip) {
   if (!isEvmAddress(to)) throw new BadRequest(`address must be a ${c.name} address (0x...)`);
   const list = assets?.length ? c.tokens.filter(t => assets.includes(t.assetId) || assets.includes(t.symbol)) : c.tokens;
   if (!list.length) throw new BadRequest('no matching assets');
-  const key = `${c.key}:${to.toLowerCase()}`;
+  const key = `${to.toLowerCase()}:${c.key}`;
   const last = db.faucet[key] || 0;
   if (Date.now() - last < ACCOUNT_COOLDOWN_MS) throw new BadRequest(`Rate limited: ${to} can use the ${c.name} faucet again after ${new Date(last + ACCOUNT_COOLDOWN_MS).toISOString()}`, 429);
   const hits = (ipHits.get(ip) || []).filter(t => Date.now() - t < 3600_000);
@@ -55,7 +61,7 @@ async function solDrip({ address, accountId, assets }, ip) {
   const pool = SOL_CHAIN.tokens.filter(t => !t.native);
   const list = assets?.length ? pool.filter(t => assets.includes(t.assetId) || assets.includes(t.symbol)) : pool;
   if (!list.length) throw new BadRequest('no matching assets (Solana faucet drips USDC and USDT only, not SOL)');
-  const key = `sol:${to}`;
+  const key = `${to}:sol`;
   const last = db.faucet[key] || 0;
   if (Date.now() - last < ACCOUNT_COOLDOWN_MS) throw new BadRequest(`Rate limited: ${to} can use the ${SOL_CHAIN.name} faucet again after ${new Date(last + ACCOUNT_COOLDOWN_MS).toISOString()}`, 429);
   const hits = (ipHits.get(ip) || []).filter(t => Date.now() - t < 3600_000);
@@ -82,7 +88,7 @@ async function stellarDrip({ address, accountId, assets }, ip) {
   const acc = await stellar.account(to).catch(() => undefined);
   if (acc === null) throw new BadRequest(`${to} does not exist on ${STELLAR_CHAIN.name} yet. Fund it with Friendbot first: ${STELLAR_CHAIN.friendbot}/?addr=${to} (10,000 test XLM), then add trustlines and retry.`);
   if (acc) { const miss = list.filter(t => !stellar.hasTrustline(acc, t)); if (miss.length) throw new BadRequest(`${to} has no trustline for ${miss.map(t => `${t.symbol} (${t.code}:${t.issuer})`).join(', ')}. Add a changeTrust operation for each, then retry.`); }
-  const key = `stellar:${to}`;
+  const key = `${to}:stellar`;
   const last = db.faucet[key] || 0;
   if (Date.now() - last < ACCOUNT_COOLDOWN_MS) throw new BadRequest(`Rate limited: ${to} can use the ${STELLAR_CHAIN.name} faucet again after ${new Date(last + ACCOUNT_COOLDOWN_MS).toISOString()}`, 429);
   const hits = (ipHits.get(ip) || []).filter(t => Date.now() - t < 3600_000);
@@ -94,6 +100,33 @@ async function stellarDrip({ address, accountId, assets }, ip) {
   try { hash = await stellar.faucetPay(to, list.map(t => ({ ...t, dripUnits: toUnits(t.drip, t.decimals) }))); }
   catch (e) { delete db.faucet[key]; stellarDrips.pop(); save(); throw new Error('faucet transfer failed: ' + String(e.message).slice(0, 200)); }
   return { chain: 'stellar', address: to, mode: 'wallet', drips: list.map(t => ({ assetId: t.assetId, symbol: t.symbol, asset: `${t.code}:${t.issuer}`, amount: t.drip })), transactions: [{ txHash: hash, explorerUrl: stellar.txUrl(hash) }], note: 'Stellar testnet issued test assets, no value. XLM is not dripped; use Friendbot for XLM.' };
+}
+
+// Sui testnet faucet: the treasury (holder of the TreasuryCaps of Tidepool's Move test coins) mints USDC/USDT straight to a wallet in one
+// transaction. It does NOT drip SUI: get gas from the Sui testnet faucet (https://faucet.sui.io).
+const SUI_FAUCET_DAILY_MAX = Number(process.env.SUI_FAUCET_DAILY_MAX || 300);
+const suiDrips = [];
+async function suiDrip({ address, accountId, assets }, ip) {
+  const to = address || accountId;
+  if (!SUI_CHAIN.deployed) throw new BadRequest('Sui testnet bridge is not enabled on this server');
+  if (!isSuiAddress(to)) throw new BadRequest(`address must be a ${SUI_CHAIN.name} address (0x + 64 hex characters)`);
+  if (!sui.relayerConfigured()) throw new BadRequest('Sui testnet bridge is not configured on this server', 503);
+  const addr = normSuiAddress(to);
+  const pool = SUI_CHAIN.tokens.filter(t => !t.native);
+  const list = assets?.length ? pool.filter(t => assets.includes(t.assetId) || assets.includes(t.symbol)) : pool;
+  if (!list.length) throw new BadRequest('no matching assets (the Sui faucet drips USDC and USDT only, not SUI; get SUI from https://faucet.sui.io)');
+  const key = `${addr}:sui`;
+  const last = db.faucet[key] || 0;
+  if (Date.now() - last < ACCOUNT_COOLDOWN_MS) throw new BadRequest(`Rate limited: ${to} can use the ${SUI_CHAIN.name} faucet again after ${new Date(last + ACCOUNT_COOLDOWN_MS).toISOString()}`, 429);
+  const hits = (ipHits.get(ip) || []).filter(t => Date.now() - t < 3600_000);
+  if (hits.length >= IP_LIMIT) throw new BadRequest('Rate limited: too many faucet requests from this IP, try again within the hour', 429);
+  while (suiDrips.length && Date.now() - suiDrips[0] > 86_400_000) suiDrips.shift();
+  if (suiDrips.length >= SUI_FAUCET_DAILY_MAX) throw new BadRequest('The Sui testnet faucet hit its daily limit (it spends treasury SUI on gas). Try again tomorrow.', 429);
+  db.faucet[key] = Date.now(); hits.push(Date.now()); ipHits.set(ip, hits); suiDrips.push(Date.now()); save();
+  let digest;
+  try { digest = await sui.faucetMint(addr, list.map(t => ({ ...t, dripUnits: toUnits(t.drip, t.decimals) }))); }
+  catch (e) { delete db.faucet[key]; suiDrips.pop(); save(); throw new Error('faucet transfer failed: ' + String(e.message).slice(0, 200)); }
+  return { chain: 'sui', address: addr, mode: 'wallet', drips: list.map(t => ({ assetId: t.assetId, symbol: t.symbol, coinType: t.coinType, amount: t.drip })), transactions: [{ txHash: digest, explorerUrl: sui.txUrl(digest) }], note: `Sui testnet test coins, no value. SUI is not dripped; get gas from ${SUI_CHAIN.faucet}.` };
 }
 
 async function nearDrip({ accountId, mode = 'wallet', assets }, ip) {

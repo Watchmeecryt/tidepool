@@ -3,6 +3,18 @@ title: Changelog
 description: What changed in Tidepool and when.
 ---
 
+## 2026-10-29 · Sui testnet bridge (SUI, USDC, USDT), capped at 10 SUI
+
+- **New chain:** Sui testnet, `blockchain: "sui"`, a trusted-relayer bridge run by Tidepool. Testnet only, custodial: the tokens have no value. Guide: [Sui testnet bridge](/docs/guides/bridge-sui-testnet). The route is listed in `/v0/tokens` and `/v0/health` (`bridges.chains.sui`) only while it is live.
+- **Assets:** native SUI `nep141:sui.tp-omft.testnet` (9 decimals), and Tidepool's own Move test coins USDC and USDT (6 decimals, package `0x71a32ced7702bba9a8d23a122971d5973baa610f1689306176ac4f364d68bb3c`): `nep141:sui-f6ecfe107e72d22b7a646dd2cc4f1b2876349c0c.tp-omft.testnet` and `nep141:sui-add896332c906e599cee03f2154d067937d12a26.tp-omft.testnet`. The ids are `sui-<keccak256 of the coin type string, last 20 bytes>`, the same rule 1Click uses on mainnet. `contractAddress` carries the coin type.
+- **Deposit model:** like 1Click, no memo: every quote gets its own `0x…` deposit address. The relayer detects the deposit, sweeps it into the treasury (`0x565662f245d0a66f567aa71499589f70fee8c2a5af20e8614429371fbe4f252c`) with a sponsored transaction (the treasury pays gas), mints the NEP-141 and credits it to the verifier.
+- **Payouts and refunds:** SUI is paid from the treasury; USDC and USDT are minted to the recipient with the treasury's `TreasuryCap`. Transactions are signed first with a deterministic digest and recorded before sending, so a retry never pays twice.
+- **The cap:** SUI is capped at **10 SUI (10,000,000,000 MIST) per swap, payout or refund**, enforced at quote time with a `400`. `ANY_INPUT` quotes that pay out SUI are rejected.
+- **Faucet:** `POST /v0/faucet {"chain":"sui","address":"0x…"}` mints 100 test USDC and 100 test USDT to the address (no setup needed; SUI for gas from [faucet.sui.io](https://faucet.sui.io)). In intents mode the new alias `sui` (also part of `bridged`) credits 100 USDC, 100 USDT and 0.5 verifier-only test SUI. The faucet page chain dropdown has a new "Sui testnet" entry.
+- **Fix:** the admin wallets list now records the recipient address for chain faucet drips (it used to log the chain name), and links Sui addresses to Suiscan. Direct-chain cooldown keys are now `<address>:<chain>`; existing cooldowns are migrated.
+- **Verified on Sui testnet** (2026-10-29): SUI → NEAR USDC, NEAR USDC → SUI, NEAR USDC → Sui USDC, a `PARTIAL_DEPOSIT` refund, both faucet modes and the over-cap rejection. Transaction links are in the guide.
+- New examples `sui-deposit.ts` and `e2e-sui.ts` in tidepool-examples and `scripts/bridge-sui-bootstrap.mjs`.
+
 ## 2026-10-29 · Faucet: every chain in one place, bridged tokens into the verifier
 
 - **New faucet UI:** the [Faucet](/docs/guides/faucet) page now has a chain dropdown: NEAR testnet (default), Ethereum Sepolia, Base Sepolia, Arbitrum Sepolia, Solana devnet and Stellar testnet. Paste an address for that chain (validated per chain) and our backend sends the tokens. NEAR keeps Wallet and Intents modes, and Intents mode can now receive a chosen chain's bridged tokens. The page has a new "How the faucet works" section with curl examples per chain.

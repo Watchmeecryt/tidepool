@@ -5,10 +5,11 @@ import crypto from 'node:crypto';
 import { KeyPair } from 'near-api-js';
 import bs58 from 'bs58';
 import { rpc, call, view, viewAccount, sendNear, signIntents, deriveDepositKey, keyStore, NETWORK, TGAS, parseNear, txUrl } from './near.mjs';
-import { ROOT, VERIFIER, MAKER, TOKENS, fromUnits, chainOf, isEvmAddress, isSolAddress, isStellarAddress, STELLAR_CHAIN, XLM_CAP_STROOPS, BRIDGE_ACCOUNT, SOL_PAYOUT_CAP_LAMPORTS, SOL_RENT_MIN_LAMPORTS } from './config.mjs';
+import { ROOT, VERIFIER, MAKER, TOKENS, fromUnits, chainOf, isEvmAddress, isSolAddress, isStellarAddress, STELLAR_CHAIN, XLM_CAP_STROOPS, isSuiAddress, SUI_CHAIN, SUI_CAP_MIST, BRIDGE_ACCOUNT, SOL_PAYOUT_CAP_LAMPORTS, SOL_RENT_MIN_LAMPORTS } from './config.mjs';
 import * as evm from './evm.mjs';
 import * as sol from './solana.mjs';
 import * as stellar from './stellar.mjs';
+import * as sui from './sui.mjs';
 import { prices } from './prices.mjs';
 import { db, save } from './store.mjs';
 
@@ -20,7 +21,7 @@ export class BadRequest extends Error { constructor(m, code = 400, extra) { supe
 // ---- First-call hints: extra fields on 400s (the spec's `message` field is kept) ----
 const DOCS_QUICKSTART = 'https://www.usetidepool.tech/docs/quickstart';
 const tp = (sub) => `nep141:${sub}.${ROOT}`;
-const evmTp = (chain, sym) => TOKENS.find(t => t.chain === chain && t.symbol === sym)?.assetId; // also finds Solana ('sol') and Stellar ('stellar') tokens
+const evmTp = (chain, sym) => TOKENS.find(t => t.chain === chain && t.symbol === sym)?.assetId; // also finds Solana ('sol'), Stellar ('stellar') and Sui ('sui') tokens
 const MAINNET_MAP = {
   'nep141:wrap.near': tp('wnear'),
   'nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1': tp('usdc'),
@@ -40,12 +41,16 @@ const MAINNET_MAP = {
   'nep141:sol-c800a4bd850783ccb82c2b2c7e84175443606352.omft.near': evmTp('sol', 'USDT'),
   // Stellar: 1Click lists these as nep245 (HOT bridge) ids; Tidepool uses OMFT-style nep141 ids (see /v0/tokens)
   'nep141:stellar.omft.near': evmTp('stellar', 'XLM'), 'nep141:stellar-native.omft.near': evmTp('stellar', 'XLM'),
+  // Sui: the same ids 1Click lists on mainnet (the id hash is keccak256 of the coin type string; Tidepool's own Move coins use the same scheme)
+  'nep141:sui.omft.near': evmTp('sui', 'SUI'),
+  'nep141:sui-c1b81ecaf27933252d31a963bc5e9458f13c18ce.omft.near': evmTp('sui', 'USDC'),
 };
 export function suggestAsset(id) {
   const s = String(id || '').toLowerCase();
   if (MAINNET_MAP[s]) return MAINNET_MAP[s];
-  const chain = /^nep141:(base|arb|eth)-0x/.exec(s)?.[1] || (/^nep141:sol[-.]/.test(s) ? 'sol' : /^nep141:stellar[-.]/.test(s) ? 'stellar' : undefined);
+  const chain = /^nep141:(base|arb|eth)-0x/.exec(s)?.[1] || (/^nep141:sol[-.]/.test(s) ? 'sol' : /^nep141:stellar[-.]/.test(s) ? 'stellar' : /^nep141:sui[-.]/.test(s) ? 'sui' : undefined);
   if (/^nep141:sol\.|^(w?sol|solana)$/.test(s)) return evmTp('sol', 'SOL') || null;
+  if (/^nep141:sui\.|^sui$/.test(s)) return evmTp('sui', 'SUI') || null;
   if (/^nep141:stellar[.-]|^(xlm|stellar|lumens?)$|^nep245:.*1100_/.test(s)) return evmTp('stellar', /usdt/.test(s) ? 'USDT' : /usd/.test(s) ? 'USDC' : 'XLM') || null;
   const pick = (sym) => (chain && evmTp(chain, sym)) || tp(sym.toLowerCase());
   if (/usdc|17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1/.test(s)) return pick('USDC');
@@ -167,6 +172,18 @@ export function stellarLimits(req, inT, outT, amountIn, amountOut) {
   }
 }
 
+// Sui testnet limits. SUI is capped at SUI_CAP_MIST (10 SUI) on any swap leg, payout or refund: the treasury is funded from the
+// Sui testnet faucet, which hands out small amounts. Enforced at quote time so users get a clear error instead of a stuck swap.
+const CAP_SUI = () => fromUnits(SUI_CAP_MIST, 9);
+export function suiLimits(req, inT, outT, amountIn, amountOut) {
+  const capHint = (why, extra = {}) => hint(`SUI on Sui Testnet is capped at ${CAP_SUI()} SUI per swap, payout or refund (the testnet treasury is funded from the Sui faucet). ${why}`, req, { capMist: SUI_CAP_MIST.toString(), ...extra });
+  if (outT.kind === 'sui' && outT.native) {
+    if (amountOut > SUI_CAP_MIST) throw new BadRequest(`SUI is capped at ${CAP_SUI()} SUI (${SUI_CAP_MIST} MIST) per swap on Tidepool's Sui testnet bridge; this quote would pay out ${fromUnits(amountOut, 9)} SUI. Lower the amount.`, 400, capHint('Lower amount (or the EXACT_OUTPUT amount) so the SUI leg is at most the cap.', { field: 'amount' }));
+    if (req.recipientType === 'DESTINATION_CHAIN' && req.swapType === 'ANY_INPUT') throw new BadRequest(`ANY_INPUT quotes cannot pay out SUI on Sui Testnet (each deposit would be converted separately and could exceed the ${CAP_SUI()} SUI cap); use EXACT_INPUT, EXACT_OUTPUT or FLEX_INPUT`);
+  }
+  if (inT.kind === 'sui' && inT.native && amountIn > SUI_CAP_MIST) throw new BadRequest(`SUI is capped at ${CAP_SUI()} SUI (${SUI_CAP_MIST} MIST) per swap on Tidepool's Sui testnet bridge; this quote would take ${fromUnits(amountIn, 9)} SUI. Lower the amount.`, 400, capHint('Lower amount so the SUI leg is at most the cap.', { field: 'amount' }));
+}
+
 export async function quote(req, { authed, maxDeadlineMs = 24 * 3600_000 } = {}) {
   const need = ['dry', 'swapType', 'slippageTolerance', 'originAsset', 'depositType', 'destinationAsset', 'amount', 'refundTo', 'refundType', 'recipient', 'recipientType', 'deadline'];
   const missing = need.filter(k => req[k] === undefined || req[k] === null || req[k] === '');
@@ -186,8 +203,8 @@ export async function quote(req, { authed, maxDeadlineMs = 24 * 3600_000 } = {})
   if (memoMode && ((inT.chain && inT.kind !== 'stellar') || req.depositType !== 'ORIGIN_CHAIN')) throw new BadRequest('depositMode MEMO is supported for ORIGIN_CHAIN deposits of NEAR-native tokens (shared address + ft_transfer memo) and of Stellar assets (shared treasury address + payment memo); use SIMPLE otherwise');
   if (req.swapType === 'ANY_INPUT' && memoMode) throw new BadRequest('ANY_INPUT quotes use depositMode SIMPLE');
   // Address formats follow 1Click: chain-native addresses for *_CHAIN types, NEAR accounts for INTENTS.
-  const addrOk = (t, onChain, v) => (onChain && t.chain ? (t.kind === 'sol' ? isSolAddress(v) : t.kind === 'stellar' ? isStellarAddress(v) : isEvmAddress(v)) : isAccount(v));
-  const what = (t, onChain) => (onChain && t.chain ? `a ${chainOf(t.chain).name} address (${t.kind === 'sol' ? 'base58 public key' : t.kind === 'stellar' ? 'G... public key' : '0x...'})` : 'a NEAR testnet account id');
+  const addrOk = (t, onChain, v) => (onChain && t.chain ? (t.kind === 'sol' ? isSolAddress(v) : t.kind === 'stellar' ? isStellarAddress(v) : t.kind === 'sui' ? isSuiAddress(v) : isEvmAddress(v)) : isAccount(v));
+  const what = (t, onChain) => (onChain && t.chain ? `a ${chainOf(t.chain).name} address (${t.kind === 'sol' ? 'base58 public key' : t.kind === 'stellar' ? 'G... public key' : t.kind === 'sui' ? '0x + 64 hex characters' : '0x...'})` : 'a NEAR testnet account id');
   for (const f of ['recipient', 'refundTo']) if (isMainnetAcct(req[f])) throw new BadRequest(`${f} ${req[f]} is a mainnet account; Tidepool runs on NEAR testnet. Use a .testnet account such as alice.testnet`, 400, hint('Use a NEAR testnet account (ending in .testnet), or an implicit testnet account. Create one free at https://testnet.mynearwallet.com.', req, { field: f }));
   if (!addrOk(outT, req.recipientType === 'DESTINATION_CHAIN', req.recipient)) throw new BadRequest(`recipient must be ${what(outT, req.recipientType === 'DESTINATION_CHAIN')}`);
   if (!addrOk(inT, req.refundType === 'ORIGIN_CHAIN', req.refundTo)) throw new BadRequest(`refundTo must be ${what(inT, req.refundType === 'ORIGIN_CHAIN')}`);
@@ -220,6 +237,7 @@ export async function quote(req, { authed, maxDeadlineMs = 24 * 3600_000 } = {})
   if (amountOut <= 0n) throw new BadRequest('amount is too low for this pair');
   solLimits(req, inT, outT, amountIn, amountOut);
   stellarLimits(req, inT, outT, amountIn, amountOut);
+  suiLimits(req, inT, outT, amountIn, amountOut);
   if (outT.kind === 'stellar' && req.recipientType === 'DESTINATION_CHAIN') { const e = await stellar.checkDestination(req.recipient, outT, amountOut, 'recipient'); if (e) throw new BadRequest(e, 400, hint(e, req, { field: 'recipient' })); }
   if (inT.kind === 'stellar' && req.refundType === 'ORIGIN_CHAIN') { const e = await stellar.checkDestination(req.refundTo, inT, minAmountIn, 'refundTo'); if (e) throw new BadRequest(e, 400, hint(e, req, { field: 'refundTo' })); }
   const inv = await makerBalance(outT.assetId);
@@ -242,8 +260,13 @@ export async function quote(req, { authed, maxDeadlineMs = 24 * 3600_000 } = {})
       if (!r || r.lamports < 20_000_000n) throw new BadRequest('The Solana devnet treasury is low on SOL right now (devnet airdrops are rate-limited). Try again later or use a different destination.', 503);
     }
     if ((inT.kind === 'stellar' || outT.kind === 'stellar') && !stellar.relayerConfigured()) throw new BadRequest('Stellar testnet bridge is not configured on this server', 503);
+    if ((inT.kind === 'sui' || outT.kind === 'sui') && !sui.relayerConfigured()) throw new BadRequest('Sui testnet bridge is not configured on this server', 503);
+    if (outT.kind === 'sui' && outT.native && req.recipientType === 'DESTINATION_CHAIN') {
+      const have = await sui.treasuryBalance(outT).catch(() => 0n);
+      if (have < amountOut + 50_000_000n) throw new BadRequest('The Sui testnet treasury is low on SUI right now. Try again later or use a different destination.', 503);
+    }
     if (outT.kind === 'stellar' && req.recipientType === 'DESTINATION_CHAIN' && await stellar.treasuryLow()) throw new BadRequest('The Stellar testnet treasury is low on XLM right now (it refills from Friendbot automatically). Try again in a few minutes.', 503);
-    let depositAddress = inT.chain && req.depositType === 'ORIGIN_CHAIN' ? (inT.kind === 'sol' ? sol.depositAddressFor(MASTER, correlationId) : inT.kind === 'stellar' ? STELLAR_CHAIN.treasury : evm.depositAddressFor(inT.chain, correlationId)) : accountId;
+    let depositAddress = inT.chain && req.depositType === 'ORIGIN_CHAIN' ? (inT.kind === 'sol' ? sol.depositAddressFor(MASTER, correlationId) : inT.kind === 'stellar' ? STELLAR_CHAIN.treasury : inT.kind === 'sui' ? sui.depositAddressFor(MASTER, correlationId) : evm.depositAddressFor(inT.chain, correlationId)) : accountId;
     if (memoMode) { depositAddress = inT.kind === 'stellar' ? STELLAR_CHAIN.treasury : await memoAccount(inT); q.depositAddress = depositAddress; q.depositMemo = newMemo(); }
     Object.assign(q, { depositAddress, deadline: deadline.toISOString(), timeWhenInactive: deadline.toISOString() });
     if (q.depositMemo) { const { depositMemo } = q; delete q.depositMemo; Object.assign(q, { depositAddress, depositMemo }); }
@@ -292,7 +315,7 @@ const newMemo = () => String(crypto.randomInt(100000000, 999999999)) + String(cr
 const acctOf = (addr, s) => s.intentsAccount || addr;
 // explorer link for a tx hash recorded on a swap (NEAR by default, EVM when tagged)
 // (evmTxs holds every non-NEAR hash -> chain key; 'sol' is Solana)
-const urlOf = (s, h) => (s.evmTxs?.[h] === 'sol' ? sol.txUrl(h) : s.evmTxs?.[h] === 'stellar' ? stellar.txUrl(h) : s.evmTxs?.[h] ? evm.evmTxUrl(s.evmTxs[h], h) : txUrl(h));
+const urlOf = (s, h) => (s.evmTxs?.[h] === 'sol' ? sol.txUrl(h) : s.evmTxs?.[h] === 'sui' ? sui.txUrl(h) : s.evmTxs?.[h] === 'stellar' ? stellar.txUrl(h) : s.evmTxs?.[h] ? evm.evmTxUrl(s.evmTxs[h], h) : txUrl(h));
 const tagEvm = (s, chain, h) => { (s.evmTxs ||= {})[h] = chain; return h; };
 
 export function statusOf(depositAddress, depositMemo) {
@@ -331,7 +354,7 @@ export function submitDeposit({ txHash, depositAddress, nearSenderAccount, memo 
 function submitDepositCommon(s, depositAddress, memo, txHash, nearSenderAccount) {
   if (!s.originTxs.includes(txHash)) s.originTxs.push(txHash);
   const inT = byAsset[s.quoteResponse.quoteRequest.originAsset];
-  if (inT.chain && (inT.kind === 'sol' ? /^[1-9A-HJ-NP-Za-km-z]{80,90}$/ : inT.kind === 'stellar' ? /^[0-9a-f]{64}$/ : /^0x[0-9a-fA-F]{64}$/).test(txHash)) tagEvm(s, inT.chain, txHash);
+  if (inT.chain && (inT.kind === 'sol' ? /^[1-9A-HJ-NP-Za-km-z]{80,90}$/ : inT.kind === 'stellar' ? /^[0-9a-f]{64}$/ : inT.kind === 'sui' ? /^[1-9A-HJ-NP-Za-km-z]{43,44}$/ : /^0x[0-9a-fA-F]{64}$/).test(txHash)) tagEvm(s, inT.chain, txHash);
   if (nearSenderAccount) s.sender = nearSenderAccount;
   if (s.status === 'PENDING_DEPOSIT') { s.status = 'KNOWN_DEPOSIT_TX'; s.updatedAt = new Date().toISOString(); }
   save();
@@ -363,6 +386,7 @@ function queueRelease(s, tag, t, to, amount) {
   if (!t.chain || amount <= 0n) return;
   const rel = { id: evm.releaseId(`${s.quoteResponse.correlationId}:${tag}`), chain: t.chain, token: t.evmAddress, to, amount: amount.toString(), tag, done: false };
   if (t.kind === 'sol') Object.assign(rel, { id: `sol:${s.quoteResponse.correlationId}:${tag}`, token: t.mint, assetId: t.assetId, tx: {} });
+  if (t.kind === 'sui') Object.assign(rel, { id: `sui:${s.quoteResponse.correlationId}:${tag}`, token: undefined, assetId: t.assetId, tx: {} });
   if (t.kind === 'stellar') Object.assign(rel, { id: `stellar:${s.quoteResponse.correlationId}:${tag}`, token: undefined, assetId: t.assetId, tx: {} });
   (s.releases ||= []).push(rel);
 }
@@ -372,6 +396,14 @@ async function processReleases(s) {
       const t = byAsset[r.assetId];
       if ((await sol.drive(r.tx ||= {}, async () => sol.prepare(await sol.payoutInstructions(t, r.to, BigInt(r.amount))), save)) !== 'confirmed') continue;
       const h = tagEvm(s, 'sol', r.tx.sig);
+      s.txs.push({ label: `${r.tag} payout on ${chainOf(r.chain).name}`, hash: h });
+      s.destTxs.push(h);
+      r.done = true; save(); continue;
+    }
+    if (r.chain === 'sui') { // sign-first: the signed bytes + digest are persisted before executing; retries look the digest up (see sui.drive)
+      const t = byAsset[r.assetId];
+      if ((await sui.drive(r.tx ||= {}, () => sui.preparePayout(t, r.to, BigInt(r.amount)), save)) !== 'confirmed') continue;
+      const h = tagEvm(s, 'sui', r.tx.digest);
       s.txs.push({ label: `${r.tag} payout on ${chainOf(r.chain).name}`, hash: h });
       s.destTxs.push(h);
       r.done = true; save(); continue;
@@ -407,7 +439,7 @@ async function execute(signed) {
 
 // ORIGIN_CHAIN: the user sent NEP-141 tokens to the deposit address itself. Move them into the verifier.
 async function sweepOrigin(addr, s, inT) {
-  if (inT.chain) return inT.kind === 'sol' ? bridgeInSol(addr, s, inT) : bridgeIn(addr, s, inT);
+  if (inT.chain) return inT.kind === 'sol' ? bridgeInSol(addr, s, inT) : inT.kind === 'sui' ? bridgeInSui(addr, s, inT) : bridgeIn(addr, s, inT);
   const bal = BigInt(await view(inT.nearContract, 'ft_balance_of', { account_id: addr }));
   if (bal === 0n) return;
   const acct = await viewAccount(addr);
@@ -464,6 +496,35 @@ async function bridgeInSol(addr, s, inT) {
   if (st !== 'confirmed') return;
   const h = tagEvm(s, 'sol', sw.tx.sig);
   s.txs.push({ label: `sweep deposit address into treasury (${chainOf('sol').name})`, hash: h });
+  sw.sweepTx = h; sw.stage = 'swept'; delete sw.tx; save();
+  return creditBridgeIn(addr, s, inT);
+}
+
+// Sui origin: sweep the per-quote deposit address (coin objects of the asset's type) into the treasury, the treasury sponsoring gas, then
+// mint + credit exactly like the EVM path. The sweep is sign-first/recorded ('sweeping') so a crash or timeout can never lose or double a credit.
+async function bridgeInSui(addr, s, inT) {
+  await creditBridgeIn(addr, s, inT);
+  let sw = s.bridgeIn.find(b => b.stage === 'sweeping');
+  if (!sw) {
+    const bal = await sui.depositBalance(inT, addr);
+    if (bal === 0n) return;
+    if (!s.originTxs.some(h => s.evmTxs?.[h])) {
+      const h = await sui.depositTx(inT, addr).catch(() => null);
+      if (h) { if (!s.originTxs.includes(h)) s.originTxs.push(h); tagEvm(s, 'sui', h); }
+    }
+    if (s.status === 'PENDING_DEPOSIT') set(s, 'KNOWN_DEPOSIT_TX');
+    sw = { amount: bal.toString(), stage: 'sweeping', tx: {} };
+    s.bridgeIn.push(sw); save();
+  }
+  const dep = sui.depositKeypair(MASTER, s.quoteResponse.correlationId);
+  const st = await sui.drive(sw.tx, async () => { // re-read the coin objects when (re)signing so the exact set moved is what is credited
+    const p = await sui.prepareSweep(inT, dep);
+    sw.amount = p.amount.toString();
+    return p;
+  }, save);
+  if (st !== 'confirmed') return;
+  const h = tagEvm(s, 'sui', sw.tx.digest);
+  s.txs.push({ label: `sweep deposit address into treasury (${chainOf('sui').name})`, hash: h });
   sw.sweepTx = h; sw.stage = 'swept'; delete sw.tx; save();
   return creditBridgeIn(addr, s, inT);
 }

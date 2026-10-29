@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 
 const ORIGIN = process.env.NEXT_PUBLIC_TIDEPOOL_URL || '';
 
-type FaucetChain = 'near' | 'eth' | 'base' | 'arb' | 'sol' | 'stellar';
+type FaucetChain = 'near' | 'eth' | 'base' | 'arb' | 'sol' | 'stellar' | 'sui';
 const ISSUER = 'GDXABUSRHP4YA5CELHLNJQ4M3TX2BSJ6PEMDFCG2RA4PQLAQLRMFFQAN';
 const CHAINS: Record<FaucetChain, { label: string; placeholder: string; valid: (v: string) => boolean; hint: string; gas?: string; gasUrl?: string }> = {
   near: { label: 'NEAR testnet', placeholder: 'you.testnet', valid: v => /^[a-z0-9._-]{2,64}$/.test(v), hint: 'a NEAR testnet account id like you.testnet' },
@@ -12,6 +12,7 @@ const CHAINS: Record<FaucetChain, { label: string; placeholder: string; valid: (
   arb: { label: 'Arbitrum Sepolia', placeholder: '0x… (40 hex characters)', valid: v => /^0x[0-9a-fA-F]{40}$/.test(v), hint: 'an EVM address (0x…)', gas: 'Arbitrum Sepolia ETH', gasUrl: 'https://faucet.quicknode.com/arbitrum/sepolia' },
   sol: { label: 'Solana devnet', placeholder: 'Base58 wallet address', valid: v => /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(v), hint: 'a Solana wallet address (base58)', gas: 'devnet SOL', gasUrl: 'https://faucet.solana.com' },
   stellar: { label: 'Stellar testnet', placeholder: 'G… (56 characters)', valid: v => /^G[A-Z2-7]{55}$/.test(v), hint: 'a Stellar public key (G…) that already exists and trusts USDC and USDT', gas: 'test XLM (Friendbot)', gasUrl: 'https://friendbot.stellar.org' },
+  sui: { label: 'Sui testnet', placeholder: '0x… (64 hex characters)', valid: v => /^0x[0-9a-fA-F]{64}$/.test(v), hint: 'a Sui address (0x followed by 64 hex characters)', gas: 'testnet SUI', gasUrl: 'https://faucet.sui.io' },
 };
 const BRIDGED_CHOICES: [string, string][] = [
   ['native', 'Default: the six NEAR test tokens'],
@@ -20,6 +21,7 @@ const BRIDGED_CHOICES: [string, string][] = [
   ['arb', 'Bridged from Arbitrum Sepolia: USDC + USDT (100 each)'],
   ['sol', 'Bridged from Solana devnet: USDC + USDT (100 each) + test SOL (0.05)'],
   ['stellar', 'Bridged from Stellar testnet: USDC + USDT (100 each) + test XLM (5)'],
+  ['sui', 'Bridged from Sui testnet: USDC + USDT (100 each) + test SUI (0.5)'],
   ['bridged', 'Bridged from every chain above (bridged tokens only)'],
 ];
 
@@ -60,6 +62,7 @@ export function FaucetWidget() {
             <option value="arb">Arbitrum Sepolia</option>
             <option value="sol">Solana devnet</option>
             <option value="stellar">Stellar testnet</option>
+            <option value="sui">Sui testnet</option>
           </select>
         </label>
         <label className="text-sm font-medium">2. Paste {chain === 'near' ? 'your testnet account' : 'your address on that chain'}

@@ -1,0 +1,105 @@
+---
+title: Sui testnet bridge
+description: "Swap between Sui testnet and NEAR testnet through Tidepool's testnet relayer, with per-quote deposit addresses, status and refunds. Native SUI (capped at 10 SUI) plus Tidepool test USDC and USDT."
+---
+
+<Callout type="warn">**Testnet only, custodial, trusted relayer.** This route is run by Tidepool as its own testnet service. It is not a NEAR, Omni Bridge or 1Click bridge, and the tokens have no value. SUI is **capped at 10 SUI per swap, payout or refund** because the treasury is funded by the public Sui testnet faucet. Read [Test bridges](/docs/guides/bridges) for what you are trusting.</Callout>
+
+<Callout>**Availability.** The Sui route appears in [`GET /v0/tokens`](/docs/api-reference/get-tokens) (`blockchain: "sui"`) and in `/v0/health` under `bridges.chains.sui` only while it is live. If the tokens are not listed, the route is not active on that deployment yet.</Callout>
+
+## Tokens
+
+| What | Value |
+| --- | --- |
+| Chain | Sui testnet, `blockchain: "sui"` |
+| Native SUI | 9 decimals (MIST), asset id `nep141:sui.tp-omft.testnet`, `contractAddress` is the coin type `0x2::sui::SUI` |
+| Test USDC (6 decimals, Move coin) | `0x71a32ced7702bba9a8d23a122971d5973baa610f1689306176ac4f364d68bb3c::tusdc::TUSDC`, asset id `nep141:sui-f6ecfe107e72d22b7a646dd2cc4f1b2876349c0c.tp-omft.testnet` |
+| Test USDT (6 decimals, Move coin) | `0x71a32ced7702bba9a8d23a122971d5973baa610f1689306176ac4f364d68bb3c::tusdt::TUSDT`, asset id `nep141:sui-add896332c906e599cee03f2154d067937d12a26.tp-omft.testnet` |
+| Treasury (gas sponsor, payouts, refunds) | [`0x565662f245d0a66f567aa71499589f70fee8c2a5af20e8614429371fbe4f252c`](https://suiscan.xyz/testnet/account/0x565662f245d0a66f567aa71499589f70fee8c2a5af20e8614429371fbe4f252c) |
+| Move package (test coins) | [`0x71a32ced7702bba9a8d23a122971d5973baa610f1689306176ac4f364d68bb3c`](https://suiscan.xyz/testnet/object/0x71a32ced7702bba9a8d23a122971d5973baa610f1689306176ac4f364d68bb3c) |
+
+The issued-coin id is `nep141:sui-<last 20 bytes of keccak256(the coin type string)>.tp-omft.testnet`, the same rule 1Click uses on mainnet (for example its Sui USDC is `nep141:sui-c1b81ecaf27933252d31a963bc5e9458f13c18ce.omft.near`). The coin type is the canonical `0x…::module::STRUCT` string with the package address in full. The two test coins are Tidepool's own Move coins, not Circle or Tether tokens; the treasury holds their `TreasuryCap`s and mints them for payouts and the faucet.
+
+## Deposit model: per-quote addresses, no memo
+
+Sui needs no memo, and 1Click itself gives Sui quotes a plain deposit address. Tidepool does the same: every Sui-origin quote gets its own `0x…` `depositAddress` (an ed25519 key derived from the quote id and the server master seed). Send the exact `amountIn` of the origin asset to it from any wallet:
+
+- **SUI:** an ordinary transfer of SUI coins (`splitCoins` from gas, `transferObjects`).
+- **USDC or USDT:** transfer `Coin<…>` objects of that test coin to the address. Do not send a different coin type: it is not credited.
+- `depositMode` is `SIMPLE` (the default). `ANY_INPUT` deposits are accepted as on Solana, but an `ANY_INPUT` quote that pays out SUI is rejected.
+- `POST /v0/deposit/submit` with `txHash` (the Sui transaction digest) and `depositAddress` is optional: the relayer watches the address and detects the deposit anyway.
+- After the deposit is seen, the relayer **sweeps** the deposit address into the treasury with a sponsored transaction (the sender is the deposit address, the treasury pays the gas, both sign), then mints the NEP-141 on NEAR and credits it to the verifier. The sweep appears in the swap's `tidepool.explorer` list.
+
+## The SUI cap (10 SUI)
+
+Any swap with a SUI leg is rejected at **quote time** with a `400` if the SUI amount (input or output) exceeds `10 SUI` (10,000,000,000 MIST). It covers swaps, payouts and refunds. Why: the treasury is funded by the public Sui testnet faucet, which gives a few SUI per request, so a small cap keeps one user from draining it. Also:
+
+- A payout of SUI is paid from the treasury, so quotes answer `503` if the treasury cannot cover the payout plus gas.
+- `ANY_INPUT` quotes that pay out SUI to a Sui address are rejected.
+- USDC and USDT legs are not capped.
+- Recipients and `refundTo` must be full `0x` + 64 hex addresses.
+
+## 1. Get tokens
+
+SUI: the public [Sui testnet faucet](https://faucet.sui.io) (the Tidepool faucet never drips SUI to wallets). USDC and USDT: Tidepool's faucet, no trustline or token account is needed on Sui.
+
+```bash
+curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: application/json' \
+  -d '{"chain":"sui","address":"0xYourSuiAddress"}'
+```
+
+## 2. Sui → NEAR
+
+```ts
+const quote = await OneClickService.getQuote({
+  dry: false, swapType: 'EXACT_INPUT', slippageTolerance: 100,
+  originAsset: 'nep141:sui.tp-omft.testnet',
+  destinationAsset: 'nep141:usdc.tidepool-sandbox.testnet',
+  amount: '500000000',                      // 0.5 SUI in MIST
+  depositType: 'ORIGIN_CHAIN',
+  refundTo: '0xYourSuiAddress', refundType: 'ORIGIN_CHAIN',
+  recipient: 'you.testnet', recipientType: 'DESTINATION_CHAIN',
+  deadline: new Date(Date.now() + 30 * 60_000).toISOString(),
+});
+const { depositAddress, amountIn } = quote.quote;
+// Transfer amountIn MIST of SUI to depositAddress, then (optional):
+await OneClickService.submitDepositTx({ txHash: '<sui tx digest>', depositAddress });
+// Poll GET /v0/status?depositAddress=...
+```
+
+Runnable: `RECIPIENT=you.testnet npm run sui-deposit` in [tidepool-examples](https://github.com/zer0plugyut-afk/tidepool-examples) (it needs `SUI_SECRET_KEY`, a testnet key with a little SUI, and prints the Suiscan links). The example builds the transaction offline because `@mysten/sui` 1.x cannot resolve one over gRPC; the public Sui JSON-RPC is deprecated, so Tidepool itself talks to the testnet fullnode over gRPC.
+
+## 3. NEAR → Sui
+
+Quote with a Sui `destinationAsset`, `recipient: '0xYourSuiAddress'` and `recipientType: 'DESTINATION_CHAIN'`, then deposit on NEAR as usual. The verifier `ft_withdraw`s the bridged token to the relayer, which pays out on Sui from the treasury: SUI is split from the treasury's gas coins, USDC and USDT are **minted** straight to your address with the `TreasuryCap`. Payouts are signed first and the signed transaction (with a deterministic digest) is recorded before it is sent, so a crash or retry re-submits the same bytes and never pays twice.
+
+## Refunds
+
+Same reasons as every route (`DEADLINE_PASSED`, `PARTIAL_DEPOSIT`, …). A refund with `refundType: "ORIGIN_CHAIN"` is paid from the treasury to `refundTo` on Sui in the asset you sent (a SUI refund is a transfer; a USDC or USDT refund is a mint).
+
+## Limits
+
+- **Testnet resets.** Sui testnet is wiped from time to time. After a reset the package, coins and balances are gone and the route has to be bootstrapped again.
+- **Coin objects only.** Sui testnet faucet funds can land in an address balance rather than as Coin objects; the relayer only spends Coin objects, so the treasury keeps a large SUI coin for gas and payouts.
+- **One treasury-signed transaction at a time.** Payouts and sweeps share the treasury gas coin, so they are serialized.
+- **Faucet.** The USDC/USDT faucet spends treasury gas, so it has a global daily cap (`SUI_FAUCET_DAILY_MAX`, default 300 drips per day) on top of the usual per-address and per-IP limits.
+- **Unreachable destinations.** If a payout keeps failing on-chain, the swap stays in `PROCESSING` with a note and needs operator attention.
+- **Fullnode.** The relayer uses the public testnet fullnode (override: `SUI_GRPC_URL`); congestion or rate limits can delay a swap.
+
+## Mapping to mainnet 1Click
+
+Same request and response fields, `blockchain: "sui"`, a plain `depositAddress` and no memo. Mainnet lists Sui assets as `nep141:sui….omft.near` ids with the same keccak256 rule. Take the Sui asset ids from `GET /v0/tokens` of the environment you are calling. Mainnet has no 10 SUI cap and uses real Sui addresses. 1Click lists no Sui USDT on mainnet; the Tidepool USDT exists so testnet has the same pair as the other chains.
+
+## Verified flows
+
+Run on Sui testnet and NEAR testnet on 2026-10-29 with `e2e-sui.ts` from tidepool-examples:
+
+| Flow | Result | Transactions |
+| --- | --- | --- |
+| SUI → NEAR USDC (0.5 SUI) | `SUCCESS`, 0.468548 USDC | deposit [`DmqCUaUjsUkRpRHbbGXW1Uy6xyGrskLzhodC4VkY1iSg`](https://suiscan.xyz/testnet/tx/DmqCUaUjsUkRpRHbbGXW1Uy6xyGrskLzhodC4VkY1iSg), sweep [`7o8onuJ59nZLVzfC7o2x4dPeCjr5A7SjsQZ3C9s23Ee8`](https://suiscan.xyz/testnet/tx/7o8onuJ59nZLVzfC7o2x4dPeCjr5A7SjsQZ3C9s23Ee8), swap [`j2GbEeGp3zRL3YzQieXCiwPik2qGCRZf9mKHSHdurpg`](https://testnet.nearblocks.io/txns/j2GbEeGp3zRL3YzQieXCiwPik2qGCRZf9mKHSHdurpg) |
+| NEAR USDC → SUI (5 USDC) | `SUCCESS`, 5.287716181 SUI | swap [`8VeJfdWQRx1y6zmiWWksJrQfeZLBcEcyANasuAYFPKvz`](https://testnet.nearblocks.io/txns/8VeJfdWQRx1y6zmiWWksJrQfeZLBcEcyANasuAYFPKvz), payout [`7Hwo7yiX9hXoWZvWGsgnZt9KBzpnYQ6vn2r9FpC1kF6d`](https://suiscan.xyz/testnet/tx/7Hwo7yiX9hXoWZvWGsgnZt9KBzpnYQ6vn2r9FpC1kF6d) |
+| NEAR USDC → Sui USDC (5 USDC) | `SUCCESS`, 4.987 USDC (minted) | swap [`FPqvYzDshjoRHqTys46PhqLDVEouV6YQ89hBJebKvjnB`](https://testnet.nearblocks.io/txns/FPqvYzDshjoRHqTys46PhqLDVEouV6YQ89hBJebKvjnB), payout [`3JqTr3ExgP9doBksvZ3hiN8WwiLkM9EbJPoduKYnRYgM`](https://suiscan.xyz/testnet/tx/3JqTr3ExgP9doBksvZ3hiN8WwiLkM9EbJPoduKYnRYgM) |
+| Short deposit refund (0.4 of 1 SUI) | `REFUNDED`, 0.4 SUI returned | deposit [`3GCUXMeV1oQtg3Bg7vFsZoUUv6WEdAitPVyW8wHxU3f7`](https://suiscan.xyz/testnet/tx/3GCUXMeV1oQtg3Bg7vFsZoUUv6WEdAitPVyW8wHxU3f7), refund [`638k9zGrjt4HGEv9Vf89Cp9ymfeB7X3k4YUVB2cTr3Gf`](https://suiscan.xyz/testnet/tx/638k9zGrjt4HGEv9Vf89Cp9ymfeB7X3k4YUVB2cTr3Gf) |
+| Faucet, `chain: "sui"` | 100 USDC + 100 USDT minted | [`BHcfFQ7hyhGxUTfkgoKgXcHGyJpvTKChm56AZzsEnmRE`](https://suiscan.xyz/testnet/tx/BHcfFQ7hyhGxUTfkgoKgXcHGyJpvTKChm56AZzsEnmRE) |
+| Faucet, intents alias `sui` | 0.5 SUI + 100 USDC + 100 USDT credited in the verifier | [`HfLTnhrhFP6T25pXVcfWxGXQHjexC3sE72FPuSD3VGMA`](https://testnet.nearblocks.io/txns/HfLTnhrhFP6T25pXVcfWxGXQHjexC3sE72FPuSD3VGMA) |
+| Over-cap quote (10.000000001 SUI), a 1,000 USDC → SUI quote, a malformed recipient | `400` each | none |

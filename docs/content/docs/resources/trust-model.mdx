@@ -23,7 +23,7 @@ description: Exactly what you are trusting when you use Tidepool, and what it do
 
 ## Limitations (v1)
 
-- Testnets only: NEAR testnet, plus Base Sepolia, Arbitrum Sepolia and Ethereum Sepolia through the test bridges, Solana devnet (custodial, devnet only, SOL capped at 0.005 SOL per swap) and Stellar testnet (custodial, testnet only, XLM capped at 100 XLM per swap).
+- Testnets only: NEAR testnet, plus Base Sepolia, Arbitrum Sepolia and Ethereum Sepolia through the test bridges, Solana devnet (custodial, devnet only, SOL capped at 0.005 SOL per swap) and Stellar testnet (custodial, testnet only, XLM capped at 100 XLM per swap) and Sui testnet (custodial, testnet only, SUI capped at 10 SUI per swap).
 - No confidential settlement: `CONFIDENTIAL_INTENTS` types return 400 and `confidentiality` is ignored, because it runs on NEAR's private infrastructure, which isn't exposed to outside builders ([NEAR's Oct 27, 2026 update](https://docs.near-intents.org/changelog/entries/2026-10-27-1click-confidential.md)). See the [Roadmap](/docs/resources/roadmap).
 - Single maker with finite inventory. Large quotes fail with `Not enough maker liquidity`.
 - Faucet: one drip per account per mode per hour, six per IP per hour.

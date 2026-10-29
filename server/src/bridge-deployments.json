@@ -525,5 +525,121 @@
       "USDT": "200000"
     },
     "live": true
+  },
+  "sui": {
+    "name": "Sui Testnet",
+    "network": "testnet",
+    "txs": [
+      {
+        "label": "verify TreasuryCaps (mint 1 base unit of each test coin to the treasury)",
+        "hash": "BCKjWgquUUA566SLJitV5GnXoGfhmPjWLwDuJvbxd9AA"
+      },
+      {
+        "label": "fund tp-omft.testnet",
+        "hash": "5Arv2aMSGVFpyHkbRX8umK9YQhrM5JspJjbZud9RZidW"
+      },
+      {
+        "label": "create sui.tp-omft.testnet",
+        "hash": "EdQriY2PqbCatbX2QKshC65GgXZd8aua6evjLGzqwVUq"
+      },
+      {
+        "label": "verify TreasuryCaps (mint 1 base unit of each test coin to the treasury)",
+        "hash": "5KCMYQyWVCwea6RCmNzy38CMZfGNKwR6Ybz5wudbN7u"
+      },
+      {
+        "label": "deploy sui.tp-omft.testnet",
+        "hash": "3Am98AFrxMnv496owHr2bfimJ5GVXbdb8Uc7tMVF4NEN"
+      },
+      {
+        "label": "init sui.tp-omft.testnet",
+        "hash": "G7L6uSRujeVEEMwwMD4Wob3Jtut4fdo9qJzBKU2adEjM"
+      },
+      {
+        "label": "storage verifier.tidepool-sandbox.testnet on SUI",
+        "hash": "FYSBiCmxwH1x91Y7MnyMFMeVtt7yt1bepCQbwuTNqg7s"
+      },
+      {
+        "label": "mint maker inventory SUI",
+        "hash": "3zctyyFrnKDofVe4uNqePcze4bwmC5VnmbR11hByQNjv"
+      },
+      {
+        "label": "deposit maker inventory SUI",
+        "hash": "edznmpREv3YuL3na5oCGZNQN68xKZ6sikCoM9eCwdmu"
+      },
+      {
+        "label": "fund tp-omft.testnet",
+        "hash": "HspVfRZ2gB2FSi4p9hPhzXt1HZWXfw9GLEKKdVWPsrDv"
+      },
+      {
+        "label": "create sui-f6ecfe107e72d22b7a646dd2cc4f1b2876349c0c.tp-omft.testnet",
+        "hash": "8vJ59myXcq4hZf5ompP5fQjuj9M6naXE8zcsfY8Abiup"
+      },
+      {
+        "label": "deploy sui-f6ecfe107e72d22b7a646dd2cc4f1b2876349c0c.tp-omft.testnet",
+        "hash": "DtWga3Ng5BBDj6QBGk8Dyk59wxXovD9et8YA9ZYRKqdP"
+      },
+      {
+        "label": "init sui-f6ecfe107e72d22b7a646dd2cc4f1b2876349c0c.tp-omft.testnet",
+        "hash": "Bm2KqS19h9TwFe4UBbVTfEbdknYvU2B4SqSWVeG8JFyk"
+      },
+      {
+        "label": "storage verifier.tidepool-sandbox.testnet on USDC",
+        "hash": "DQTfJ3f5NyaFKp1Q3rmWPs2rFEhoTzhpbbF5n2gYMtRL"
+      },
+      {
+        "label": "mint maker inventory USDC",
+        "hash": "GSWaDwrebR6grLiyPyjvK7pqmonC4kZdtcduoxEZ8CKu"
+      },
+      {
+        "label": "deposit maker inventory USDC",
+        "hash": "7S4oFK68JTaMnKqGdK9uVkWtMNr7CzJsahdTxUrSgfgg"
+      },
+      {
+        "label": "fund tp-omft.testnet",
+        "hash": "7LSzk14gNYxnvJRRadxbAdmjwVw2bjgRafF32W2j33S3"
+      },
+      {
+        "label": "create sui-add896332c906e599cee03f2154d067937d12a26.tp-omft.testnet",
+        "hash": "H3vqPGf8HWks9MMPXFus4KtYgqi1oH5WSWXn7frHou8G"
+      },
+      {
+        "label": "deploy sui-add896332c906e599cee03f2154d067937d12a26.tp-omft.testnet",
+        "hash": "ABANewd6USpKnuh9DSYejSFusn9DaC1D5DaVqoKAeRHe"
+      },
+      {
+        "label": "init sui-add896332c906e599cee03f2154d067937d12a26.tp-omft.testnet",
+        "hash": "FANikhqR1Ri94piEFK1yFUXfwrFyN4Q3fp92VKSmycBg"
+      },
+      {
+        "label": "storage verifier.tidepool-sandbox.testnet on USDT",
+        "hash": "6ujkeWdpfaJFNgULKa1gU5iTyQWY57YCRmz2rtsiwSBT"
+      },
+      {
+        "label": "mint maker inventory USDT",
+        "hash": "HdnaVz5jHDXwZTQ1K6hADjPVP9YBsYVdTc3q97SgKrvF"
+      },
+      {
+        "label": "deposit maker inventory USDT",
+        "hash": "CbxJqe6xviNExJqyeE42EcP9YdF81npvZahrSQgnZavb"
+      }
+    ],
+    "treasury": "0x565662f245d0a66f567aa71499589f70fee8c2a5af20e8614429371fbe4f252c",
+    "package": "0x71a32ced7702bba9a8d23a122971d5973baa610f1689306176ac4f364d68bb3c",
+    "inventory": {
+      "SUI": "100000",
+      "USDC": "200000",
+      "USDT": "200000"
+    },
+    "tokens": {
+      "USDC": {
+        "coinType": "0x71a32ced7702bba9a8d23a122971d5973baa610f1689306176ac4f364d68bb3c::tusdc::TUSDC",
+        "treasuryCap": "0x2a30c884d3e33e703f12de9255c20c59e518e124ba56b6844829f099002573c8"
+      },
+      "USDT": {
+        "coinType": "0x71a32ced7702bba9a8d23a122971d5973baa610f1689306176ac4f364d68bb3c::tusdt::TUSDT",
+        "treasuryCap": "0xb38964926d13d3f6bf3f356728752144cc4a9755e402adde972e9b898d5faa1b"
+      }
+    },
+    "live": true
   }
 }
