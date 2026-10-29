@@ -4,7 +4,7 @@ seoTitle: "Use the 1Click SDK on Testnet"
 description: Use @defuse-protocol/one-click-sdk-typescript against Tidepool by changing one base URL.
 ---
 
-The official TypeScript client, [`@defuse-protocol/one-click-sdk-typescript`](https://www.npmjs.com/package/@defuse-protocol/one-click-sdk-typescript), works against Tidepool unchanged. Point `OpenAPI.BASE` at Tidepool and use the same calls. We tested `getTokens`, `getQuote` and `getExecutionStatus` with SDK version 0.1.26.
+The official TypeScript client, [`@defuse-protocol/one-click-sdk-typescript`](https://www.npmjs.com/package/@defuse-protocol/one-click-sdk-typescript), works against Tidepool unchanged. Point `OpenAPI.BASE` at Tidepool and use the same calls. We tested `getTokens`, `getQuote` and `getExecutionStatus` with SDK version 0.1.26 (the latest release).
 
 ```bash
 npm i @defuse-protocol/one-click-sdk-typescript
@@ -34,14 +34,14 @@ const quote = await OneClickService.getQuote({
 });
 
 // Deposit to quote.quote.depositAddress (see First swap), then:
-await OneClickService.submitDepositTx({ txHash: '<your tx hash>', depositAddress: quote.quote.depositAddress! });
+await OneClickService.submitDepositTx({ txHash: '<your tx hash>', depositAddress: quote.quote.depositAddress! });  // optional, see Deposit modes
 const status = await OneClickService.getExecutionStatus(quote.quote.depositAddress!);
 console.log(status.status); // PENDING_DEPOSIT → PROCESSING → SUCCESS | REFUNDED
 ```
 
-## Cross-chain quotes (EVM testnets)
+## Cross-chain quotes (bridged testnets)
 
-The same calls work for the [test bridges](/docs/guides/bridges). Pick a bridged asset from `getTokens()` by `blockchain` and use `0x` addresses for the EVM side:
+The same calls work for the [test bridges](/docs/guides/bridges) (Base, Arbitrum and Ethereum Sepolia, Solana devnet, Stellar testnet and Sui testnet). Pick a bridged asset from `getTokens()` by `blockchain` and use that chain's address format for the origin or destination side. This example uses an EVM chain:
 
 ```ts
 const usdcBase = tokens.find(t => t.blockchain === 'base' && t.symbol === 'USDC')!;
@@ -63,7 +63,7 @@ const q = await OneClickService.getQuote({
 // q.quote.depositAddress is a 0x address on Base Sepolia: send usdcBase.contractAddress tokens there with ERC-20 transfer.
 ```
 
-For NEAR → EVM, swap the assets and set `recipient` to a `0x` address. The example script supports both: `FROM=USDC TO=USDC TO_CHAIN=base RECIPIENT=0x… node examples/swap.mjs --origin`.
+For NEAR → EVM, swap the assets and set `recipient` to a `0x` address. Stellar origins need `depositMode: MEMO` (see [Deposit modes](/docs/concepts/deposits#bridged-chains-and-memo)). The runnable scripts `npm run evm-deposit`, `sol-deposit`, `stellar-deposit` and `sui-deposit` in [tidepool-examples](https://github.com/zer0plugyut-afk/tidepool-examples) cover each chain.
 
 > Asset ids differ from mainnet: Tidepool tokens live under `tidepool-sandbox.testnet`. Read them from `getTokens()` instead of hardcoding mainnet ids.
 

@@ -29,14 +29,14 @@ Poll every 2–5 seconds and stop on a final status. The worker checks each acti
 | --- | --- |
 | `amountIn`, `amountOut` (+ `Formatted`, `Usd`) | What was actually swapped. |
 | `depositedAmount` (+ `Formatted`, `Usd`) | What the deposit address holds in the verifier. |
-| `slippage` | Realised slippage vs. the quote, as a fraction. |
+| `slippage` | Realised slippage vs. the quote, as a fraction (`0.0012` is 0.12%). 1Click documents this field as "actual slippage" without a unit, so check how your client reads it. |
 | `refundedAmount` (+ `Formatted`, `Usd`) | Excess or refunded input. |
-| `refundReason` | `PARTIAL_DEPOSIT`, `DEADLINE_PASSED`, `SLIPPAGE_EXCEEDED`, `PRICE_MOVED`, `INSUFFICIENT_LIQUIDITY`, `SWAP_FAILED`. |
-| `nearTxHashes` | Settlement / refund transaction(s). |
+| `refundReason` | Free text in the 1Click spec. Tidepool uses `PARTIAL_DEPOSIT`, `DEADLINE_PASSED`, `SLIPPAGE_EXCEEDED`, `PRICE_MOVED`, `INSUFFICIENT_LIQUIDITY`, `SWAP_FAILED`. |
+| `nearTxHashes` | NEAR settlement / refund transaction(s). |
+| `originChainTxHashes`, `destinationChainTxHashes` | `{ hash, explorerUrl }`. The URL points at NearBlocks testnet, or at the testnet explorer of the bridged chain (Sepolia, Solana devnet, Stellar testnet, Sui testnet). |
+| `intentHashes` | Intent hashes logged by the verifier. |
 
 **Settlement distinction.** On mainnet, 1Click now settles every swap confidentially on the NEAR Private Shard, so `swapDetails.nearTxHashes` lists only the public shield and unshield transactions ([NEAR changelog, Oct 27, 2026](https://docs.near-intents.org/changelog/entries/2026-10-27-1click-confidential.md)). Tidepool testnet swaps settle publicly on the testnet verifier, so `nearTxHashes` also includes the swap's own hash. This is not a choice by Tidepool: confidential settlement (NEAR Private Shard / Confidential Intents) runs on NEAR's private infrastructure, which isn't exposed to outside builders. Rely on `status` (`SUCCESS` means delivered), not on the presence of a swap hash, so the same code works on both.
-| `originChainTxHashes`, `destinationChainTxHashes` | `{ hash, explorerUrl }` on NearBlocks testnet. |
-| `intentHashes` | Intent hashes logged by the verifier. |
 
 The response also carries a Tidepool-only `tidepool` object: `explorer` (a labelled list of every transaction, such as "gas top-up", "move deposit into verifier", "swap (execute_intents)" or "refund") and `note` (the last error, if any). 1Click clients ignore it.
 

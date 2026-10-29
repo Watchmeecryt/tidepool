@@ -23,19 +23,23 @@ Checked against the official 1Click OpenAPI (`https://1click.chaindefuser.com/do
 
 | Area | Mainnet 1Click | Tidepool |
 | --- | --- | --- |
-| Network | NEAR mainnet + many chains | NEAR testnet; Base, Arbitrum and Ethereum Sepolia |
+| Network | NEAR mainnet + many chains | NEAR testnet; Base, Arbitrum and Ethereum Sepolia, Solana devnet, Stellar testnet and Sui testnet |
 | Solvers | Competing solvers via the solver relay | One Tidepool maker quotes and fills every swap (CoinGecko prices + fixed fee) |
 | Verifier | `intents.near` | Official `defuse` v0.4.2 wasm (byte-identical) at `verifier.tidepool-sandbox.testnet` |
-| Cross-chain | Production bridges | Tidepool-run trusted relayer bridges to Base / Arbitrum / Ethereum Sepolia |
-| Tokens | Real assets | Six test tokens (+ bridged USDC/USDT) from a public faucet; no value |
+| Cross-chain | Production bridges | Tidepool-run trusted relayer bridges to Base / Arbitrum / Ethereum Sepolia, Solana devnet, Stellar testnet and Sui testnet |
+| `blockchain` values | 38 chains, listed in the spec enum | `near`, `eth`, `base`, `arb`, `sol`, `stellar`, `sui` |
+| Stellar asset ids | `nep245:` ids from the HOT bridge, 7 decimals | `nep141:` OMFT-style ids; always read ids from `/v0/tokens` |
+| Tokens | Real assets | Six NEAR test tokens, plus bridged USDC and USDT and native SOL, XLM and SUI; test USDC and USDT come from a public faucet; no value |
 | Deposit addresses | Run by 1Click | Keys derived by the Tidepool server (custodial, testnet) |
 | Auth | JWT required for fee-free quotes | Free JWTs from `/v0/auth/authenticate` (`nep413`, `raw_ed25519`, `erc191`); for swaps any `x-api-key` / Bearer value gets the lower fee |
-| `depositMode: MEMO` | Memo chains | NEAR-native `ORIGIN_CHAIN` tokens only; submit needs `nearSenderAccount` |
+| `depositMode: MEMO` | Memo chains | NEAR-native `ORIGIN_CHAIN` tokens and Stellar testnet (required there); a NEAR-native submit also needs `nearSenderAccount`. Not allowed with `ANY_INPUT` |
+| `ANY_INPUT` | Authorized partners only | Open to everyone on testnet. Not available with Stellar deposits or SOL, XLM and SUI payouts |
 | `ANY_INPUT` withdrawals | `withdrawals` object | Spec's single object (newest), plus the full page in `tidepool.withdrawals` |
 | Orders | Solver-filled | Tidepool maker fills once (no partial fills); deadline 7d default, 30d max |
 | generate-intent | All standards | `INTENTS`-deposit quotes only; `webauthn`/`ton_connect` submit-only |
+| `swapDetails.slippage` | "Actual slippage", unit not stated in the spec (example `50`) | A fraction, for example `0.0012` for 0.12% |
 | `/v0/account/balances` | Private + public | Verifier balances, `source: private` |
-| Extras | — | `POST /v0/faucet`, `GET /v0/health` |
+| Extras | — | `POST /v0/faucet`, `GET /v0/health`, the quote field `simulate` (`STUCK` or `FAILED`) and `tidepool` objects in responses |
 
 ## Accepted but no effect
 
@@ -46,4 +50,4 @@ Checked against the official 1Click OpenAPI (`https://1click.chaindefuser.com/do
 
 ## Settlement distinction
 
-**Settlement distinction.** On mainnet, 1Click now settles every swap confidentially on the NEAR Private Shard, so `swapDetails.nearTxHashes` lists only the public shield and unshield transactions ([NEAR changelog, Oct 27, 2026](https://docs.near-intents.org/changelog/entries/2026-10-27-1click-confidential.md)). Tidepool testnet swaps settle publicly on the testnet verifier, so `nearTxHashes` also includes the swap's own hash. This is not a choice by Tidepool: confidential settlement (NEAR Private Shard / Confidential Intents) runs on NEAR's private infrastructure, which isn't exposed to outside builders. Rely on `status` (`SUCCESS` means delivered), not on the presence of a swap hash, so the same code works on both.
+On mainnet, 1Click now settles every swap confidentially on the NEAR Private Shard, so `swapDetails.nearTxHashes` lists only the public shield and unshield transactions ([NEAR changelog, Oct 27, 2026](https://docs.near-intents.org/changelog/entries/2026-10-27-1click-confidential.md)). Tidepool testnet swaps settle publicly on the testnet verifier, so `nearTxHashes` also includes the swap's own hash. This is not a choice by Tidepool: confidential settlement (NEAR Private Shard / Confidential Intents) runs on NEAR's private infrastructure, which isn't exposed to outside builders. Rely on `status` (`SUCCESS` means delivered), not on the presence of a swap hash, so the same code works on both.

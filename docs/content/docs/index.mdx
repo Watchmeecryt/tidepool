@@ -7,7 +7,7 @@ description: Tidepool is a free, community-built NEAR Intents 1Click sandbox, a 
 <DocsHero />
 
 <Callout type="success" title="No sign-up, no API key">
-No sign-up, no API key. Call the API directly; any `X-API-Key` or `Bearer` value is accepted (it just selects the lower fee tier). Only `/v0/account/*` needs a token, which you get instantly by signing a message with your own wallet via `POST /v0/auth/authenticate`. It only ever shows that wallet's own data.
+No sign-up, no API key. Call the API directly; any `X-API-Key` or `Bearer` value is accepted (it just selects the lower fee tier). Only `/v0/account/*` needs a real token (`/v0/orders` needs a token or any `X-API-Key` value), which you get instantly by signing a message with your own wallet via `POST /v0/auth/authenticate`. It only ever shows that wallet's own data.
 </Callout>
 
 <Callout type="warn" title="Trust model: community-operated testnet">
@@ -16,7 +16,7 @@ Tidepool is a community-operated testnet environment, **not affiliated with NEAR
 
 <Cards>
   <Card title="▶ Run your first test swap" href="/docs/quickstart" description="Faucet → quote → deposit → SUCCESS in a few minutes. Start here." />
-  <Card title="Examples repo" href="https://github.com/zer0plugyut-afk/tidepool-examples" description="Runnable Node scripts: first swap, env switch, refunds, EVM Sepolia deposit." />
+  <Card title="Examples repo" href="https://github.com/zer0plugyut-afk/tidepool-examples" description="Runnable TypeScript scripts: first swap, env switch, failure cases, signed intents, orders, and EVM, Solana, Stellar and Sui deposits." />
 </Cards>
 
 Using a coding agent? Paste the [dev prompt](/docs/guides/agents#prompt-snippet) into it. Differences from mainnet 1Click are in [Compatibility](/docs/resources/compatibility).
@@ -30,9 +30,9 @@ Tidepool is a testnet version of the 1Click API: a free 1Click testnet endpoint 
 Tidepool gives you everything a 1Click swap needs, on testnet:
 
 - **The official NEAR Intents verifier** (`defuse` v0.4.2, wasm byte-identical to the GitHub release) deployed at `verifier.tidepool-sandbox.testnet`.
-- **Six test tokens**: USDC, USDT, wNEAR, wBTC, ETH and XAUT, with a public faucet.
+- **Six NEAR test tokens**: USDC, USDT, wNEAR, wBTC, ETH and XAUT, with a public faucet. Test USDC and USDT (plus native SOL, XLM and SUI) are also bridged in from Base, Arbitrum and Ethereum Sepolia, Solana devnet, Stellar testnet and Sui testnet; see [Test bridges](/docs/guides/bridges).
 - **A live maker** that quotes every pair from real CoinGecko prices and fills every quote by signing intents on the verifier.
-- **The 1Click Swap API shape** (`/v0/tokens`, `/v0/quote`, `/v0/deposit/submit`, `/v0/status`), so the official SDK works by changing one base URL.
+- **The 1Click Swap API shape** (`/v0/tokens`, `/v0/quote`, `/v0/deposit/submit`, `/v0/status`, plus the intent, order, auth and account endpoints), so the official SDK works by changing one base URL.
 
 <SwapFlow />
 

@@ -1,11 +1,11 @@
 ---
-title: Test bridges (EVM testnets)
-description: How Tidepool's testnet bridges to Base Sepolia, Arbitrum Sepolia and Ethereum Sepolia work, and exactly what you trust when you use them.
+title: Test bridges
+description: How Tidepool's testnet bridges to Base, Arbitrum and Ethereum Sepolia, Solana devnet, Stellar testnet and Sui testnet work, and exactly what you trust when you use them.
 ---
 
 <Callout type="warn">**These bridges are a trusted relayer run by Tidepool, on testnets only.** Tidepool runs them as its own testnet service. They are not NEAR's Omni Bridge, not POA bridge and not 1Click infrastructure. The tokens on both sides are Tidepool test tokens with no value.</Callout>
 
-Tidepool can swap between NEAR testnet and three EVM testnets, with the same API shape as 1Click mainnet cross-chain swaps:
+Tidepool can swap between NEAR testnet and three EVM testnets (below), plus Solana devnet, Stellar testnet and Sui testnet (after the table), with the same API shape as 1Click mainnet cross-chain swaps:
 
 | Chain | `blockchain` | Chain id | Route guide |
 | --- | --- | --- | --- |
@@ -19,14 +19,16 @@ Stellar testnet is another separate bridge (XLM capped at 100 XLM, deposits use 
 
 Sui testnet is another separate bridge (SUI capped at 10 SUI, per-quote deposit addresses, no memo): [Sui testnet bridge](/docs/guides/bridge-sui-testnet). It is testnet only, custodial and listed in `/v0/tokens` only while it is live.
 
-## What matches 1Click
+## What matches 1Click (EVM chains)
 
 - **Asset ids.** Bridged tokens look like 1Click's omft ids: `nep141:<chain>-<erc20 address>.tp-omft.testnet`. `/v0/tokens` lists them with `blockchain` and `contractAddress`.
 - **Deposit addresses.** A live quote with an EVM `originAsset` and `depositType: "ORIGIN_CHAIN"` returns a unique `0x` deposit address. You send the ERC-20 with a plain `transfer`.
 - **Addresses.** `refundTo` and `recipient` must be `0x` addresses for EVM legs, and NEAR accounts for NEAR legs.
 - **Status and refunds.** The same lifecycle and refund reasons. EVM transactions are listed in `originChainTxHashes` / `destinationChainTxHashes` with explorer links.
 
-## How it works
+## How the EVM bridges work
+
+The Solana, Stellar and Sui bridges follow the same idea (relayer detects the deposit, mints the matching NEP-141 into the verifier, and pays out on the destination chain) but have their own deposit mechanics; see their route guides.
 
 1. **Deposit.** Each quote's deposit address is a CREATE2 address of the chain's `TidepoolVault` (salt = `keccak256("tidepool-deposit:" + correlationId)`). Nothing is deployed there until funds arrive.
 2. **Sweep.** The relayer calls `vault.sweep(salt, token)`. This deploys a tiny forwarder at the deposit address that sends the tokens to the vault and self-destructs in the same transaction.
@@ -35,7 +37,7 @@ Sui testnet is another separate bridge (SUI capped at 10 SUI, per-quote deposit 
 
 ## What you trust
 
-- **The relayer key.** One key (`0x55F2c8044D790e1b8369508c31c756c0c2Ca0E93`) can sweep deposits and release any vault balance. If it is lost or misused, bridged balances are gone. There are no light clients, proofs or multisigs.
+- **The relayer key.** On the EVM chains, one key (`0x55F2c8044D790e1b8369508c31c756c0c2Ca0E93`) can sweep deposits and release any vault balance. If it is lost or misused, bridged balances are gone. There are no light clients, proofs or multisigs.
 - **Minting.** Bridged NEP-141s are minted by the Tidepool root account. Supply on NEAR is not enforced against vault balances on-chain.
 - **Liveness.** If the relayer is down, deposits wait in their deposit addresses and payouts wait as `PROCESSING`. Both resume when it restarts.
 - **Testnet RPCs.** The relayer uses public RPCs. Congestion or reorgs can delay a swap.

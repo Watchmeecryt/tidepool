@@ -1,11 +1,11 @@
 ---
 title: Swap types
-description: EXACT_INPUT, EXACT_OUTPUT and FLEX_INPUT, with examples.
+description: EXACT_INPUT, EXACT_OUTPUT, FLEX_INPUT and ANY_INPUT, with examples.
 ---
 
 `swapType` decides which side of the trade `amount` fixes.
 
-<Tabs items={['EXACT_INPUT', 'EXACT_OUTPUT', 'FLEX_INPUT']}>
+<Tabs items={['EXACT_INPUT', 'EXACT_OUTPUT', 'FLEX_INPUT', 'ANY_INPUT']}>
 <Tab value="EXACT_INPUT">
 `amount` is what you **send**. `amountIn = minAmountIn = amount`. Output floats with price, floored by `minAmountOut`.
 
@@ -35,11 +35,16 @@ Like `EXACT_INPUT`, but a deposit down to `minAmountIn = amount × (1 − slippa
 
 Here any deposit of at least 9.9 USDC is swapped.
 </Tab>
-</Tabs>
+<Tab value="ANY_INPUT">
+The deposit address accepts any number of deposits, of any size (`minAmountIn` is `1`), until the deadline. Each deposit is converted at the live price and paid out on its own. List the payouts with [`GET /v0/any-input/withdrawals`](/docs/api-reference/get-any-input-quote-withdrawals). Tidepool also returns the full page in `tidepool.withdrawals` there.
 
-<Callout title="Not supported">
-`ANY_INPUT`: the deposit address accepts any number of deposits, of any size (`minAmountIn` is `1`), until the deadline. Each deposit is converted and paid out on its own. List the payouts with [`GET /v0/any-input/withdrawals`](/docs/api-reference/get-any-input-quote-withdrawals).
-</Callout>
+```json
+{ "swapType": "ANY_INPUT", "amount": "10000000", "slippageTolerance": 100 }
+```
+
+On mainnet 1Click, `ANY_INPUT` is only available to authorized partners. Tidepool allows it for everyone, so check access before you rely on it in production. Limits on testnet: `depositMode` must be `SIMPLE`, so Stellar deposits are rejected; `simulate` is rejected; and payouts of native SOL, XLM or SUI are rejected, because each deposit would be converted separately and could exceed that asset's [cap](/docs/guides/bridges).
+</Tab>
+</Tabs>
 
 ## Recipient and refund types
 

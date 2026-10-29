@@ -3,6 +3,17 @@ title: Changelog
 description: What changed in Tidepool and when.
 ---
 
+## 2026-10-29 · Docs audit against the official 1Click API
+
+- **HTTP codes:** `POST /v0/quote` and `POST /v0/deposit/submit` return `200`, like the official spec. Some pages said `201`.
+- **MEMO deposits:** `POST /v0/deposit/submit` takes `memo`, `nearSenderAccount` and `txHash` (as in the official spec). `depositMemo` is the query parameter on `/v0/status` and the any-input endpoints. The docs mixed these up.
+- **ANY_INPUT:** now documented as supported (it was listed under "Not supported"), with its Tidepool limits. The official API restricts it to authorized partners; Tidepool is open to everyone.
+- **Chains:** the `blockchain` enum in `openapi.json` now lists all 38 official values (it only allowed `near`), and the pages that listed only NEAR and the EVM chains now include Solana, Stellar and Sui.
+- **Errors and auth:** the API reference describes the real error shapes (`{ "message" }`, JSON:API on `/v0/orders`, the extra `hint`, `field` and `exampleRequest` on quote errors) and that `/v0/orders` needs a token or any `X-API-Key`.
+- **Examples:** pages point at the public [tidepool-examples](https://github.com/zer0plugyut-afk/tidepool-examples) repo (`npm run first-swap`, `evm-deposit`, `failure-cases`) instead of scripts from the private repo.
+- **Compatibility page:** new rows for the `blockchain` values, Stellar `nep141` vs `nep245` asset ids, the `swapDetails.slippage` unit (Tidepool emits a fraction, `0.0012` = 0.12%), and Tidepool-only extras.
+- Fixed duplicated text, broken or redirected external links, the roadmap (Solana, Stellar and Sui bridges added) and the `/docs/api` nav link in the fallback site.
+
 ## 2026-10-29 · Sui testnet bridge (SUI, USDC, USDT), capped at 10 SUI
 
 - **New chain:** Sui testnet, `blockchain: "sui"`, a trusted-relayer bridge run by Tidepool. Testnet only, custodial: the tokens have no value. Guide: [Sui testnet bridge](/docs/guides/bridge-sui-testnet). The route is listed in `/v0/tokens` and `/v0/health` (`bridges.chains.sui`) only while it is live.

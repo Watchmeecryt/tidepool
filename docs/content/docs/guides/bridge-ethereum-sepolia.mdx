@@ -29,7 +29,7 @@ curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: applicatio
   -d '{"chain":"eth","address":"0xYourAddress"}'
 ```
 
-This mints 100 test USDC and 100 test USDT on Ethereum Sepolia. It is also in the dropdown on the [Faucet](/docs/guides/faucet) page. To get the bridged USDC and USDT into your NEAR intents balance instead, use `{"accountId":"alice.testnet","mode":"intents","assets":["eth"]}`. You can also call `faucet()` on either token contract yourself (once per hour per address). Gas is **not** included: get Ethereum Sepolia ETH from a [public faucet](https://sepoliafaucet.com).
+This mints 100 test USDC and 100 test USDT on Ethereum Sepolia. It is also in the dropdown on the [Faucet](/docs/guides/faucet) page. To get the bridged USDC and USDT into your NEAR intents balance instead, use `{"accountId":"alice.testnet","mode":"intents","assets":["eth"]}`. You can also call `faucet()` on either token contract yourself (once per hour per address). Gas is **not** included: get Ethereum Sepolia ETH from a [public faucet](https://www.alchemy.com/faucets/ethereum-sepolia).
 
 ## 2. Ethereum Sepolia → NEAR
 
@@ -54,9 +54,7 @@ The relayer sweeps the deposit into the vault, mints the bridged NEP-141 and cre
 
 Quote with `destinationAsset: 'nep141:eth-0x2e6ad9e6d59bb4585ea0e6762c3b637dde29dad2.tp-omft.testnet'`, `recipient: '0xYourAddress'` and `recipientType: 'DESTINATION_CHAIN'`, then deposit on NEAR as usual. The verifier `ft_withdraw`s the bridged token to the relayer, which calls `release` on the vault. Status stays `PROCESSING` until the Ethereum Sepolia payout confirms, then turns `SUCCESS` with the payout in `destinationChainTxHashes`.
 
-```bash
-cd examples && FROM=USDC TO=USDC TO_CHAIN=eth RECIPIENT=0xYourAddress AMOUNT=4 node swap.mjs --origin
-```
+Runnable: `EVM_PRIVATE_KEY=0x… EVM_CHAIN=eth RECIPIENT=you.testnet WITHDRAW=1 npm run evm-deposit` in [tidepool-examples](https://github.com/zer0plugyut-afk/tidepool-examples). It deposits USDC on the EVM chain, receives wNEAR on NEAR, and with `WITHDRAW=1` sends it back. Use a testnet-only key with a little gas ETH.
 
 ## Refunds
 

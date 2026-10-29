@@ -5,7 +5,7 @@ description: How Tidepool produces a quote, what each amount means and how fees 
 
 ## Where prices come from
 
-USD prices come from **CoinGecko** (`usd-coin`, `tether`, `near`, `bitcoin`, `ethereum`, `tether-gold`), cached briefly. If CoinGecko is unreachable, fixed fallback prices are used and `/v0/health` shows a non-`coingecko` source. The rate for a pair is `priceIn / priceOut`, computed with 18 decimals of fixed-point precision and integer (BigInt) maths in base units.
+USD prices come from **CoinGecko** (`usd-coin`, `tether`, `near`, `bitcoin`, `ethereum`, `tether-gold`, plus `solana`, `stellar` and `sui` for the bridged native tokens), cached briefly. If CoinGecko is unreachable, fixed fallback prices are used and `/v0/health` shows a non-`coingecko` source. The rate for a pair is `priceIn / priceOut`, computed with 18 decimals of fixed-point precision and integer (BigInt) maths in base units.
 
 ## Fees
 
@@ -13,7 +13,7 @@ The fee is taken from the output, in basis points:
 
 | Pair | No API key | Any API key |
 | --- | --- | --- |
-| Stable ↔ stable (USDC, USDT) | 26 bps | 1 bp |
+| Stable ↔ stable (USDC, USDT), or the same symbol on another chain | 26 bps | 1 bp |
 | Everything else | 45 bps | 20 bps |
 
 The +25 bps for keyless calls mirrors mainnet 1Click. On Tidepool **any** `X-API-Key` or `Authorization: Bearer` value counts as a key.
@@ -25,10 +25,10 @@ The +25 bps for keyless calls mirrors mainnet 1Click. On Tidepool **any** `X-API
 | `amountIn` | What you should deposit. |
 | `minAmountIn` | The least deposit that will still be swapped. Less than this waits as `INCOMPLETE_DEPOSIT` and is refunded at the deadline. |
 | `amountOut` | Expected output at the quoted price, after fees. |
-| `minAmountOut` | `amountOut × (1 − slippageTolerance)`. Settlement below this is refused and refunded. |
+| `minAmountOut` | `amountOut × (1 − slippageTolerance)`. Settlement below this is refused and refunded. For `EXACT_OUTPUT` it equals `amountOut`, because the output is fixed and the input floats. |
 | `*Formatted`, `*Usd` | Human-readable decimals and USD values. |
 | `deadline` | Last moment a deposit counts. 60 s to 24 h in the future for live quotes. |
-| `timeEstimate` | Seconds to settle after deposit (about 10). |
+| `timeEstimate` | Seconds to settle after deposit: 10 on NEAR, 60 when a bridged chain is involved (as origin or destination). |
 
 ## Live checks
 

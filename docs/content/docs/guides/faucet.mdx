@@ -20,7 +20,7 @@ The widget above and the API are the same faucet. In the UI you **pick a chain f
 | Stellar testnet (`stellar`) | `G…` | 100 test USDC + 100 test USDT (classic assets) | Your account on Stellar testnet | An existing account with trustlines |
 | Sui testnet (`sui`) | `0x…` (64 hex) | 100 test USDC + 100 test USDT (Move coins) | Your address on Sui testnet (any address, no setup) | Testnet SUI for gas |
 
-- **Native gas is never dripped.** ETH, SOL, XLM and SUI come from each chain's own public faucet ([Ethereum Sepolia](https://cloud.google.com/application/web3/faucet/ethereum/sepolia), [Base Sepolia](https://docs.base.org/base-chain/network-information/network-faucets), [Arbitrum Sepolia](https://faucet.quicknode.com/arbitrum/sepolia), [Solana devnet](https://faucet.solana.com), [Stellar Friendbot](https://friendbot.stellar.org), [Sui testnet](https://faucet.sui.io)).
+- **Native gas is never dripped.** ETH, SOL, XLM and SUI come from each chain's own public faucet ([Ethereum Sepolia](https://cloud.google.com/application/web3/faucet/ethereum/sepolia), [Base Sepolia](https://docs.base.org/get-started/get-funds), [Arbitrum Sepolia](https://faucet.quicknode.com/arbitrum/sepolia), [Solana devnet](https://faucet.solana.com), [Stellar Friendbot](https://friendbot.stellar.org), [Sui testnet](https://faucet.sui.io)).
 - **Stellar needs trustlines.** The account must exist (fund it with Friendbot) and add a `changeTrust` operation for each asset: `USDC` and `USDT`, both issued by `GDXABUSRHP4YA5CELHLNJQ4M3TX2BSJ6PEMDFCG2RA4PQLAQLRMFFQAN`. Without them the faucet answers `400` and names the missing one.
 - **Sui needs nothing but an address.** The coins are minted to your address in one transaction; get SUI for gas from the Sui faucet.
 - **Solana token accounts are created for you.** Our backend creates your associated token accounts for the two test mints and pays the rent, so a fresh wallet works. That costs treasury SOL, so there is a global daily cap.
@@ -111,7 +111,7 @@ See [POST /v0/faucet](/docs/api-reference/tidepool-faucet) for the full response
 - **Other chains:** one drip per address per chain per hour.
 - **Six drips per IP per hour**, across everything. Over the limit returns **HTTP 429** with the time you can retry. If a transfer fails, the limit is not consumed.
 - Global daily caps protect the treasuries: Solana (it pays for token accounts), Stellar and Sui (it pays gas). Over the cap returns `429`.
-- Supply is not capped, but the faucet only sends these fixed amounts. Do not loop it.
+- Do not loop the faucet; every drip is a fixed amount.
 
 ## Details per chain
 
