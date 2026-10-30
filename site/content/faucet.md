@@ -10,6 +10,6 @@ Get Tidepool test tokens on NEAR testnet, or test USDC and USDT on Ethereum Sepo
 
 **Wallet** mints NEP-141 tokens to your account (the account must exist). **Intents** credits your balance inside the Tidepool verifier `{{VERIFIER}}`, ready for an `INTENTS` deposit. The account does not need to exist on chain for this mode.
 
-Other chains: `{"chain":"base","address":"0x…"}` (also `eth`, `arb`, `sol`, `stellar`, `sui`; `btc` are rejected with a pointer to the external faucets) sends 100 USDC and 100 USDT to that address; native gas is never dripped. In intents mode, `assets:["sol"]` (or `stellar`, `sui`, `base`, `arb`, `eth`, `bridged`) credits that chain's bridged test tokens, including verifier-only test SOL (0.05), XLM (5) and SUI (0.5).
+Other chains: `{"chain":"base","address":"0x…"}` (also `eth`, `arb`, `sol`, `stellar`, `sui`; `btc` and `xrp` are rejected with a pointer to the external faucets) sends 100 USDC and 100 USDT to that address; native gas is never dripped. In intents mode, `assets:["sol"]` (or `stellar`, `sui`, `base`, `arb`, `eth`, `bridged`) credits that chain's bridged test tokens, including verifier-only test SOL (0.05), XLM (5) and SUI (0.5).
 
 API: `POST /v0/faucet` with `{"accountId":"alice.testnet","mode":"wallet"}`. See the [API reference](/docs/api).

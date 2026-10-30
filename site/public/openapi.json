@@ -1978,7 +1978,7 @@
               "qtc",
               "prl"
             ],
-            "description": "Blockchain associated with the token. The enum is the full 1Click list; Tidepool testnet lists near, eth, base, arb, sol, stellar, sui, btc.",
+            "description": "Blockchain associated with the token. The enum is the full 1Click list; Tidepool testnet lists near, eth, base, arb, sol, stellar, sui, btc, xrp.",
             "example": "near"
           },
           "symbol": {
