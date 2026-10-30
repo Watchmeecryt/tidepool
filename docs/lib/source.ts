@@ -3,6 +3,7 @@ import { docsContentRoute, docsImageRoute, docsRoute } from './shared';
 import { defineDocs } from 'fumadocs-mdx/macro';
 import { metaSchema, pageSchema } from 'fumadocs-core/source/schema';
 import { z } from 'zod';
+import { phosphorIcons } from './icons';
 
 const docs = defineDocs({
   dir: 'content/docs',
@@ -22,7 +23,7 @@ const docs = defineDocs({
 export const source = loader({
   baseUrl: docsRoute,
   source: docs.toFumadocsSource(),
-  plugins: [],
+  plugins: [phosphorIcons()],
 });
 
 export const docsLlms = llms(source, {
