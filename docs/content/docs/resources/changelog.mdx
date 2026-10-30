@@ -3,6 +3,12 @@ title: Changelog
 description: What changed in Tidepool and when.
 ---
 
+## 2026-10-30 · Tidepool App: balances in the token picker
+
+- **Fix:** the **Exchange from/to** list now shows your balance for every token as soon as you pick a network (or **All networks**), not only for the token you already selected. Tokens you hold are listed first, and a short placeholder shows while balances load.
+- **All wallets:** works for the connected wallet on NEAR, Ethereum, Base, Arbitrum, Solana, Stellar, Sui, Bitcoin and XRP Ledger. Networks without a connected wallet show no balance, and a network that can't be read shows a dash.
+- **Fast:** each network is read in one batched call, in parallel, and cached for 30 seconds, so switching tabs back and forth does not refetch.
+
 ## 2026-10-30 · Tidepool App: friendlier errors and guards
 
 - **Stellar trustlines:** when the recipient has no trustline for the output asset (USDC or USDT), the app says so as soon as the address is entered and offers an **Add trustline** button that signs a `changeTrust` with Freighter on testnet. Confirm stays disabled until it is in place.
