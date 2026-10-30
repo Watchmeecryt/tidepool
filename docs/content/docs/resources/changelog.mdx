@@ -3,6 +3,15 @@ title: Changelog
 description: What changed in Tidepool and when.
 ---
 
+## 2026-10-30 · Tidepool App: friendlier errors and guards
+
+- **Stellar trustlines:** when the recipient has no trustline for the output asset (USDC or USDT), the app says so as soon as the address is entered and offers an **Add trustline** button that signs a `changeTrust` with Freighter on testnet. Confirm stays disabled until it is in place.
+- **Faucet:** errors show as a short callout. For an unfunded Stellar account, **Fund with Friendbot** funds it from the app and retries, and **Add trustlines** adds the test USDC and USDT trustlines through Freighter.
+- **SOL payouts:** when a quote fails because the payout is under Solana's rent-exempt minimum or over the 0.005 SOL cap, the app shows the valid range in your source token with **Use minimum**, and **Try again** re-requests the quote.
+- **Balance check:** with a wallet connected, a swap larger than its balance shows **Insufficient balance** with a link to the faucet. Pay from another wallet, or use the manual deposit address, still works.
+- **After a redeploy** the app reloads once on its own if it asks for an old script file, and keeps your swap inputs.
+- **Fix:** the amount boxes no longer jump while a quote loads.
+
 ## 2026-10-30 · Tidepool App: wallet connect on every chain
 
 - **One-click deposit from a wallet** in the [Tidepool App](https://app.usetidepool.tech), on each testnet: Solana devnet (Phantom, Solflare, Backpack), Sui testnet (Slush / Sui Wallet, Suiet), Stellar testnet (Freighter, with the quote's memo), Bitcoin testnet4 (Xverse, Unisat, Leather) and XRP Ledger testnet (Crossmark, GemWallet, with the quote's destination tag). EVM and NEAR wallets work as before.
