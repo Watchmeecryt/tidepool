@@ -54,3 +54,5 @@ main{min-width:0}
 .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:1.2em 0}
 .step i{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--teal);color:#fff;font:600 14px Figtree;font-style:normal;margin-bottom:10px}
 @media(max-width:700px){.steps{grid-template-columns:1fr}}
+
+.topnav a.launch{color:#fff;background:var(--teal);padding:6px 14px;border-radius:999px}.topnav a.launch:hover{color:#fff;opacity:.9}

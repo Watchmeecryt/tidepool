@@ -11,6 +11,7 @@ export function baseOptions(): BaseLayoutProps {
       { text: 'API reference', url: '/docs/api-reference' },
       { text: 'Faucet', url: '/docs/guides/faucet' },
       { text: 'Status', url: '/docs/status' },
+      { type: 'button', text: 'Launch app', url: 'https://app.usetidepool.tech', external: true, secondary: false },
     ],
   };
 }
