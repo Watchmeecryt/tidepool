@@ -8,6 +8,7 @@ A 1Click-compatible testnet sandbox for NEAR Intents. Community-built and not af
 - `docs/`: the docs site (Next.js + Fumadocs, static export served by the server). The API reference pages are generated from `site/public/openapi.json` at build time.
 - `site/`: `openapi.json` and static assets, plus Markdown that is only a fallback if the docs build is missing.
 - `scripts/`: idempotent testnet bootstrap.
+- Web app: [app.usetidepool.tech](https://app.usetidepool.tech), a swap/bridge UI for the testnet (separate repo, a static client of this API).
 - `examples/swap.mjs`: an end-to-end swap (intents, `--origin`, `--refund`). More runnable scripts are in the public [tidepool-examples](https://github.com/zer0plugyut-afk/tidepool-examples) repo.
 
 ## Run

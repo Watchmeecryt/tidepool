@@ -12,6 +12,10 @@ No sign-up, no API key. Call the API directly; any `X-API-Key` or `Bearer` value
 Paste the **[dev prompt](/docs/guides/agents#prompt-snippet)** into your agent, or point it at [`/llms-full.txt`](/llms-full.txt). Prefer runnable code? Clone **[tidepool-examples](https://github.com/zer0plugyut-afk/tidepool-examples)** and run `npm run first-swap`.
 </Callout>
 
+<Callout title="Prefer a UI?">
+Try the same flow in the browser with the **[Tidepool App](https://app.usetidepool.tech)**: pick tokens, get a live quote, deposit and watch the status, all through this API. It also has a [faucet page](https://app.usetidepool.tech/faucet).
+</Callout>
+
 <Callout type="warn">Community-operated testnet. Tidepool runs the maker and derives deposit-address keys. Never send real assets.</Callout>
 
 Tidepool speaks the 1Click Swap API (OpenAPI v0.1.10) shape on NEAR testnet. If you already have a 1Click client, change its base URL to `https://www.usetidepool.tech` and use the testnet asset ids from `/v0/tokens`.

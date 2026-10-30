@@ -3,6 +3,13 @@ title: Changelog
 description: What changed in Tidepool and when.
 ---
 
+## 2026-10-30 · Tidepool App: a web UI for swaps and bridges
+
+- **New:** [app.usetidepool.tech](https://app.usetidepool.tech), a browser app for the testnet, labelled as the testnet version of NEAR Intents with 1Click-compatible APIs. It is a static client of this public API (`/v0/tokens`, `/v0/quote`, `/v0/deposit/submit`, `/v0/status`, `/v0/faucet`) and needs no backend changes.
+- **Flow:** token and network picker for every asset in `/v0/tokens` (respecting the per-swap caps), live `EXACT_INPUT` quote (rate, minimum received, fee, deadline), recipient and refund validation per chain, deposit address with QR, memo or destination tag and a countdown, live status (`PENDING_DEPOSIT` → `KNOWN_DEPOSIT_TX` → `PROCESSING` → `SUCCESS` / `REFUNDED` / `FAILED`) with explorer links for every transaction, local swap history, and a faucet page.
+- **Wallets (optional):** EVM wallets (RainbowKit, injected wallets) and NEAR wallets (wallet selector) can fill addresses and pay in one click. Solana, Stellar and Sui wallets are not wired yet: use the deposit address, QR and memo shown by the app. Bitcoin and XRP are manual only.
+- Tested end to end through the app: NEAR → Base Sepolia, NEAR → Solana devnet and NEAR → Sui testnet all reached `SUCCESS`.
+
 ## 2026-10-29 · Bitcoin watcher rate limits, payout driver hardening
 
 - **Bitcoin testnet4 reads.** Public Esplora hosts were answering `429` to Tidepool's server, which stalled deposits (health reported `btc.ok: false`). The watcher now caches reads and shares in-flight requests, polls each deposit address every 20 seconds (2 minutes after its quote expired), backs endpoints off exponentially (honouring `Retry-After`) and also fails over to mempool.ninja. Swaps that were waiting resume on their own; a deposit that arrived after its deadline is refunded to `refundTo`.

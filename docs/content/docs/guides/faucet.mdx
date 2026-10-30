@@ -6,6 +6,10 @@ description: "Free test tokens on NEAR, Ethereum Sepolia, Base Sepolia, Arbitrum
 
 <FaucetWidget />
 
+<Callout title="Faucet in the Tidepool App">
+The [Tidepool App](https://app.usetidepool.tech/faucet) has a faucet page with one card per chain (NEAR, Ethereum, Base, Arbitrum, Solana, Stellar, Sui and XRP, plus links for native BTC and gas). It calls the same `POST /v0/faucet` endpoint.
+</Callout>
+
 ## How the faucet works
 
 The widget above and the API are the same faucet. In the UI you **pick a chain from the dropdown, paste your address on that chain, and press the button**: our backend signs and sends the tokens, you never sign anything. Through the API you send the same request yourself (examples below).

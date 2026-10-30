@@ -55,6 +55,7 @@ export default function HomePage() {
               </p>
               <div className="tp-rise tp-d3 mt-8 flex flex-wrap justify-center gap-3 lg:justify-start">
                 <Link href="/docs/quickstart" className="tp-btn tp-btn-primary">Run your first test swap →</Link>
+                <a href="https://app.usetidepool.tech" className="tp-btn tp-btn-ghost">Open the app</a>
                 <Link href="/docs/guides/faucet" className="tp-btn tp-btn-ghost">Get test tokens</Link>
                 <a href="https://github.com/zer0plugyut-afk/tidepool-examples" className="tp-btn tp-btn-ghost">Examples repo</a>
               </div>

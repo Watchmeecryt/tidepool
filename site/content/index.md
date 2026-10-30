@@ -53,4 +53,5 @@ Set `"dry": false` for a deposit address, then follow [First swap in 5 minutes](
 - **Base URL:** `{{ORIGIN}}`
 - **Verifier:** [`{{VERIFIER}}`](https://testnet.nearblocks.io/address/{{VERIFIER}}), wasm sha256 `{{SHA}}` (checked live on [status](/status))
 - **Network:** NEAR testnet. Test tokens have no value.
+- **Web app:** [app.usetidepool.tech](https://app.usetidepool.tech), swap and bridge in the browser.
 - **Machine-readable:** [`/openapi.json`](/openapi.json), [`/llms.txt`](/llms.txt), [`/AGENTS.md`](/AGENTS.md)
