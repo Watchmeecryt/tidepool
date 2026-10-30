@@ -51,8 +51,8 @@ const data = await res.json();
   "checks": {
     "rpc": {
       "ok": true,
-      "height": 274605756,
-      "ms": 80
+      "height": 275475131,
+      "ms": 35
     },
     "verifier": {
       "ok": true,
@@ -61,51 +61,190 @@ const data = await res.json();
     "prices": {
       "ok": true,
       "source": "coingecko",
-      "updatedAt": "2026-10-24T21:30:25.128Z"
+      "updatedAt": "2026-10-30T16:33:07.254Z"
     },
     "makerInventory": {
       "ok": true,
       "balances": {
-        "USDC": "1999720",
-        "USDT": "1999710",
-        "wNEAR": "799875.5214169960396638752",
-        "wBTC": "19.99693796",
-        "ETH": "599.907873451968147949",
-        "XAUT": "599.91"
+        "USDC": "199794.026",
+        "USDT": "199823.001962",
+        "wNEAR": "798486.217017204137925145685572",
+        "wBTC": "19.96393796",
+        "ETH": "598.887873451968147949",
+        "XAUT": "598.92",
+        "SOL": "99.945907664",
+        "XLM": "99946.4434866",
+        "SUI": "99989.591350225",
+        "XRP": "19997.032018",
+        "BTC": "19.99950596"
+      }
+    }
+  },
+  "verifierStorage": {
+    "balanceNear": 35.988485,
+    "storageStakeNear": 17.1017,
+    "spareNear": 18.8868,
+    "storageBytes": 1710172,
+    "lowSpareThresholdNear": 2,
+    "low": false
+  },
+  "bridges": {
+    "note": "Testnet bridges (EVM chains, Solana devnet, Stellar testnet, Sui testnet, Bitcoin testnet4, Zcash testnet and XRP Ledger testnet): trusted relayer run by Tidepool, testnet only.",
+    "chains": {
+      "base": {
+        "ok": true,
+        "name": "Base Sepolia",
+        "chainId": 84532,
+        "height": 52280606,
+        "vault": "0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2",
+        "relayer": "0x55F2c8044D790e1b8369508c31c756c0c2Ca0E93",
+        "relayerGasEth": "0.031975252885951139",
+        "vaultBalances": {
+          "USDC": "200032.1994",
+          "USDT": "199971.3354"
+        }
+      },
+      "arb": {
+        "ok": true,
+        "name": "Arbitrum Sepolia",
+        "chainId": 421614,
+        "height": 324396169,
+        "vault": "0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2",
+        "relayer": "0x55F2c8044D790e1b8369508c31c756c0c2Ca0E93",
+        "relayerGasEth": "0.030919864774853",
+        "vaultBalances": {
+          "USDC": "200076.8696",
+          "USDT": "199976.0624"
+        }
+      },
+      "eth": {
+        "ok": true,
+        "name": "Ethereum Sepolia",
+        "chainId": 11155111,
+        "height": 12027890,
+        "vault": "0xc387E121e0aF273D83c20B1d286c12F5C3294f38",
+        "relayer": "0x55F2c8044D790e1b8369508c31c756c0c2Ca0E93",
+        "relayerGasEth": "0.073998969652555663",
+        "vaultBalances": {
+          "USDC": "200021.0004",
+          "USDT": "200000.0"
+        }
+      },
+      "sol": {
+        "ok": true,
+        "name": "Solana Devnet",
+        "cluster": "devnet",
+        "rpc": {
+          "custom": true,
+          "endpoints": 2
+        },
+        "payoutCapSol": "0.005",
+        "height": 504013377,
+        "relayer": "BEijzwSQpWxbgQQ5NfBePxUzHgLoc2vrApPe8G4St55Q",
+        "relayerSol": "6.9452",
+        "treasury": {
+          "USDC": "199992.5834",
+          "USDT": "200025"
+        }
+      },
+      "stellar": {
+        "ok": true,
+        "name": "Stellar Testnet",
+        "network": "testnet",
+        "treasury": "GBWLJSU3XF6NKHBY25VSDVVKIYS2ATCHHUVYLNWSARHLOLDDXSP2BA4Z",
+        "issuer": "GDXABUSRHP4YA5CELHLNJQ4M3TX2BSJ6PEMDFCG2RA4PQLAQLRMFFQAN",
+        "configured": true,
+        "assets": [
+          "nep141:stellar.tp-omft.testnet",
+          "nep141:stellar-0da9087074a12ebeb5dcdc8bcf33cf163ab498fc.tp-omft.testnet",
+          "nep141:stellar-c36e358585c12ac3f684b98be0c6682ca9c4665f.tp-omft.testnet"
+        ],
+        "latestLedger": 5470870,
+        "treasuryBalances": {
+          "XLM": "9951.4433866",
+          "USDC": "999891.026",
+          "USDT": "999900"
+        }
+      },
+      "xrp": {
+        "ok": true,
+        "name": "XRP Ledger Testnet",
+        "network": "testnet",
+        "treasury": "rwJx1hzscZ6THJwhDwmtPQj4YjhvysFyLd",
+        "configured": true,
+        "assets": [
+          "nep141:xrp.tp-omft.testnet"
+        ],
+        "latestLedger": 21942008,
+        "treasuryBalances": {
+          "XRP": "483.985898"
+        }
+      },
+      "sui": {
+        "ok": true,
+        "name": "Sui Testnet",
+        "network": "testnet",
+        "rpc": {
+          "custom": false,
+          "endpoints": 1
+        },
+        "swapCapSui": "10",
+        "treasury": "0x565662f245d0a66f567aa71499589f70fee8c2a5af20e8614429371fbe4f252c",
+        "package": "0x71a32ced7702bba9a8d23a122971d5973baa610f1689306176ac4f364d68bb3c",
+        "treasurySui": "3.5583"
+      },
+      "btc": {
+        "ok": true,
+        "name": "Bitcoin Testnet4",
+        "network": "testnet4",
+        "rpc": {
+          "custom": false,
+          "endpoints": 3
+        },
+        "swapCapBtc": "0.005",
+        "minBtc": "0.0001",
+        "confirmations": 1,
+        "treasury": "tb1qy2tthlq2ntnjvk40payyuwpnzaf365h02ze0qr",
+        "treasuryBtc": "0.00902736"
       }
     }
   },
   "swaps": {
-    "total": 4,
-    "success": 3,
-    "refunded": 1,
-    "failed": 0,
-    "active": 0
+    "total": 176,
+    "success": 114,
+    "refunded": 21,
+    "failed": 1,
+    "active": 40
   },
   "recent": [
     {
       "status": "SUCCESS",
-      "pair": "usdc → wnear",
-      "updatedAt": "2026-10-24T21:30:42.751Z",
-      "tx": "https://testnet.nearblocks.io/txns/EB5xfEyjiC1oESNjEyNjnkzW4Zpsi24e4H2s6aUGEh9d"
-    },
-    {
-      "status": "REFUNDED",
-      "pair": "usdc → eth",
-      "updatedAt": "2026-10-24T21:10:30.279Z",
-      "tx": "https://testnet.nearblocks.io/txns/4LaFRDyTHHyAWP4PNz2z38MC34GAcr6aE2KTUTdTHysy"
+      "pair": "sui-add896332c906e599cee03f2154d067937d12a26 → arb-0xc15cf5600225302675604310094f134e88705e62",
+      "updatedAt": "2026-10-30T13:32:44.856Z"
     },
     {
       "status": "SUCCESS",
-      "pair": "usdt → wbtc",
-      "updatedAt": "2026-10-24T21:09:07.722Z",
-      "tx": "https://testnet.nearblocks.io/txns/F4NQXgVoczTixw1bvekQf7k5NGNKoDY4huveLxhkoToX"
+      "pair": "stellar-0da9087074a12ebeb5dcdc8bcf33cf163ab498fc → sui-add896332c906e599cee03f2154d067937d12a26",
+      "updatedAt": "2026-10-30T06:00:29.460Z",
+      "tx": "https://testnet.nearblocks.io/txns/HR6K2wmqAhrCLduxP62UFNHtFKirQMVy334MiWoBSAd6"
     },
     {
       "status": "SUCCESS",
-      "pair": "usdc → wnear",
-      "updatedAt": "2026-10-24T21:08:51.970Z",
-      "tx": "https://testnet.nearblocks.io/txns/CTnAzK9YrbNy64GR9hhEQUF7ctn6KHYY5tpt57g5pEPe"
+      "pair": "stellar → sol",
+      "updatedAt": "2026-10-30T05:54:57.905Z",
+      "tx": "https://testnet.nearblocks.io/txns/4tirF4cCTguBft9Tjt7sg8y8GnED4foAzdaDbBR3X3KtLwbui8THJTxHcUzPapSXRWN47MtBk7Zh6xzYjD79RTsD"
+    },
+    {
+      "status": "SUCCESS",
+      "pair": "sui-f6ecfe107e72d22b7a646dd2cc4f1b2876349c0c → sol-d48c1adc423a64867ac91ed2e1c0df76da323235",
+      "updatedAt": "2026-10-30T05:43:17.636Z",
+      "tx": "https://testnet.nearblocks.io/txns/63fmWfKc5inyAYh43nGDGTCYasypmULZk4x91Y43iz8Nmi8qXxYEJwqPhJyVxXxDRA2ikrUuUNuZiCDEYqgjdft9"
+    },
+    {
+      "status": "SUCCESS",
+      "pair": "sui-f6ecfe107e72d22b7a646dd2cc4f1b2876349c0c → sol-d48c1adc423a64867ac91ed2e1c0df76da323235",
+      "updatedAt": "2026-10-30T05:43:53.657Z",
+      "tx": "https://testnet.nearblocks.io/txns/5BU24NkZUwVutj38Ss4p5wAukUPMEFg3yFWeFoj8ZBJMXFjfpf9Y8Ymar2eurPyFH5MGaZRx8Z4F9Nhco3bsPoAz"
     }
   ],
   "ok": true

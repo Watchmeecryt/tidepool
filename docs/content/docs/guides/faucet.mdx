@@ -74,6 +74,39 @@ curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: applicatio
   -d '{"chain":"stellar","address":"GYourStellarAddress"}'
 ```
 
+### Responses
+
+Response to `{"accountId":"alice.testnet","mode":"wallet"}`. This sample was recorded from a live drip and **shortened**: it shows two of the six NEAR test tokens in `drips` and only the first mint in `transactions`. A full response has one `drips` entry and (in `wallet` mode) one `transactions` entry for each of the six tokens; in `intents` mode, `transactions` entries are `{ assets, txHash, explorerUrl }`, one per six tokens:
+
+```json
+{
+  "accountId": "alice.testnet",
+  "mode": "wallet",
+  "drips": [
+    {
+      "assetId": "nep141:usdc.tidepool-sandbox.testnet",
+      "symbol": "USDC",
+      "amount": "100"
+    },
+    {
+      "assetId": "nep141:usdt.tidepool-sandbox.testnet",
+      "symbol": "USDT",
+      "amount": "100"
+    }
+  ],
+  "transactions": [
+    {
+      "assetId": "nep141:usdc.tidepool-sandbox.testnet",
+      "amount": "100",
+      "txHash": "F6JiEXj2LSkzhAdGoBV5hBs5etTjdgNvvNsH72aBACcN",
+      "explorerUrl": "https://testnet.nearblocks.io/txns/F6JiEXj2LSkzhAdGoBV5hBs5etTjdgNvvNsH72aBACcN"
+    }
+  ]
+}
+```
+
+A rejected request returns `{ "message": "…" }` with HTTP 400 (for example `{"message":"accountId must be a NEAR testnet account id"}`) or 429 when rate limited (`Rate limited: … can use the wallet faucet again after <time>`). Every field is in the [faucet reference](/docs/api-reference/tidepool-faucet).
+
 ### Bridged tokens into the verifier (`assets` chain aliases)
 
 With `mode: "intents"`, `assets` accepts asset ids, NEAR symbols (`"USDC"` means the NEAR USDC) and these **chain aliases**: `sol`, `stellar`, `sui`, `base`, `arb`, `eth`, `bridged` (every chain at once). Each alias credits that chain's bridged test tokens to your intents balance. The default with no `assets` stays the six NEAR tokens.

@@ -6,6 +6,8 @@ description: "GET /v0/account/balances · 1Click-compatible"
 
 <p><span className="tp-method tp-get">GET</span><code>{"/v0/account/balances"}</code></p>
 
+Needs `Authorization: Bearer <accessToken>` from `/v0/auth/authenticate`. Without `tokenIds` only non-zero balances are listed (an empty account returns `{ "balances": [] }`); with `tokenIds` every requested token is listed, including zeros as below. `tokenIds` takes a comma-separated list. Real response for a fresh throwaway account.
+
 Returns token balances for the authenticated user from private balance sources Tidepool: needs a Tidepool JWT (401 without). Balances come from the testnet verifier; source is `private`.
 
 **Operation id:** `getBalances` · **Auth:** optional (`X-API-Key` or `Authorization: Bearer`, any value)
@@ -16,14 +18,17 @@ Returns token balances for the authenticated user from private balance sources T
 <Tab value="curl">
 
 ```bash
-curl "https://www.usetidepool.tech/v0/account/balances"
+curl "https://www.usetidepool.tech/v0/account/balances?tokenIds=nep141%3Ausdc.tidepool-sandbox.testnet%2Cnep141%3Awnear.tidepool-sandbox.testnet" \
+  -H 'Authorization: Bearer <accessToken>'
 ```
 
 </Tab>
 <Tab value="JavaScript">
 
 ```ts
-const res = await fetch('https://www.usetidepool.tech/v0/account/balances');
+const res = await fetch('https://www.usetidepool.tech/v0/account/balances?tokenIds=nep141%3Ausdc.tidepool-sandbox.testnet%2Cnep141%3Awnear.tidepool-sandbox.testnet', {
+  headers: { 'Authorization': 'Bearer <accessToken>' },
+});
 const data = await res.json();
 ```
 
@@ -44,8 +49,13 @@ const data = await res.json();
 {
   "balances": [
     {
-      "tokenId": "nep141:wrap.near",
-      "available": "1000000000000000000000000",
+      "tokenId": "nep141:usdc.tidepool-sandbox.testnet",
+      "available": "0",
+      "source": "private"
+    },
+    {
+      "tokenId": "nep141:wnear.tidepool-sandbox.testnet",
+      "available": "0",
       "source": "private"
     }
   ]
@@ -64,4 +74,10 @@ const data = await res.json();
 </Accordion></Accordions>
 
 ### 401 Unauthorized - User session token is invalid or expired
+
+```json
+{
+  "message": "Unauthorized: send Authorization: Bearer <accessToken> from /v0/auth/authenticate"
+}
+```
 

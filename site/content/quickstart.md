@@ -8,7 +8,7 @@ Tidepool speaks the 1Click Swap API (OpenAPI v0.1.10) shape on NEAR testnet. If 
 curl {{ORIGIN}}/v0/tokens
 ```
 
-Each token has an `assetId` such as `nep141:usdc.{{ROOT}}`. Use those ids in quotes.
+Each token has an `assetId` such as `nep141:usdc.{{ROOT}}`. Use those ids in quotes. The complete live response (all tokens, every field) is in the [tokens reference](/docs/api-reference/get-tokens).
 
 ## 2. Ask for a dry quote
 
@@ -34,6 +34,43 @@ curl -X POST {{ORIGIN}}/v0/quote \
 ```
 
 `amount` is in base units (USDC has 6 decimals, so `10000000` is 10 USDC). `slippageTolerance` is in basis points.
+
+Real response (a dry quote, taken live on 2026-10-30; prices move, so your numbers will differ):
+
+```json
+{
+  "correlationId": "a0e51424-8cfa-4fc3-b967-c8ca464a69fa",
+  "timestamp": "2026-10-30T16:35:05.469Z",
+  "quoteRequest": {
+    "dry": true,
+    "swapType": "EXACT_INPUT",
+    "slippageTolerance": 100,
+    "originAsset": "nep141:usdc.{{ROOT}}",
+    "depositType": "INTENTS",
+    "destinationAsset": "nep141:wnear.{{ROOT}}",
+    "amount": "10000000",
+    "refundTo": "alice.testnet",
+    "refundType": "INTENTS",
+    "recipient": "alice.testnet",
+    "recipientType": "DESTINATION_CHAIN",
+    "deadline": "2030-01-01T00:00:00.000Z"
+  },
+  "quote": {
+    "amountIn": "10000000",
+    "amountInFormatted": "10",
+    "amountInUsd": "9.9981",
+    "minAmountIn": "10000000",
+    "amountOut": "2303964921296296107520000",
+    "amountOutFormatted": "2.30396492129629610752",
+    "amountOutUsd": "9.9531",
+    "minAmountOut": "2280925272083333146444800",
+    "timeEstimate": 10
+  },
+  "signature": "ed25519:MjBxpwWWze1Ng4WGtD5euszcGEN1Lgo7eaQQaRTcYV4fdmuTmR8k3wtaZsrB9ES69NFMcydQKaBy6EBYMQGCZqW"
+}
+```
+
+This is the complete body: `correlationId`, `timestamp`, `quoteRequest` (your request echoed, with defaults filled in), `quote` and `signature`. A dry quote has no `depositAddress`, `deadline` or `timeWhenInactive`. The twelve fields above are the required ones; every optional field (`appFees`, `referral`, `depositMode`, `quoteWaitingTimeMs`, `connectedWallets`, `sessionId`, `virtualChainRecipient`, `virtualChainRefundRecipient`, `customRecipientMsg`, `confidentiality`, `ondoTokens`) is in the [full request on Swap types](/docs/concepts/swap-types#all-request-fields).
 
 ## 3. Go live
 

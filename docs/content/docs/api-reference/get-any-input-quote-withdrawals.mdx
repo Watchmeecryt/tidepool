@@ -6,6 +6,8 @@ description: "GET /v0/any-input/withdrawals · 1Click-compatible"
 
 <p><span className="tp-method tp-get">GET</span><code>{"/v0/any-input/withdrawals"}</code></p>
 
+Real response for a live `ANY_INPUT` quote that has not received a deposit yet, so `tidepool.withdrawals` is empty. After deposits, each payout appears as an entry of `tidepool.withdrawals` (and the newest one in the top-level fields, as in 1Click); see the fields table.
+
 Retrieves all withdrawals by ANY_INPUT quote with filtering, pagination and sorting Tidepool: `withdrawals` is the spec's single object (the newest on the page). The full page is also returned as `tidepool.withdrawals` with `total`, `page` and `limit`.
 
 **Operation id:** `getAnyInputQuoteWithdrawals` · **Auth:** optional (`X-API-Key` or `Authorization: Bearer`, any value)
@@ -16,14 +18,14 @@ Retrieves all withdrawals by ANY_INPUT quote with filtering, pagination and sort
 <Tab value="curl">
 
 ```bash
-curl "https://www.usetidepool.tech/v0/any-input/withdrawals"
+curl "https://www.usetidepool.tech/v0/any-input/withdrawals?depositAddress=1479dfce6931f61456a8abdac46f04574da520d5f71313339c292fda1be950f7"
 ```
 
 </Tab>
 <Tab value="JavaScript">
 
 ```ts
-const res = await fetch('https://www.usetidepool.tech/v0/any-input/withdrawals');
+const res = await fetch('https://www.usetidepool.tech/v0/any-input/withdrawals?depositAddress=1479dfce6931f61456a8abdac46f04574da520d5f71313339c292fda1be950f7');
 const data = await res.json();
 ```
 
@@ -47,19 +49,14 @@ const data = await res.json();
 
 ```json
 {
-  "asset": "nep141:sol-5ce3bf3a31af18be40ba30f721101b4341690186.omft.near",
-  "recipient": "0x2527d02599ba641c19fea793cd0f167589a0f10d",
-  "affiliateRecipient": "0x2527d02599ba641c19fea793cd0f167589a0f10d",
-  "withdrawals": {
-    "status": "SUCCESS",
-    "amountOutFormatted": "9.95",
-    "amountOutUsd": "9.95",
-    "amountOut": "9950000",
-    "withdrawFeeFormatted": "0.01",
-    "withdrawFee": "10000",
-    "withdrawFeeUsd": "0.01",
-    "timestamp": "2019-08-24T14:15:22Z",
-    "hash": "0x123abc456def789"
+  "asset": "nep141:wnear.tidepool-sandbox.testnet",
+  "recipient": "user.testnet",
+  "affiliateRecipient": "",
+  "tidepool": {
+    "withdrawals": [],
+    "total": 0,
+    "page": 1,
+    "limit": 50
   }
 }
 ```
@@ -86,11 +83,13 @@ const data = await res.json();
 
 ### 401 Unauthorized - API key or JWT token is invalid
 
+Tidepool does not return this: `/v0/any-input/withdrawals` takes no authentication.
+
 ### 404 Deposit address not found
 
 ```json
 {
-  "message": "error message"
+  "message": "Deposit address not found"
 }
 ```
 

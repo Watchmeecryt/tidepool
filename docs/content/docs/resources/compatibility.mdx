@@ -36,6 +36,8 @@ Checked against the official 1Click OpenAPI (`https://1click.chaindefuser.com/do
 | Auth | JWT required for fee-free quotes | Free JWTs from `/v0/auth/authenticate` (`nep413`, `raw_ed25519`, `erc191`); for swaps any `x-api-key` / Bearer value gets the lower fee |
 | `depositMode: MEMO` | Memo chains | NEAR-native `ORIGIN_CHAIN` tokens, Stellar testnet and XRP Ledger testnet (required on both); a NEAR-native submit also needs `nearSenderAccount`. Not allowed with `ANY_INPUT` |
 | `ANY_INPUT` | Authorized partners only | Open to everyone on testnet. Not available with Stellar or XRP deposits or SOL, XLM, SUI, BTC and XRP payouts |
+| `ANY_INPUT` request | NEAR's example uses `originAsset: "1cs_v1:any"` and `amount: "0"` | Rejected with 400: send a real `originAsset` id from `/v0/tokens` and an `amount` above `"0"` (it is only used to size the deposit; `minAmountIn` is `"1"` and each deposit is converted at the live price). `appFees` and `ORIGIN_CHAIN` deposits are accepted. See [Swap types](/docs/concepts/swap-types) |
+| Mainnet asset ids and the $1,000 pool threshold for `ANY_INPUT` batching | Mainnet ids; deposits pooled until the threshold | Testnet ids only; each `ANY_INPUT` deposit is swapped on its own, with no pool threshold |
 | `ANY_INPUT` withdrawals | `withdrawals` object | Spec's single object (newest), plus the full page in `tidepool.withdrawals` |
 | Orders | Solver-filled | Tidepool maker fills once (no partial fills); deadline 7d default, 30d max |
 | generate-intent | All standards | `INTENTS`-deposit quotes only; `webauthn`/`ton_connect` submit-only |

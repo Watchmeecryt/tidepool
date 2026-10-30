@@ -129,6 +129,60 @@ const data = await res.json();
 }
 ```
 
+**Status of a quote that has not been paid yet (PENDING_DEPOSIT)**
+
+```json
+{
+  "correlationId": "24361e73-4a77-4689-bbcd-031670808504",
+  "quoteResponse": {
+    "correlationId": "24361e73-4a77-4689-bbcd-031670808504",
+    "timestamp": "2026-10-30T16:31:46.340Z",
+    "quoteRequest": {
+      "dry": false,
+      "swapType": "EXACT_INPUT",
+      "slippageTolerance": 100,
+      "originAsset": "nep141:usdc.tidepool-sandbox.testnet",
+      "depositType": "INTENTS",
+      "destinationAsset": "nep141:wnear.tidepool-sandbox.testnet",
+      "amount": "5000000",
+      "recipient": "9cf39ad040a13205c3ab109a8566fd779394a548f76b1aed5107efcdfe6c7ceb",
+      "recipientType": "INTENTS",
+      "refundTo": "9cf39ad040a13205c3ab109a8566fd779394a548f76b1aed5107efcdfe6c7ceb",
+      "refundType": "INTENTS",
+      "deadline": "2026-10-30T17:01:45.000Z"
+    },
+    "quote": {
+      "amountIn": "5000000",
+      "amountInFormatted": "5",
+      "amountInUsd": "4.9988",
+      "minAmountIn": "5000000",
+      "amountOut": "1146611853686635908000000",
+      "amountOutFormatted": "1.146611853686635908",
+      "amountOutUsd": "4.9763",
+      "minAmountOut": "1135145735149769548920000",
+      "timeEstimate": 10,
+      "depositAddress": "54e8db801fab4ec416719b8b3044c21bacb4652c698ad4c5846086e5cf27b3a4",
+      "deadline": "2026-10-30T17:01:45.000Z",
+      "timeWhenInactive": "2026-10-30T17:01:45.000Z"
+    },
+    "signature": "ed25519:4BTdtKWHcvgAujkc1RpFa5vF8XE5DNET2qLHRkNhrTaWPKzsHm5uHqKDjTUCx6KTFM4whK3L2KjH6bjEhG5MQzNe"
+  },
+  "status": "PENDING_DEPOSIT",
+  "updatedAt": "2026-10-30T16:31:46.350Z",
+  "swapDetails": {
+    "intentHashes": [],
+    "nearTxHashes": [],
+    "originChainTxHashes": [],
+    "destinationChainTxHashes": [],
+    "withdrawFee": "0"
+  },
+  "tidepool": {
+    "explorer": [],
+    "intentsAccount": "54e8db801fab4ec416719b8b3044c21bacb4652c698ad4c5846086e5cf27b3a4"
+  }
+}
+```
+
 <Accordions><Accordion title="Response fields">
 
 | Field | Type | Required | Description |
@@ -221,6 +275,8 @@ const data = await res.json();
 </Accordion></Accordions>
 
 ### 401 Unauthorized - API key or JWT token is invalid
+
+Tidepool does not return this: `/v0/status` takes no authentication.
 
 ### 404 Deposit address not found
 

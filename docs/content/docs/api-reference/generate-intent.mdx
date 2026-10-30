@@ -6,6 +6,8 @@ description: "POST /v0/generate-intent · 1Click-compatible"
 
 <p><span className="tp-method tp-post">POST</span><code>{"/v0/generate-intent"}</code></p>
 
+Only for quotes with `depositType: INTENTS` (the deposit address is an intents account). The `intent.payload` is the exact string to sign; sign it with your wallet and send the result to `/v0/submit-intent`. The `deadline` in the payload is about 15 minutes ahead. Real request and response from a live quote.
+
 Generates an unsigned intent payload that needs to be signed by the user.   This endpoint takes a quote or limit-order deposit address, validates the target state and caller ownership when required, and returns an intent payload formatted according to the specified signing standard (e.g., NEP413, ERC191).   The generated intent must be signed by the user's wallet and then submitted via the `/submit-intent` endpoint to complete the action (e.g. swap).   **Request Type Variants:**   - `swap_transfer`: Generate an intent for a swap operation (requires depositAddress, signerId, standard) Tidepool: only quotes with depositType INTENTS can be funded this way. Supports nep413, raw_ed25519, erc191, tip191 and sep53. webauthn and ton_connect are accepted by submit-intent but cannot be generated.
 
 **Operation id:** `generateIntent` · **Auth:** optional (`X-API-Key` or `Authorization: Bearer`, any value)
@@ -20,9 +22,9 @@ curl -X POST "https://www.usetidepool.tech/v0/generate-intent" \
   -H 'content-type: application/json' \
   -d '{
   "type": "swap_transfer",
-  "standard": "nep413",
-  "signerId": "user.near",
-  "depositAddress": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0"
+  "standard": "raw_ed25519",
+  "signerId": "9cf39ad040a13205c3ab109a8566fd779394a548f76b1aed5107efcdfe6c7ceb",
+  "depositAddress": "54e8db801fab4ec416719b8b3044c21bacb4652c698ad4c5846086e5cf27b3a4"
 }'
 ```
 
@@ -35,9 +37,9 @@ const res = await fetch('https://www.usetidepool.tech/v0/generate-intent', {
   headers: { 'content-type': 'application/json' },
   body: JSON.stringify({
     "type": "swap_transfer",
-    "standard": "nep413",
-    "signerId": "user.near",
-    "depositAddress": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0"
+    "standard": "raw_ed25519",
+    "signerId": "9cf39ad040a13205c3ab109a8566fd779394a548f76b1aed5107efcdfe6c7ceb",
+    "depositAddress": "54e8db801fab4ec416719b8b3044c21bacb4652c698ad4c5846086e5cf27b3a4"
   }),
 });
 const data = await res.json();
@@ -48,6 +50,12 @@ const data = await res.json();
 
 ### Body
 
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `type` | "swap_transfer" | yes | The type of intent action |
+| `standard` | object | yes | The standard used for signing the intent |
+| `signerId` | string | yes | The account ID of the signer |
+| `depositAddress` | string | yes | The deposit address from the quote response |
 
 ## Responses
 
@@ -56,15 +64,28 @@ const data = await res.json();
 ```json
 {
   "intent": {
+    "standard": "raw_ed25519",
+    "payload": "{\"signer_id\":\"9cf39ad040a13205c3ab109a8566fd779394a548f76b1aed5107efcdfe6c7ceb\",\"verifying_contract\":\"verifier.tidepool-sandbox.testnet\",\"deadline\":\"2026-10-30T16:46:46.836Z\",\"nonce\":\"zzaNW9Xepvi5ae6mv24WI+LwgljdXAm7/aV4EbWp738=\",\"intents\":[{\"intent\":\"transfer\",\"receiver_id\":\"54e8db801fab4ec416719b8b3044c21bacb4652c698ad4c5846086e5cf27b3a4\",\"tokens\":{\"nep141:usdc.tidepool-sandbox.testnet\":\"5000000\"}}]}"
+  },
+  "correlationId": "24361e73-4a77-4689-bbcd-031670808504"
+}
+```
+
+**Same call with standard nep413**
+
+Request: `{"type":"swap_transfer","standard":"nep413","signerId":"user.testnet","depositAddress":"717a62ee78cf34325228b1767e0409b6f5671dc3e9c451a63e99e75d32f1c3e8"}`. The `payload` is then an object (`message`, `nonce`, `recipient`) instead of a string. Real response:
+
+```json
+{
+  "intent": {
     "standard": "nep413",
     "payload": {
-      "callbackUrl": "string",
-      "message": "string",
-      "nonce": "string",
-      "recipient": "string"
+      "message": "{\"signer_id\":\"user.testnet\",\"verifying_contract\":\"verifier.tidepool-sandbox.testnet\",\"deadline\":\"2026-10-30T16:43:16.117Z\",\"nonce\":\"Nw2ySXC3vL00l2fcii6cV/3pjsbGtq1N1SS9ldF3m9E=\",\"intents\":[{\"intent\":\"transfer\",\"receiver_id\":\"717a62ee78cf34325228b1767e0409b6f5671dc3e9c451a63e99e75d32f1c3e8\",\"tokens\":{\"nep141:usdc.tidepool-sandbox.testnet\":\"5000000\"}}]}",
+      "nonce": "Nw2ySXC3vL00l2fcii6cV/3pjsbGtq1N1SS9ldF3m9E=",
+      "recipient": "verifier.tidepool-sandbox.testnet"
     }
   },
-  "correlationId": "550e8400-e29b-41d4-a716-446655440000"
+  "correlationId": "dcdfd266-8f91-427e-9a8f-f1c0fc24bcad"
 }
 ```
 
@@ -73,6 +94,33 @@ const data = await res.json();
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `intent` | MultiPayloadNarrowed | yes |  |
+| **Variant 1 of 7**: `MultiPayloadNep413Narrowed` | | | |
+| `intent.standard` | "nep413" | yes |  |
+| `intent.payload` | Nep413Payload | yes | See [NEP-413](https://github.com/near/NEPs/blob/master/neps/nep-0413.md) |
+| `intent.payload.callbackUrl` | string |  |  |
+| `intent.payload.message` | string | yes |  |
+| `intent.payload.nonce` | string | yes | Encoding: base64 |
+| `intent.payload.recipient` | string | yes |  |
+| **Variant 2 of 7**: `MultiPayloadErc191Narrowed` | | | |
+| `intent.standard` | "erc191" | yes |  |
+| `intent.payload` | Erc191Payload | yes | See [ERC-191](https://github.com/ethereum/ercs/blob/master/ERCS/erc-191.md) |
+| **Variant 3 of 7**: `MultiPayloadTip191Narrowed` | | | |
+| `intent.standard` | "tip191" | yes |  |
+| `intent.payload` | Tip191Payload | yes | See [TIP-191](https://github.com/tronprotocol/tips/blob/master/tip-191.md) |
+| **Variant 4 of 7**: `MultiPayloadRawEd25519Narrowed` | | | |
+| `intent.standard` | "raw_ed25519" | yes |  |
+| `intent.payload` | string | yes |  |
+| **Variant 5 of 7**: `MultiPayloadWebauthnNarrowed` | | | |
+| `intent.standard` | "webauthn" | yes |  |
+| `intent.payload` | string | yes |  |
+| **Variant 6 of 7**: `MultiPayloadTonConnectNarrowed` | | | |
+| `intent.standard` | "ton_connect" | yes |  |
+| `intent.payload` | TonConnectPayloadSchema | yes | See &#60;https://docs.tonconsole.com/academy/sign-data#choosing-the-right-format&#62; |
+| `intent.payload.text` | string | yes |  |
+| `intent.payload.type` | "text" | yes |  |
+| **Variant 7 of 7**: `MultiPayloadSep53Narrowed` | | | |
+| `intent.standard` | "sep53" | yes |  |
+| `intent.payload` | string | yes |  |
 | `correlationId` | string | yes | Unique identifier for tracing this request |
 
 </Accordion></Accordions>
@@ -81,9 +129,11 @@ const data = await res.json();
 
 ```json
 {
-  "message": "error message"
+  "message": "type must be swap_transfer"
 }
 ```
 
 ### 401 Unauthorized - API key or JWT token is invalid
+
+Tidepool does not return this: `/v0/generate-intent` takes no authentication.
 

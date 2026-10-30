@@ -70,6 +70,62 @@ await OneClickService.submitDepositTx({ txHash: '<sui tx digest>', depositAddres
 
 Runnable: `RECIPIENT=you.testnet npm run sui-deposit` in [tidepool-examples](https://github.com/zer0plugyut-afk/tidepool-examples) (it needs `SUI_SECRET_KEY`, a testnet key with a little SUI, and prints the Suiscan links). The example builds the transaction offline because `@mysten/sui` 1.x cannot resolve one over gRPC; the public Sui JSON-RPC is deprecated, so Tidepool itself talks to the testnet fullnode over gRPC.
 
+## Full quote request and response
+
+The request below sets every required field (plus `depositMode: "MEMO"` where this route needs it). It is a **dry** quote, so nothing is created. The response is the real, complete body from the live deployment on 2026-10-30; prices move, so your amounts will differ. Optional fields such as `appFees` or `referral` are in [Swap types](/docs/concepts/swap-types#all-request-fields).
+
+```bash
+curl -X POST https://www.usetidepool.tech/v0/quote -H 'content-type: application/json' -d '{
+  "dry": true,
+  "swapType": "EXACT_INPUT",
+  "slippageTolerance": 100,
+  "originAsset": "nep141:sui.tp-omft.testnet",
+  "depositType": "ORIGIN_CHAIN",
+  "destinationAsset": "nep141:usdc.tidepool-sandbox.testnet",
+  "amount": "1000000000",
+  "refundTo": "0x0000000000000000000000000000000000000000000000000000000000000abc",
+  "refundType": "ORIGIN_CHAIN",
+  "recipient": "user.testnet",
+  "recipientType": "DESTINATION_CHAIN",
+  "deadline": "2030-01-01T00:00:00.000Z"
+}'
+```
+
+```json
+{
+  "correlationId": "7b84a64a-ac9c-485c-a920-7da25aaab9c0",
+  "timestamp": "2026-10-30T16:28:50.908Z",
+  "quoteRequest": {
+    "dry": true,
+    "swapType": "EXACT_INPUT",
+    "slippageTolerance": 100,
+    "originAsset": "nep141:sui.tp-omft.testnet",
+    "depositType": "ORIGIN_CHAIN",
+    "destinationAsset": "nep141:usdc.tidepool-sandbox.testnet",
+    "amount": "1000000000",
+    "refundTo": "0x0000000000000000000000000000000000000000000000000000000000000abc",
+    "refundType": "ORIGIN_CHAIN",
+    "recipient": "user.testnet",
+    "recipientType": "DESTINATION_CHAIN",
+    "deadline": "2030-01-01T00:00:00.000Z"
+  },
+  "quote": {
+    "amountIn": "1000000000",
+    "amountInFormatted": "1",
+    "amountInUsd": "0.8939",
+    "minAmountIn": "1000000000",
+    "amountOut": "890048",
+    "amountOutFormatted": "0.890048",
+    "amountOutUsd": "0.8898",
+    "minAmountOut": "881147",
+    "timeEstimate": 60
+  },
+  "signature": "ed25519:3yMmBTHmPUAVni58zimoMN5R6haczNKRoYtNXrGb5LArQAQB3VAa8xvUBVJ8nfrVEkeStabFvcwqkYXxzdHZFpHb"
+}
+```
+
+With `"dry": false` and a `deadline` between a minute and a day ahead, the `quote` also carries `depositAddress`, `deadline` and `timeWhenInactive`. See [Quotes and pricing](/docs/concepts/quotes#dry-vs-live) and the [status response](/docs/api-reference/get-execution-status) for what comes back after the deposit.
+
 ## 3. NEAR → Sui
 
 Quote with a Sui `destinationAsset`, `recipient: '0xYourSuiAddress'` and `recipientType: 'DESTINATION_CHAIN'`, then deposit on NEAR as usual. The verifier `ft_withdraw`s the bridged token to the relayer, which pays out on Sui from the treasury: SUI is split from the treasury's gas coins, USDC and USDT are **minted** straight to your address with the `TreasuryCap`. Payouts are signed first and the signed transaction (with a deterministic digest) is recorded before it is sent, so a crash or retry re-submits the same bytes and never pays twice.

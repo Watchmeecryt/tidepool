@@ -51,6 +51,62 @@ await OneClickService.submitDepositTx({ txHash: '0x…', depositAddress: quote.q
 
 The relayer sweeps the deposit into the vault, mints the bridged NEP-141 and credits it to the verifier with a normal `ft_transfer_call`. The swap then settles exactly like a NEAR-only swap. Status goes `PENDING_DEPOSIT → KNOWN_DEPOSIT_TX → PROCESSING → SUCCESS`, usually within a minute.
 
+## Full quote request and response
+
+The request below sets every required field (plus `depositMode: "MEMO"` where this route needs it). It is a **dry** quote, so nothing is created. The response is the real, complete body from the live deployment on 2026-10-30; prices move, so your amounts will differ. Optional fields such as `appFees` or `referral` are in [Swap types](/docs/concepts/swap-types#all-request-fields).
+
+```bash
+curl -X POST https://www.usetidepool.tech/v0/quote -H 'content-type: application/json' -d '{
+  "dry": true,
+  "swapType": "EXACT_INPUT",
+  "slippageTolerance": 100,
+  "originAsset": "nep141:base-0x38d81431b9f76d9699af7517040d5221d9dea252.tp-omft.testnet",
+  "depositType": "ORIGIN_CHAIN",
+  "destinationAsset": "nep141:wnear.tidepool-sandbox.testnet",
+  "amount": "10000000",
+  "refundTo": "0x2527D02599Ba641c19FEa793cD0F167589a0f10D",
+  "refundType": "ORIGIN_CHAIN",
+  "recipient": "user.testnet",
+  "recipientType": "DESTINATION_CHAIN",
+  "deadline": "2030-01-01T00:00:00.000Z"
+}'
+```
+
+```json
+{
+  "correlationId": "eaa724f3-9b14-4133-90d5-99ff492d5211",
+  "timestamp": "2026-10-30T16:28:47.606Z",
+  "quoteRequest": {
+    "dry": true,
+    "swapType": "EXACT_INPUT",
+    "slippageTolerance": 100,
+    "originAsset": "nep141:base-0x38d81431b9f76d9699af7517040d5221d9dea252.tp-omft.testnet",
+    "depositType": "ORIGIN_CHAIN",
+    "destinationAsset": "nep141:wnear.tidepool-sandbox.testnet",
+    "amount": "10000000",
+    "refundTo": "0x2527D02599Ba641c19FEa793cD0F167589a0f10D",
+    "refundType": "ORIGIN_CHAIN",
+    "recipient": "user.testnet",
+    "recipientType": "DESTINATION_CHAIN",
+    "deadline": "2030-01-01T00:00:00.000Z"
+  },
+  "quote": {
+    "amountIn": "10000000",
+    "amountInFormatted": "10",
+    "amountInUsd": "9.9976",
+    "minAmountIn": "10000000",
+    "amountOut": "2298519836027713650880000",
+    "amountOutFormatted": "2.29851983602771365088",
+    "amountOutUsd": "9.9526",
+    "minAmountOut": "2275534637667436514371200",
+    "timeEstimate": 60
+  },
+  "signature": "ed25519:2irGpWS1TXwTM5SVPqtV1hsX8WtmxEWM929KK7TkZi9HzJ1qcJY1P6LBXaAeTvLtMZoZZnp9gqneKdFhfaFEbSsM"
+}
+```
+
+With `"dry": false` and a `deadline` between a minute and a day ahead, the `quote` also carries `depositAddress`, `deadline` and `timeWhenInactive`. See [Quotes and pricing](/docs/concepts/quotes#dry-vs-live) and the [status response](/docs/api-reference/get-execution-status) for what comes back after the deposit.
+
 ## 3. NEAR → Base Sepolia
 
 Quote with `destinationAsset: 'nep141:base-0x38d81431b9f76d9699af7517040d5221d9dea252.tp-omft.testnet'`, `recipient: '0xYourAddress'` and `recipientType: 'DESTINATION_CHAIN'`, then deposit on NEAR as usual. The verifier `ft_withdraw`s the bridged token to the relayer, which calls `release` on the vault. Status stays `PROCESSING` until the Base Sepolia payout confirms, then turns `SUCCESS` with the payout in `destinationChainTxHashes`.

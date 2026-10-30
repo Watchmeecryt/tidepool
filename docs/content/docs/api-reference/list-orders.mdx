@@ -6,6 +6,8 @@ description: "GET /v0/orders · 1Click-compatible"
 
 <p><span className="tp-method tp-get">GET</span><code>{"/v0/orders"}</code></p>
 
+Needs `Authorization: Bearer <accessToken>` (or any `X-API-Key`); lists only your own orders. Real response, taken right after creating the order in the create-order example.
+
 Retrieves visible orders, newest first. **Errors.** Branch on `code`, never on `title` or `detail`. New codes arrive without a major version, so treat an unrecognized code as the HTTP status alone. \| Status \| Codes \| \| --- \| --- \| \| 400 \| `validation-failed` \| \| 401 \| `authentication-required` \| \| 429 \| `rate-limit-exceeded` \| \| 500 \| `internal-error` \| \| 503 \| `service-unavailable` \| Tidepool: cursor paging with `page[size]` and `page[cursor]`; `links.next` and `meta.nextCursor`.
 
 **Operation id:** `listOrders` · **Auth:** optional (`X-API-Key` or `Authorization: Bearer`, any value)
@@ -16,14 +18,17 @@ Retrieves visible orders, newest first. **Errors.** Branch on `code`, never on `
 <Tab value="curl">
 
 ```bash
-curl "https://www.usetidepool.tech/v0/orders"
+curl "https://www.usetidepool.tech/v0/orders" \
+  -H 'Authorization: Bearer <accessToken>'
 ```
 
 </Tab>
 <Tab value="JavaScript">
 
 ```ts
-const res = await fetch('https://www.usetidepool.tech/v0/orders');
+const res = await fetch('https://www.usetidepool.tech/v0/orders', {
+  headers: { 'Authorization': 'Bearer <accessToken>' },
+});
 const data = await res.json();
 ```
 
@@ -48,177 +53,65 @@ const data = await res.json();
   "data": [
     {
       "type": "orders",
-      "id": "string",
+      "id": "ord_30bcf13f028ef83ae6dd9a64",
       "attributes": {
-        "orderType": {
-          "0": "L",
-          "1": "I",
-          "2": "M",
-          "3": "I",
-          "4": "T"
-        },
-        "depositAddress": "0x2527D...a0f10D",
-        "depositMemo": "123456",
-        "depositMode": {
-          "0": "S",
-          "1": "I",
-          "2": "M",
-          "3": "P",
-          "4": "L",
-          "5": "E"
-        },
-        "depositType": {
-          "0": "O",
-          "1": "R",
-          "2": "I",
-          "3": "G",
-          "4": "I",
-          "5": "N",
-          "6": "_",
-          "7": "C",
-          "8": "H",
-          "9": "A",
-          "10": "I",
-          "11": "N"
-        },
-        "fillStatus": {
-          "0": "A",
-          "1": "W",
-          "2": "A",
-          "3": "I",
-          "4": "T",
-          "5": "I",
-          "6": "N",
-          "7": "G",
-          "8": "_",
-          "9": "D",
-          "10": "E",
-          "11": "P",
-          "12": "O",
-          "13": "S",
-          "14": "I",
-          "15": "T"
-        },
-        "payoutStatus": {
-          "0": "N",
-          "1": "O",
-          "2": "T",
-          "3": "_",
-          "4": "S",
-          "5": "T",
-          "6": "A",
-          "7": "R",
-          "8": "T",
-          "9": "E",
-          "10": "D"
-        },
-        "isPayoutStatusFinal": true,
+        "orderType": "LIMIT",
+        "depositAddress": "b3e013f41cee40b33296f5e0185feae34c2f95059a05482e07cb610acd067322",
+        "depositMode": "SIMPLE",
+        "depositType": "INTENTS",
+        "fillStatus": "AWAITING_DEPOSIT",
+        "payoutStatus": "NOT_STARTED",
+        "isPayoutStatusFinal": false,
         "payouts": {
           "withdrawal": null,
-          "allWithdrawals": null,
+          "allWithdrawals": [],
           "refund": null
         },
-        "depositedAmount": "1000000000",
-        "depositedAmountFormatted": "1.0",
-        "baseAsset": "string",
-        "quoteAsset": "string",
-        "quantity": "string",
+        "depositedAmount": "0",
+        "depositedAmountFormatted": "0",
+        "baseAsset": "nep141:wnear.tidepool-sandbox.testnet",
+        "quoteAsset": "nep141:usdc.tidepool-sandbox.testnet",
+        "quantity": "1000000000000000000000000",
         "swapView": {
-          "swapType": null,
-          "originAsset": null,
-          "destinationAsset": null,
-          "amountIn": null,
-          "minAmountOut": null
+          "swapType": "EXACT_INPUT",
+          "originAsset": "nep141:wnear.tidepool-sandbox.testnet",
+          "destinationAsset": "nep141:usdc.tidepool-sandbox.testnet",
+          "amountIn": "1000000000000000000000000",
+          "minAmountOut": "3465000"
         },
-        "side": {
-          "0": "S",
-          "1": "E",
-          "2": "L",
-          "3": "L"
-        },
-        "price": "string",
+        "side": "SELL",
+        "price": "3.5",
         "appFees": [
           {
-            "recipient": null,
-            "fee": null
+            "recipient": "fees.testnet",
+            "fee": 100
           }
         ],
-        "recipient": "string",
-        "recipientType": {
-          "0": "D",
-          "1": "E",
-          "2": "S",
-          "3": "T",
-          "4": "I",
-          "5": "N",
-          "6": "A",
-          "7": "T",
-          "8": "I",
-          "9": "O",
-          "10": "N",
-          "11": "_",
-          "12": "C",
-          "13": "H",
-          "14": "A",
-          "15": "I",
-          "16": "N"
-        },
-        "refundTo": "string",
-        "refundType": {
-          "0": "O",
-          "1": "R",
-          "2": "I",
-          "3": "G",
-          "4": "I",
-          "5": "N",
-          "6": "_",
-          "7": "C",
-          "8": "H",
-          "9": "A",
-          "10": "I",
-          "11": "N"
-        },
-        "estimatedWithdrawFee": "string",
-        "estimatedWithdrawFeeFormatted": "string",
-        "estimatedRefundFee": "string",
-        "estimatedRefundFeeFormatted": "string",
-        "confidentiality": {
-          "0": "p",
-          "1": "u",
-          "2": "b",
-          "3": "l",
-          "4": "i",
-          "5": "c"
-        },
-        "timeInForce": {
-          "0": "G",
-          "1": "T",
-          "2": "C"
-        },
-        "deadline": "2019-08-24T14:15:22Z",
-        "createdAt": "2019-08-24T14:15:22Z",
-        "partialFills": [
-          {
-            "id": null,
-            "amountIn": null,
-            "amountOut": null,
-            "createdAt": null,
-            "updatedAt": null
-          }
-        ]
+        "recipient": "9cf39ad040a13205c3ab109a8566fd779394a548f76b1aed5107efcdfe6c7ceb",
+        "recipientType": "INTENTS",
+        "refundTo": "9cf39ad040a13205c3ab109a8566fd779394a548f76b1aed5107efcdfe6c7ceb",
+        "refundType": "INTENTS",
+        "estimatedWithdrawFee": "0",
+        "estimatedWithdrawFeeFormatted": "0",
+        "estimatedRefundFee": "0",
+        "estimatedRefundFeeFormatted": "0",
+        "confidentiality": "public",
+        "timeInForce": "GTC",
+        "deadline": "2026-11-20T00:00:00.000Z",
+        "createdAt": "2026-10-30T16:31:25.898Z",
+        "partialFills": []
       },
       "links": {
-        "self": "string"
+        "self": "/v0/orders/ord_30bcf13f028ef83ae6dd9a64"
       }
     }
   ],
   "links": {
-    "next": "string"
+    "next": null
   },
   "meta": {
-    "correlationId": "550e8400-e29b-41d4-a716-446655440000",
-    "timestamp": "2019-08-24T14:15:22Z",
-    "nextCursor": "string"
+    "correlationId": "f51bdae0-b347-4d28-ace7-8e7fbc826545",
+    "timestamp": "2026-10-30T16:31:32.592Z"
   }
 }
 ```
@@ -231,6 +124,83 @@ const data = await res.json();
 | `data[].[]type` | "orders" | yes |  |
 | `data[].[]id` | string | yes | Opaque resource identifier. Clients should treat IDs as opaque and not rely on the prefix or length. |
 | `data[].[]attributes` | LimitOrderAttributes | yes |  |
+| `data[].[]attributes.orderType` | object | yes | Order type. |
+| `data[].[]attributes.depositAddress` | string | yes | Deposit address for funding the order. |
+| `data[].[]attributes.depositMemo` | string |  | Memo to include with the deposit, when required. |
+| `data[].[]attributes.depositMode` | object | yes | Deposit address mode. |
+| `data[].[]attributes.depositType` | object | yes | Type of deposit address. |
+| `data[].[]attributes.fillStatus` | object | yes | Current fill status. This does not show whether payout funds arrived. |
+| `data[].[]attributes.payoutStatus` | object | yes | Aggregated progress of the main withdrawal and refund. |
+| `data[].[]attributes.isPayoutStatusFinal` | boolean | yes | Whether payoutStatus is COMPLETED or FAILED. This field is derived and has no additional meaning. |
+| `data[].[]attributes.payouts` | object | yes | Current withdrawal and refund legs. |
+| `data[].[]attributes.payouts.withdrawal` | OrderPayoutInProgress \\| OrderPayoutCompleted \\| PayoutFailed | yes | Latest successful withdrawal, or current withdrawal when none succeeded. |
+| **Variant 1 of 3**: `OrderPayoutInProgress` | | | |
+| `data[].[]attributes.payouts.withdrawal.status` | "IN_PROGRESS" | yes |  |
+| **Variant 2 of 3**: `OrderPayoutCompleted` | | | |
+| `data[].[]attributes.payouts.withdrawal.status` | "COMPLETED" | yes |  |
+| `data[].[]attributes.payouts.withdrawal.txHash` | string | yes | Destination-chain transaction hash. |
+| **Variant 3 of 3**: `PayoutFailed` | | | |
+| `data[].[]attributes.payouts.withdrawal.status` | "FAILED" | yes |  |
+| `data[].[]attributes.payouts.withdrawal.reason` | string |  | Terminal failure reason. This payout leg is not retried. Not populated yet - reserved for a defined set of public reasons. |
+| `data[].[]attributes.payouts.allWithdrawals` | OrderPayoutInProgress \\| OrderPayoutCompleted \\| PayoutFailed[] | yes | All successful withdrawals, ordered from oldest to newest. |
+| **Variant 1 of 3**: `OrderPayoutInProgress` | | | |
+| `data[].[]attributes.payouts.allWithdrawals[].[]status` | "IN_PROGRESS" | yes |  |
+| **Variant 2 of 3**: `OrderPayoutCompleted` | | | |
+| `data[].[]attributes.payouts.allWithdrawals[].[]status` | "COMPLETED" | yes |  |
+| `data[].[]attributes.payouts.allWithdrawals[].[]txHash` | string | yes | Destination-chain transaction hash. |
+| **Variant 3 of 3**: `PayoutFailed` | | | |
+| `data[].[]attributes.payouts.allWithdrawals[].[]status` | "FAILED" | yes |  |
+| `data[].[]attributes.payouts.allWithdrawals[].[]reason` | string |  | Terminal failure reason. This payout leg is not retried. Not populated yet - reserved for a defined set of public reasons. |
+| `data[].[]attributes.payouts.refund` | OrderPayoutInProgress \\| OrderPayoutCompleted \\| PayoutFailed | yes | Main refund, or null when no refund exists. |
+| **Variant 1 of 3**: `OrderPayoutInProgress` | | | |
+| `data[].[]attributes.payouts.refund.status` | "IN_PROGRESS" | yes |  |
+| **Variant 2 of 3**: `OrderPayoutCompleted` | | | |
+| `data[].[]attributes.payouts.refund.status` | "COMPLETED" | yes |  |
+| `data[].[]attributes.payouts.refund.txHash` | string | yes | Destination-chain transaction hash. |
+| **Variant 3 of 3**: `PayoutFailed` | | | |
+| `data[].[]attributes.payouts.refund.status` | "FAILED" | yes |  |
+| `data[].[]attributes.payouts.refund.reason` | string |  | Terminal failure reason. This payout leg is not retried. Not populated yet - reserved for a defined set of public reasons. |
+| `data[].[]attributes.depositedAmount` | string | yes | Cumulative deposited input amount in the smallest unit of the base asset for SELL or the quote asset for BUY. |
+| `data[].[]attributes.depositedAmountFormatted` | string | yes | Cumulative deposited input amount formatted using the input asset decimals. |
+| `data[].[]attributes.baseAsset` | string | yes | ID of the base asset in the trading pair. |
+| `data[].[]attributes.quoteAsset` | string | yes | ID of the quote asset used to price the base asset. |
+| `data[].[]attributes.quantity` | string | yes | Base-asset order quantity in the asset smallest unit. A BUY targets this output; a SELL targets this input. |
+| `data[].[]attributes.swapView` | LimitOrderExactInputSwapView \\| LimitOrderExactOutputSwapView | yes | Read-only swap representation derived from the order side and limit price. |
+| **Variant 1 of 2**: `LimitOrderExactInputSwapView` | | | |
+| `data[].[]attributes.swapView.swapType` | "EXACT_INPUT" | yes |  |
+| `data[].[]attributes.swapView.originAsset` | string | yes |  |
+| `data[].[]attributes.swapView.destinationAsset` | string | yes |  |
+| `data[].[]attributes.swapView.amountIn` | string | yes |  |
+| `data[].[]attributes.swapView.minAmountOut` | string | yes |  |
+| **Variant 2 of 2**: `LimitOrderExactOutputSwapView` | | | |
+| `data[].[]attributes.swapView.swapType` | "EXACT_OUTPUT" | yes |  |
+| `data[].[]attributes.swapView.originAsset` | string | yes |  |
+| `data[].[]attributes.swapView.destinationAsset` | string | yes |  |
+| `data[].[]attributes.swapView.maxAmountIn` | string | yes |  |
+| `data[].[]attributes.swapView.amountOut` | string | yes |  |
+| `data[].[]attributes.side` | object | yes | Submitted order side. |
+| `data[].[]attributes.price` | string | yes | Submitted human-unit limit price. |
+| `data[].[]attributes.appFees` | AppFee[] | yes | Normalized application and protocol fees. |
+| `data[].[]attributes.appFees[].[]recipient` | string | yes | Account ID within Intents to which this fee will be transferred |
+| `data[].[]attributes.appFees[].[]fee` | number | yes | Fee for this recipient as part of amountIn in basis points (1/100th of a percent), e.g. 100 for 1% fee |
+| `data[].[]attributes.recipient` | string | yes | Recipient address supplied when creating the order. |
+| `data[].[]attributes.recipientType` | object | yes | Type of recipient address. |
+| `data[].[]attributes.refundTo` | string | yes | Refund address supplied when creating the order. |
+| `data[].[]attributes.refundType` | object | yes | Type of refund address. |
+| `data[].[]attributes.estimatedWithdrawFee` | string | yes | Withdrawal-fee estimate captured at creation, in destination-asset smallest units. It covers one withdrawal. The fee charged for each withdrawal may differ. |
+| `data[].[]attributes.estimatedWithdrawFeeFormatted` | string | yes | Withdrawal-fee estimate formatted using the destination asset decimals. |
+| `data[].[]attributes.estimatedRefundFee` | string | yes | Refund-fee estimate captured at creation, in input-asset smallest units. The fee charged for the refund may differ. |
+| `data[].[]attributes.estimatedRefundFeeFormatted` | string | yes | Refund-fee estimate formatted using the input asset decimals. |
+| `data[].[]attributes.confidentiality` | object | yes | Confidentiality mode for this order. |
+| `data[].[]attributes.timeInForce` | object | yes | Time in force for the order. |
+| `data[].[]attributes.deadline` | string | yes | Timestamp in ISO format that identifies when the order can expire. |
+| `data[].[]attributes.createdAt` | string | yes | Timestamp in ISO format that identifies when the order was created. |
+| `data[].[]attributes.partialFills` | LimitOrderPartialFill[] |  | Successful fills. Fills that are in flight or failed are not reported. |
+| `data[].[]attributes.partialFills[].[]id` | string | yes | Public identifier for this fill attempt. |
+| `data[].[]attributes.partialFills[].[]amountIn` | string | yes | Gross input allocated to the fill, in input-asset smallest units. |
+| `data[].[]attributes.partialFills[].[]amountOut` | string | yes | Net output received for the fill, in output-asset smallest units. |
+| `data[].[]attributes.partialFills[].[]createdAt` | string | yes | ISO 8601 creation timestamp. |
+| `data[].[]attributes.partialFills[].[]updatedAt` | string | yes | ISO 8601 last-update timestamp. |
 | `data[].[]links` | object | yes |  |
 | `data[].[]links.self` | string | yes |  |
 | `links` | object | yes |  |
@@ -244,25 +214,7 @@ const data = await res.json();
 
 ### 400 Validation failed
 
-```json
-{
-  "errors": [
-    {
-      "status": "400",
-      "code": "validation-failed",
-      "title": "Validation failed",
-      "detail": "Must be a positive decimal string.",
-      "source": {
-        "pointer": "/data/attributes/price"
-      }
-    }
-  ],
-  "meta": {
-    "correlationId": "550e8400-e29b-41d4-a716-446655440000",
-    "timestamp": "2019-08-24T14:15:22Z"
-  }
-}
-```
+JSON:API error document with `code: "validation-failed"` for a bad filter or page parameter.
 
 ### 401 Authentication required
 
@@ -270,85 +222,28 @@ const data = await res.json();
 {
   "errors": [
     {
-      "status": "400",
-      "code": "validation-failed",
-      "title": "Validation failed",
-      "detail": "Must be a positive decimal string.",
-      "source": {
-        "pointer": "/data/attributes/price"
-      }
+      "status": "401",
+      "code": "authentication-required",
+      "title": "Authentication required",
+      "detail": "Send Authorization: Bearer <accessToken> (from /v0/auth/authenticate) or x-api-key"
     }
   ],
   "meta": {
-    "correlationId": "550e8400-e29b-41d4-a716-446655440000",
-    "timestamp": "2019-08-24T14:15:22Z"
+    "correlationId": "fea594fc-2409-45eb-aa08-72421258265a",
+    "timestamp": "2026-10-30T16:31:33.908Z"
   }
 }
 ```
 
 ### 429 Rate limit exceeded
 
-```json
-{
-  "errors": [
-    {
-      "status": "400",
-      "code": "validation-failed",
-      "title": "Validation failed",
-      "detail": "Must be a positive decimal string.",
-      "source": {
-        "pointer": "/data/attributes/price"
-      }
-    }
-  ],
-  "meta": {
-    "correlationId": "550e8400-e29b-41d4-a716-446655440000",
-    "timestamp": "2019-08-24T14:15:22Z"
-  }
-}
-```
+JSON:API error document. Not returned in testing.
 
 ### 500 Internal error
 
-```json
-{
-  "errors": [
-    {
-      "status": "400",
-      "code": "validation-failed",
-      "title": "Validation failed",
-      "detail": "Must be a positive decimal string.",
-      "source": {
-        "pointer": "/data/attributes/price"
-      }
-    }
-  ],
-  "meta": {
-    "correlationId": "550e8400-e29b-41d4-a716-446655440000",
-    "timestamp": "2019-08-24T14:15:22Z"
-  }
-}
-```
+JSON:API error document, `code: "internal-error"`. Not returned in testing.
 
 ### 503 Service unavailable
 
-```json
-{
-  "errors": [
-    {
-      "status": "400",
-      "code": "validation-failed",
-      "title": "Validation failed",
-      "detail": "Must be a positive decimal string.",
-      "source": {
-        "pointer": "/data/attributes/price"
-      }
-    }
-  ],
-  "meta": {
-    "correlationId": "550e8400-e29b-41d4-a716-446655440000",
-    "timestamp": "2019-08-24T14:15:22Z"
-  }
-}
-```
+JSON:API error document. Not returned in testing.
 

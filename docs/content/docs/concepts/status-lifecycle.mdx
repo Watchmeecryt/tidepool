@@ -22,6 +22,88 @@ icon: FlowArrow
 curl "https://www.usetidepool.tech/v0/status?depositAddress=<depositAddress>"
 ```
 
+Real, complete response for a swap that settled (`SUCCESS`), from the live deployment. Before a deposit the response has the same envelope with `status: "PENDING_DEPOSIT"` and an empty `swapDetails`; both are shown in the [status reference](/docs/api-reference/get-execution-status).
+
+```json
+{
+  "correlationId": "6e7d2aad-b262-4b13-b88e-0c4d6b64325c",
+  "quoteResponse": {
+    "correlationId": "6e7d2aad-b262-4b13-b88e-0c4d6b64325c",
+    "timestamp": "2026-10-24T21:30:28.060Z",
+    "quoteRequest": {
+      "swapType": "EXACT_INPUT",
+      "slippageTolerance": 100,
+      "originAsset": "nep141:usdc.tidepool-sandbox.testnet",
+      "destinationAsset": "nep141:wnear.tidepool-sandbox.testnet",
+      "amount": "5000000",
+      "depositType": "INTENTS",
+      "refundTo": "tidepool-try-0937467b.testnet",
+      "refundType": "INTENTS",
+      "recipient": "tidepool-try-0937467b.testnet",
+      "recipientType": "DESTINATION_CHAIN",
+      "dry": false,
+      "deadline": "2026-10-24T21:40:27.927Z"
+    },
+    "quote": {
+      "amountIn": "5000000",
+      "amountInFormatted": "5",
+      "amountInUsd": "4.9979",
+      "minAmountIn": "5000000",
+      "amountOut": "1123407466216216112640000",
+      "amountOutFormatted": "1.12340746621621611264",
+      "amountOutUsd": "4.9879",
+      "minAmountOut": "1112173391554053951513600",
+      "timeEstimate": 10,
+      "depositAddress": "c47208de64cde76fc6803b5f26c137bc51fbf151eb1c0964488ea56704142151",
+      "deadline": "2026-10-24T21:40:27.927Z",
+      "timeWhenInactive": "2026-10-24T21:40:27.927Z"
+    },
+    "signature": "ed25519:3D679QeYbrSEAnHRmkG1eurAeWnnecYQBNWLgmQuEzSvdQpqmKzP2R9W4FqeqLzJvrem4JU3xVnXamFjz74sCKfj"
+  },
+  "status": "SUCCESS",
+  "updatedAt": "2026-10-24T21:30:42.751Z",
+  "swapDetails": {
+    "intentHashes": [
+      "DsrGVDFfwq6ifa9LctU2JaCzWB2kZB1VzNe1XHFCC3qS",
+      "23MCaK5ZV2qanV6p1LYzpGh7zwPC3pa9vqGSm6hLij6H"
+    ],
+    "nearTxHashes": [
+      "EB5xfEyjiC1oESNjEyNjnkzW4Zpsi24e4H2s6aUGEh9d"
+    ],
+    "originChainTxHashes": [
+      {
+        "hash": "HbwEo318L69bJS7XYse18mUTzBBa2tjK6wtGeDYo3dY8",
+        "explorerUrl": "https://testnet.nearblocks.io/txns/HbwEo318L69bJS7XYse18mUTzBBa2tjK6wtGeDYo3dY8"
+      }
+    ],
+    "destinationChainTxHashes": [
+      {
+        "hash": "EB5xfEyjiC1oESNjEyNjnkzW4Zpsi24e4H2s6aUGEh9d",
+        "explorerUrl": "https://testnet.nearblocks.io/txns/EB5xfEyjiC1oESNjEyNjnkzW4Zpsi24e4H2s6aUGEh9d"
+      }
+    ],
+    "amountIn": "5000000",
+    "amountInFormatted": "5",
+    "amountInUsd": "4.9979",
+    "amountOut": "1123407466216216112640000",
+    "amountOutFormatted": "1.12340746621621611264",
+    "amountOutUsd": "4.9879",
+    "slippage": 0,
+    "depositedAmount": "5000000",
+    "depositedAmountFormatted": "5",
+    "depositedAmountUsd": "4.9979"
+  },
+  "tidepool": {
+    "explorer": [
+      {
+        "label": "swap (execute_intents)",
+        "url": "https://testnet.nearblocks.io/txns/EB5xfEyjiC1oESNjEyNjnkzW4Zpsi24e4H2s6aUGEh9d"
+      }
+    ]
+  }
+}
+```
+
 Poll every 2–5 seconds and stop on a final status. The worker checks each active address about every 4 seconds and stops watching a quote 24 hours after its deadline.
 
 ## swapDetails

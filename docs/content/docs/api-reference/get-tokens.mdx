@@ -6,7 +6,7 @@ description: "GET /v0/tokens · 1Click-compatible"
 
 <p><span className="tp-method tp-get">GET</span><code>{"/v0/tokens"}</code></p>
 
-Returns the six NEAR test tokens plus every live bridged token (USDC and USDT on Base, Arbitrum and Ethereum Sepolia; SOL, USDC and USDT on Solana devnet; XLM, USDC and USDT on Stellar testnet; SUI, USDC and USDT on Sui testnet; native BTC on Bitcoin testnet4; native XRP on the XRP Ledger testnet), with live USD prices. Two are shown below. Each bridged route appears only while it is live. `ondoTokens` is accepted and ignored.
+Returns the six NEAR test tokens plus every live bridged token (USDC and USDT on Base, Arbitrum and Ethereum Sepolia; SOL, USDC and USDT on Solana devnet; XLM, USDC and USDT on Stellar testnet; SUI, USDC and USDT on Sui testnet; native BTC on Bitcoin testnet4; native XRP on the XRP Ledger testnet), with live USD prices. The example below is the **complete** live response (23 tokens on 2026-10-30). Each bridged route appears only while it is live. `ondoTokens` is accepted and ignored.
 
 Retrieves a list of tokens currently supported by the 1Click API for asset swaps. Each token entry includes its blockchain, contract address (if available), price in USD, and other metadata such as symbol and decimals.
 
@@ -53,8 +53,8 @@ const data = await res.json();
     "decimals": 6,
     "blockchain": "near",
     "symbol": "USDC",
-    "price": 0.999585,
-    "priceUpdatedAt": "2026-10-24T21:30:25.128Z",
+    "price": 0.999699,
+    "priceUpdatedAt": "2026-10-30T16:30:24.138Z",
     "contractAddress": "usdc.tidepool-sandbox.testnet",
     "coingeckoId": "usd-coin"
   },
@@ -63,10 +63,215 @@ const data = await res.json();
     "decimals": 6,
     "blockchain": "near",
     "symbol": "USDT",
-    "price": 0.999101,
-    "priceUpdatedAt": "2026-10-24T21:30:25.128Z",
+    "price": 0.999192,
+    "priceUpdatedAt": "2026-10-30T16:30:24.138Z",
     "contractAddress": "usdt.tidepool-sandbox.testnet",
     "coingeckoId": "tether"
+  },
+  {
+    "assetId": "nep141:wnear.tidepool-sandbox.testnet",
+    "decimals": 24,
+    "blockchain": "near",
+    "symbol": "wNEAR",
+    "price": 4.34,
+    "priceUpdatedAt": "2026-10-30T16:30:24.138Z",
+    "contractAddress": "wnear.tidepool-sandbox.testnet",
+    "coingeckoId": "near"
+  },
+  {
+    "assetId": "nep141:wbtc.tidepool-sandbox.testnet",
+    "decimals": 8,
+    "blockchain": "near",
+    "symbol": "wBTC",
+    "price": 77445,
+    "priceUpdatedAt": "2026-10-30T16:30:24.138Z",
+    "contractAddress": "wbtc.tidepool-sandbox.testnet",
+    "coingeckoId": "bitcoin"
+  },
+  {
+    "assetId": "nep141:eth.tidepool-sandbox.testnet",
+    "decimals": 18,
+    "blockchain": "near",
+    "symbol": "ETH",
+    "price": 2234.55,
+    "priceUpdatedAt": "2026-10-30T16:30:24.138Z",
+    "contractAddress": "eth.tidepool-sandbox.testnet",
+    "coingeckoId": "ethereum"
+  },
+  {
+    "assetId": "nep141:xaut.tidepool-sandbox.testnet",
+    "decimals": 6,
+    "blockchain": "near",
+    "symbol": "XAUT",
+    "price": 3892.77,
+    "priceUpdatedAt": "2026-10-30T16:30:24.138Z",
+    "contractAddress": "xaut.tidepool-sandbox.testnet",
+    "coingeckoId": "tether-gold"
+  },
+  {
+    "assetId": "nep141:base-0x38d81431b9f76d9699af7517040d5221d9dea252.tp-omft.testnet",
+    "decimals": 6,
+    "blockchain": "base",
+    "symbol": "USDC",
+    "price": 0.999699,
+    "priceUpdatedAt": "2026-10-30T16:30:24.138Z",
+    "contractAddress": "0x38d81431B9f76d9699AF7517040D5221D9dEA252",
+    "coingeckoId": "usd-coin"
+  },
+  {
+    "assetId": "nep141:base-0xc15cf5600225302675604310094f134e88705e62.tp-omft.testnet",
+    "decimals": 6,
+    "blockchain": "base",
+    "symbol": "USDT",
+    "price": 0.999192,
+    "priceUpdatedAt": "2026-10-30T16:30:24.138Z",
+    "contractAddress": "0xC15Cf5600225302675604310094f134e88705E62",
+    "coingeckoId": "tether"
+  },
+  {
+    "assetId": "nep141:arb-0x38d81431b9f76d9699af7517040d5221d9dea252.tp-omft.testnet",
+    "decimals": 6,
+    "blockchain": "arb",
+    "symbol": "USDC",
+    "price": 0.999699,
+    "priceUpdatedAt": "2026-10-30T16:30:24.138Z",
+    "contractAddress": "0x38d81431B9f76d9699AF7517040D5221D9dEA252",
+    "coingeckoId": "usd-coin"
+  },
+  {
+    "assetId": "nep141:arb-0xc15cf5600225302675604310094f134e88705e62.tp-omft.testnet",
+    "decimals": 6,
+    "blockchain": "arb",
+    "symbol": "USDT",
+    "price": 0.999192,
+    "priceUpdatedAt": "2026-10-30T16:30:24.138Z",
+    "contractAddress": "0xC15Cf5600225302675604310094f134e88705E62",
+    "coingeckoId": "tether"
+  },
+  {
+    "assetId": "nep141:eth-0x2e6ad9e6d59bb4585ea0e6762c3b637dde29dad2.tp-omft.testnet",
+    "decimals": 6,
+    "blockchain": "eth",
+    "symbol": "USDC",
+    "price": 0.999699,
+    "priceUpdatedAt": "2026-10-30T16:30:24.138Z",
+    "contractAddress": "0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2",
+    "coingeckoId": "usd-coin"
+  },
+  {
+    "assetId": "nep141:eth-0x650f12ba31777de8ded47287a8cc86be737646fe.tp-omft.testnet",
+    "decimals": 6,
+    "blockchain": "eth",
+    "symbol": "USDT",
+    "price": 0.999192,
+    "priceUpdatedAt": "2026-10-30T16:30:24.138Z",
+    "contractAddress": "0x650F12bA31777DE8Ded47287a8CC86bE737646fe",
+    "coingeckoId": "tether"
+  },
+  {
+    "assetId": "nep141:sol.tp-omft.testnet",
+    "decimals": 9,
+    "blockchain": "sol",
+    "symbol": "SOL",
+    "price": 95.25,
+    "priceUpdatedAt": "2026-10-30T16:30:24.138Z",
+    "coingeckoId": "solana"
+  },
+  {
+    "assetId": "nep141:sol-d48c1adc423a64867ac91ed2e1c0df76da323235.tp-omft.testnet",
+    "decimals": 6,
+    "blockchain": "sol",
+    "symbol": "USDC",
+    "price": 0.999699,
+    "priceUpdatedAt": "2026-10-30T16:30:24.138Z",
+    "contractAddress": "7pafEGXSmR35rLKNaD6inpfLYuEnRX9DyBc1c7M8r4Xr",
+    "coingeckoId": "usd-coin"
+  },
+  {
+    "assetId": "nep141:sol-4c5179da74eb695eb57e01b787c4937157cf2833.tp-omft.testnet",
+    "decimals": 6,
+    "blockchain": "sol",
+    "symbol": "USDT",
+    "price": 0.999192,
+    "priceUpdatedAt": "2026-10-30T16:30:24.138Z",
+    "contractAddress": "H9ERDhrU8KDeXkMna2Lw6hYJT3LSyhvypiktDc6zmoeJ",
+    "coingeckoId": "tether"
+  },
+  {
+    "assetId": "nep141:stellar.tp-omft.testnet",
+    "decimals": 7,
+    "blockchain": "stellar",
+    "symbol": "XLM",
+    "price": 0.170031,
+    "priceUpdatedAt": "2026-10-30T16:30:24.138Z",
+    "coingeckoId": "stellar"
+  },
+  {
+    "assetId": "nep141:stellar-0da9087074a12ebeb5dcdc8bcf33cf163ab498fc.tp-omft.testnet",
+    "decimals": 7,
+    "blockchain": "stellar",
+    "symbol": "USDC",
+    "price": 0.999699,
+    "priceUpdatedAt": "2026-10-30T16:30:24.138Z",
+    "contractAddress": "GDXABUSRHP4YA5CELHLNJQ4M3TX2BSJ6PEMDFCG2RA4PQLAQLRMFFQAN",
+    "coingeckoId": "usd-coin"
+  },
+  {
+    "assetId": "nep141:stellar-c36e358585c12ac3f684b98be0c6682ca9c4665f.tp-omft.testnet",
+    "decimals": 7,
+    "blockchain": "stellar",
+    "symbol": "USDT",
+    "price": 0.999192,
+    "priceUpdatedAt": "2026-10-30T16:30:24.138Z",
+    "contractAddress": "GDXABUSRHP4YA5CELHLNJQ4M3TX2BSJ6PEMDFCG2RA4PQLAQLRMFFQAN",
+    "coingeckoId": "tether"
+  },
+  {
+    "assetId": "nep141:sui.tp-omft.testnet",
+    "decimals": 9,
+    "blockchain": "sui",
+    "symbol": "SUI",
+    "price": 0.894556,
+    "priceUpdatedAt": "2026-10-30T16:30:24.138Z",
+    "coingeckoId": "sui"
+  },
+  {
+    "assetId": "nep141:sui-f6ecfe107e72d22b7a646dd2cc4f1b2876349c0c.tp-omft.testnet",
+    "decimals": 6,
+    "blockchain": "sui",
+    "symbol": "USDC",
+    "price": 0.999699,
+    "priceUpdatedAt": "2026-10-30T16:30:24.138Z",
+    "contractAddress": "0x71a32ced7702bba9a8d23a122971d5973baa610f1689306176ac4f364d68bb3c::tusdc::TUSDC",
+    "coingeckoId": "usd-coin"
+  },
+  {
+    "assetId": "nep141:sui-add896332c906e599cee03f2154d067937d12a26.tp-omft.testnet",
+    "decimals": 6,
+    "blockchain": "sui",
+    "symbol": "USDT",
+    "price": 0.999192,
+    "priceUpdatedAt": "2026-10-30T16:30:24.138Z",
+    "contractAddress": "0x71a32ced7702bba9a8d23a122971d5973baa610f1689306176ac4f364d68bb3c::tusdt::TUSDT",
+    "coingeckoId": "tether"
+  },
+  {
+    "assetId": "nep141:xrp.tp-omft.testnet",
+    "decimals": 6,
+    "blockchain": "xrp",
+    "symbol": "XRP",
+    "price": 1.25,
+    "priceUpdatedAt": "2026-10-30T16:30:24.138Z",
+    "coingeckoId": "ripple"
+  },
+  {
+    "assetId": "nep141:btc.tp-omft.testnet",
+    "decimals": 8,
+    "blockchain": "btc",
+    "symbol": "BTC",
+    "price": 77445,
+    "priceUpdatedAt": "2026-10-30T16:30:24.138Z",
+    "coingeckoId": "bitcoin"
   }
 ]
 ```

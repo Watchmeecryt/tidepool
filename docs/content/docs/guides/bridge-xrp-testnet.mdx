@@ -68,6 +68,64 @@ await OneClickService.submitDepositTx({ txHash: '<xrpl tx hash>', depositAddress
 
 Runnable: `RECIPIENT=you.testnet npm run xrp-deposit` in [tidepool-examples](https://github.com/zer0plugyut-afk/tidepool-examples) (it creates and faucet-funds a throwaway wallet unless you set `XRP_SEED`).
 
+## Full quote request and response
+
+The request below sets every required field (plus `depositMode: "MEMO"` where this route needs it). It is a **dry** quote, so nothing is created. The response is the real, complete body from the live deployment on 2026-10-30; prices move, so your amounts will differ. Optional fields such as `appFees` or `referral` are in [Swap types](/docs/concepts/swap-types#all-request-fields).
+
+```bash
+curl -X POST https://www.usetidepool.tech/v0/quote -H 'content-type: application/json' -d '{
+  "dry": true,
+  "swapType": "EXACT_INPUT",
+  "slippageTolerance": 100,
+  "originAsset": "nep141:xrp.tp-omft.testnet",
+  "depositType": "ORIGIN_CHAIN",
+  "destinationAsset": "nep141:usdc.tidepool-sandbox.testnet",
+  "amount": "10000000",
+  "refundTo": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+  "refundType": "ORIGIN_CHAIN",
+  "recipient": "user.testnet",
+  "recipientType": "DESTINATION_CHAIN",
+  "deadline": "2030-01-01T00:00:00.000Z",
+  "depositMode": "MEMO"
+}'
+```
+
+```json
+{
+  "correlationId": "71198d00-8939-4661-953d-7efd6f7c42be",
+  "timestamp": "2026-10-30T16:28:51.997Z",
+  "quoteRequest": {
+    "dry": true,
+    "swapType": "EXACT_INPUT",
+    "slippageTolerance": 100,
+    "originAsset": "nep141:xrp.tp-omft.testnet",
+    "depositType": "ORIGIN_CHAIN",
+    "destinationAsset": "nep141:usdc.tidepool-sandbox.testnet",
+    "amount": "10000000",
+    "refundTo": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+    "refundType": "ORIGIN_CHAIN",
+    "recipient": "user.testnet",
+    "recipientType": "DESTINATION_CHAIN",
+    "deadline": "2030-01-01T00:00:00.000Z",
+    "depositMode": "MEMO"
+  },
+  "quote": {
+    "amountIn": "10000000",
+    "amountInFormatted": "10",
+    "amountInUsd": "12.5000",
+    "minAmountIn": "10000000",
+    "amountOut": "12446762",
+    "amountOutFormatted": "12.446762",
+    "amountOutUsd": "12.4437",
+    "minAmountOut": "12322294",
+    "timeEstimate": 60
+  },
+  "signature": "ed25519:3BRrDPqrPqdkqEu6DdCHerCv13kA7SiuxYJ3icKFeZb5q7iugvLboZT9AMAHkcufWtK51LQZ9MTM7dknQRBsATYG"
+}
+```
+
+With `"dry": false` and a `deadline` between a minute and a day ahead, the `quote` also carries `depositAddress`, `deadline` and `timeWhenInactive` and `depositMemo` (the memo or destination tag you must attach to the deposit). See [Quotes and pricing](/docs/concepts/quotes#dry-vs-live) and the [status response](/docs/api-reference/get-execution-status) for what comes back after the deposit.
+
 ## 3. NEAR → XRP
 
 Quote with an XRP `destinationAsset`, `recipient: 'rYourXrpAddress'` and `recipientType: 'DESTINATION_CHAIN'`, then deposit on NEAR as usual. The verifier `ft_withdraw`s the bridged token to the relayer, which pays out on the XRP Ledger from the treasury. Payouts are signed first and the signed transaction (with a deterministic hash and a `LastLedgerSequence`, about 2.5 minutes) is recorded before it is sent, so a crash or retry never pays twice: the hash is looked up first and a new transaction is only signed after the ledger window has provably passed and the sequence number is confirmed unused. Payouts are serialized, one transaction at a time.

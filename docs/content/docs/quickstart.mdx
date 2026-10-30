@@ -30,7 +30,7 @@ Tidepool speaks the 1Click Swap API (OpenAPI v0.1.10) shape on NEAR testnet. If 
 curl https://www.usetidepool.tech/v0/tokens
 ```
 
-Each token has an `assetId` such as `nep141:usdc.tidepool-sandbox.testnet`, a `decimals` value and a live USD `price`. Use those ids in quotes.
+Each token has an `assetId` such as `nep141:usdc.tidepool-sandbox.testnet`, a `decimals` value and a live USD `price`. Use those ids in quotes. The complete live response (all 23 tokens, every field) is in the [tokens reference](/docs/api-reference/get-tokens).
 
 </Step>
 <Step>
@@ -60,12 +60,49 @@ curl -X POST https://www.usetidepool.tech/v0/quote \
 
 `amount` is in base units (USDC has 6 decimals, so `10000000` is 10 USDC). `slippageTolerance` is in basis points (100 = 1%).
 
+Real response (a dry quote, taken live on 2026-10-30; prices move, so your numbers will differ):
+
+```json
+{
+  "correlationId": "a0e51424-8cfa-4fc3-b967-c8ca464a69fa",
+  "timestamp": "2026-10-30T16:35:05.469Z",
+  "quoteRequest": {
+    "dry": true,
+    "swapType": "EXACT_INPUT",
+    "slippageTolerance": 100,
+    "originAsset": "nep141:usdc.tidepool-sandbox.testnet",
+    "depositType": "INTENTS",
+    "destinationAsset": "nep141:wnear.tidepool-sandbox.testnet",
+    "amount": "10000000",
+    "refundTo": "alice.testnet",
+    "refundType": "INTENTS",
+    "recipient": "alice.testnet",
+    "recipientType": "DESTINATION_CHAIN",
+    "deadline": "2030-01-01T00:00:00.000Z"
+  },
+  "quote": {
+    "amountIn": "10000000",
+    "amountInFormatted": "10",
+    "amountInUsd": "9.9981",
+    "minAmountIn": "10000000",
+    "amountOut": "2303964921296296107520000",
+    "amountOutFormatted": "2.30396492129629610752",
+    "amountOutUsd": "9.9531",
+    "minAmountOut": "2280925272083333146444800",
+    "timeEstimate": 10
+  },
+  "signature": "ed25519:MjBxpwWWze1Ng4WGtD5euszcGEN1Lgo7eaQQaRTcYV4fdmuTmR8k3wtaZsrB9ES69NFMcydQKaBy6EBYMQGCZqW"
+}
+```
+
+This is the complete body: `correlationId`, `timestamp`, `quoteRequest` (your request echoed, with defaults filled in), `quote` and `signature`. A dry quote has no `depositAddress`, `deadline` or `timeWhenInactive`. The twelve fields above are the required ones; every optional field (`appFees`, `referral`, `depositMode`, `quoteWaitingTimeMs`, `connectedWallets`, `sessionId`, `virtualChainRecipient`, `virtualChainRefundRecipient`, `customRecipientMsg`, `confidentiality`, `ondoTokens`) is in the [full request on Swap types](/docs/concepts/swap-types#all-request-fields).
+
 </Step>
 <Step>
 
 ### Go live
 
-Send the same request with `"dry": false` and a deadline a few minutes ahead. The response's `quote.depositAddress` is a fresh address used by this quote only (a NEAR account for NEAR tokens; an address on the origin chain for bridged tokens, except Stellar and XRP Ledger, which use a shared address plus a memo). Deposit `quote.amountIn` of the origin token to it ([how](/docs/concepts/deposits)), then poll:
+Send the same request with `"dry": false` and a deadline a few minutes ahead. The response's `quote.depositAddress` is a fresh address used by this quote only (a NEAR account for NEAR tokens; an address on the origin chain for bridged tokens, except Stellar and XRP Ledger, which use a shared address plus a memo). Deposit `quote.amountIn` of the origin token to it ([how](/docs/concepts/deposits)). A real live response is shown in [First swap](/docs/guides/first-swap#2-get-a-live-quote). Then poll:
 
 ```bash
 curl "https://www.usetidepool.tech/v0/status?depositAddress=<depositAddress>"

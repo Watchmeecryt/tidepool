@@ -6,7 +6,7 @@ description: "POST /v0/quote · 1Click-compatible"
 
 <p><span className="tp-method tp-post">POST</span><code>{"/v0/quote"}</code></p>
 
-Returns **HTTP 200** on success, as 1Click does. With `dry: false` the response adds `quote.depositAddress`, `deadline` and `timeWhenInactive`. See [Quotes and pricing](/docs/concepts/quotes) and [Swap types](/docs/concepts/swap-types). Tidepool-only: the optional `simulate` field (`STUCK` or `FAILED`) simulates a stuck or failed swap on testnet, see [Stuck or failed swap](/docs/guides/failure-cases#stuck-or-failed-swap-simulated-outage). Remove it when you move to mainnet 1Click.
+Returns **HTTP 200** on success, as 1Click does. The request below sets **every** field Tidepool accepts (the twelve required ones plus all optional ones); `simulate` is left out because it changes the swap's outcome. The response is a real dry quote. With `dry: false` the response adds `quote.depositAddress`, `deadline` and `timeWhenInactive`, see the live example below. See [Quotes and pricing](/docs/concepts/quotes) and [Swap types](/docs/concepts/swap-types) (full requests and responses for each swap type). Tidepool-only: the optional `simulate` field (`STUCK` or `FAILED`) simulates a stuck or failed swap on testnet, see [Stuck or failed swap](/docs/guides/failure-cases#stuck-or-failed-swap-simulated-outage). Remove it when you move to mainnet 1Click.
 
 Generates a swap quote based on input parameters such as the assets, amount, slippage tolerance, and recipient/refund information. Returns pricing details, estimated time, and a unique **deposit address** to which tokens must be transferred to initiate the swap. You can set the `dry` parameter to `true` to simulate the quote request **without generating a deposit address** or initiating the swap process. This is useful for previewing swap parameters or validating input data without committing to an actual swap. This endpoint is the first required step in the swap process. Tidepool supports EXACT_INPUT, EXACT_OUTPUT, FLEX_INPUT and ANY_INPUT; appFees; depositMode SIMPLE and MEMO (MEMO for NEAR-native ORIGIN_CHAIN only); ORIGIN_CHAIN and INTENTS deposit/refund types; DESTINATION_CHAIN and INTENTS recipient types. CONFIDENTIAL_INTENTS / confidentiality is accepted but ignored. Tidepool-only: the optional `simulate` field (`STUCK` or `FAILED`) simulates a stuck or failed swap on testnet; see the Testing failure cases guide.
 
@@ -24,15 +24,29 @@ curl -X POST "https://www.usetidepool.tech/v0/quote" \
   "dry": true,
   "swapType": "EXACT_INPUT",
   "slippageTolerance": 100,
-  "originAsset": "nep141:usdc.tidepool-sandbox.testnet",
+  "originAsset": "nep141:wnear.tidepool-sandbox.testnet",
   "depositType": "INTENTS",
-  "destinationAsset": "nep141:wnear.tidepool-sandbox.testnet",
-  "amount": "10000000",
-  "refundTo": "alice.testnet",
+  "destinationAsset": "nep141:usdc.tidepool-sandbox.testnet",
+  "amount": "1000000000000000000000000",
+  "recipient": "user.testnet",
+  "recipientType": "INTENTS",
+  "refundTo": "user.testnet",
   "refundType": "INTENTS",
-  "recipient": "alice.testnet",
-  "recipientType": "DESTINATION_CHAIN",
-  "deadline": "2030-01-01T00:00:00.000Z"
+  "deadline": "2030-01-01T00:00:00.000Z",
+  "depositMode": "SIMPLE",
+  "referral": "tidepool-docs",
+  "quoteWaitingTimeMs": 3000,
+  "appFees": [
+    {
+      "recipient": "fees.testnet",
+      "fee": 50
+    }
+  ],
+  "connectedWallets": [
+    "user.testnet"
+  ],
+  "sessionId": "session_abc123",
+  "confidentiality": "public"
 }'
 ```
 
@@ -47,15 +61,29 @@ const res = await fetch('https://www.usetidepool.tech/v0/quote', {
     "dry": true,
     "swapType": "EXACT_INPUT",
     "slippageTolerance": 100,
-    "originAsset": "nep141:usdc.tidepool-sandbox.testnet",
+    "originAsset": "nep141:wnear.tidepool-sandbox.testnet",
     "depositType": "INTENTS",
-    "destinationAsset": "nep141:wnear.tidepool-sandbox.testnet",
-    "amount": "10000000",
-    "refundTo": "alice.testnet",
+    "destinationAsset": "nep141:usdc.tidepool-sandbox.testnet",
+    "amount": "1000000000000000000000000",
+    "recipient": "user.testnet",
+    "recipientType": "INTENTS",
+    "refundTo": "user.testnet",
     "refundType": "INTENTS",
-    "recipient": "alice.testnet",
-    "recipientType": "DESTINATION_CHAIN",
-    "deadline": "2030-01-01T00:00:00.000Z"
+    "deadline": "2030-01-01T00:00:00.000Z",
+    "depositMode": "SIMPLE",
+    "referral": "tidepool-docs",
+    "quoteWaitingTimeMs": 3000,
+    "appFees": [
+      {
+        "recipient": "fees.testnet",
+        "fee": 50
+      }
+    ],
+    "connectedWallets": [
+      "user.testnet"
+    ],
+    "sessionId": "session_abc123",
+    "confidentiality": "public"
   }),
 });
 const data = await res.json();
@@ -66,7 +94,7 @@ const data = await res.json();
 
 ### Try it
 
-<TryIt method="POST" path={"/v0/quote"} body={"{\n  \"dry\": true,\n  \"swapType\": \"EXACT_INPUT\",\n  \"slippageTolerance\": 100,\n  \"originAsset\": \"nep141:usdc.tidepool-sandbox.testnet\",\n  \"depositType\": \"INTENTS\",\n  \"destinationAsset\": \"nep141:wnear.tidepool-sandbox.testnet\",\n  \"amount\": \"10000000\",\n  \"refundTo\": \"alice.testnet\",\n  \"refundType\": \"INTENTS\",\n  \"recipient\": \"alice.testnet\",\n  \"recipientType\": \"DESTINATION_CHAIN\",\n  \"deadline\": \"2030-01-01T00:00:00.000Z\"\n}"} />
+<TryIt method="POST" path={"/v0/quote"} body={"{\n  \"dry\": true,\n  \"swapType\": \"EXACT_INPUT\",\n  \"slippageTolerance\": 100,\n  \"originAsset\": \"nep141:wnear.tidepool-sandbox.testnet\",\n  \"depositType\": \"INTENTS\",\n  \"destinationAsset\": \"nep141:usdc.tidepool-sandbox.testnet\",\n  \"amount\": \"1000000000000000000000000\",\n  \"recipient\": \"user.testnet\",\n  \"recipientType\": \"INTENTS\",\n  \"refundTo\": \"user.testnet\",\n  \"refundType\": \"INTENTS\",\n  \"deadline\": \"2030-01-01T00:00:00.000Z\",\n  \"depositMode\": \"SIMPLE\",\n  \"referral\": \"tidepool-docs\",\n  \"quoteWaitingTimeMs\": 3000,\n  \"appFees\": [\n    {\n      \"recipient\": \"fees.testnet\",\n      \"fee\": 50\n    }\n  ],\n  \"connectedWallets\": [\n    \"user.testnet\"\n  ],\n  \"sessionId\": \"session_abc123\",\n  \"confidentiality\": \"public\"\n}"} />
 
 ### Body
 
@@ -108,34 +136,88 @@ const data = await res.json();
 
 ```json
 {
-  "correlationId": "922a68ad-3d13-4a3f-a396-2965f8cc79d4",
-  "timestamp": "2026-10-24T21:31:23.183Z",
+  "correlationId": "4a48aa63-3225-4e23-8cfa-2135a9ef5e06",
+  "timestamp": "2026-10-30T16:33:07.295Z",
   "quoteRequest": {
     "dry": true,
+    "swapType": "EXACT_INPUT",
+    "slippageTolerance": 100,
+    "originAsset": "nep141:wnear.tidepool-sandbox.testnet",
+    "depositType": "INTENTS",
+    "destinationAsset": "nep141:usdc.tidepool-sandbox.testnet",
+    "amount": "1000000000000000000000000",
+    "recipient": "user.testnet",
+    "recipientType": "INTENTS",
+    "refundTo": "user.testnet",
+    "refundType": "INTENTS",
+    "deadline": "2030-01-01T00:00:00.000Z",
+    "depositMode": "SIMPLE",
+    "referral": "tidepool-docs",
+    "quoteWaitingTimeMs": 3000,
+    "appFees": [
+      {
+        "recipient": "fees.testnet",
+        "fee": 50
+      }
+    ],
+    "connectedWallets": [
+      "user.testnet"
+    ],
+    "sessionId": "session_abc123",
+    "confidentiality": "public"
+  },
+  "quote": {
+    "amountIn": "1000000000000000000000000",
+    "amountInFormatted": "1",
+    "amountInUsd": "4.3300",
+    "minAmountIn": "1000000000000000000000000",
+    "amountOut": "4289927",
+    "amountOutFormatted": "4.289927",
+    "amountOutUsd": "4.2890",
+    "minAmountOut": "4247027",
+    "timeEstimate": 10
+  },
+  "signature": "ed25519:4DkW36AZiPZHQ3rE4CnEE24TtK6XDwUXf7u2W7fmwaATook42rTsGfsBJjS5igfZkkanAJP2jj5pftxHmTgvAYmR"
+}
+```
+
+**Live quote (dry: false)**
+
+Request: the same body with `"dry": false`, a `deadline` between 60 seconds and 24 hours ahead and your own `recipient` / `refundTo`. The response adds `quote.depositAddress`, `quote.deadline` and `quote.timeWhenInactive` (and `quote.depositMemo` or `quote.chainDepositAddresses` where the chain needs them). Real response:
+
+```json
+{
+  "correlationId": "24361e73-4a77-4689-bbcd-031670808504",
+  "timestamp": "2026-10-30T16:31:46.340Z",
+  "quoteRequest": {
+    "dry": false,
     "swapType": "EXACT_INPUT",
     "slippageTolerance": 100,
     "originAsset": "nep141:usdc.tidepool-sandbox.testnet",
     "depositType": "INTENTS",
     "destinationAsset": "nep141:wnear.tidepool-sandbox.testnet",
-    "amount": "10000000",
-    "refundTo": "alice.testnet",
+    "amount": "5000000",
+    "recipient": "9cf39ad040a13205c3ab109a8566fd779394a548f76b1aed5107efcdfe6c7ceb",
+    "recipientType": "INTENTS",
+    "refundTo": "9cf39ad040a13205c3ab109a8566fd779394a548f76b1aed5107efcdfe6c7ceb",
     "refundType": "INTENTS",
-    "recipient": "alice.testnet",
-    "recipientType": "DESTINATION_CHAIN",
-    "deadline": "2030-01-01T00:00:00.000Z"
+    "deadline": "2026-10-30T17:01:45.000Z"
   },
   "quote": {
-    "amountIn": "10000000",
-    "amountInFormatted": "10",
-    "amountInUsd": "9.9958",
-    "minAmountIn": "10000000",
-    "amountOut": "2241186638513513306880000",
-    "amountOutFormatted": "2.24118663851351330688",
-    "amountOutUsd": "9.9509",
-    "minAmountOut": "2218774772128378173811200",
-    "timeEstimate": 10
+    "amountIn": "5000000",
+    "amountInFormatted": "5",
+    "amountInUsd": "4.9988",
+    "minAmountIn": "5000000",
+    "amountOut": "1146611853686635908000000",
+    "amountOutFormatted": "1.146611853686635908",
+    "amountOutUsd": "4.9763",
+    "minAmountOut": "1135145735149769548920000",
+    "timeEstimate": 10,
+    "depositAddress": "54e8db801fab4ec416719b8b3044c21bacb4652c698ad4c5846086e5cf27b3a4",
+    "deadline": "2026-10-30T17:01:45.000Z",
+    "timeWhenInactive": "2026-10-30T17:01:45.000Z"
   },
-  "signature": "ed25519:peWDyRaujC7pRHxRRU7DnSTWiw1vuiu8T5Pz9gNdfFYbGPedmnYLYKv7nfgLh9JbvZ5Nu6otgbKscHkDYU3JPaL"
+  "signature": "ed25519:4BTdtKWHcvgAujkc1RpFa5vF8XE5DNET2qLHRkNhrTaWPKzsHm5uHqKDjTUCx6KTFM4whK3L2KjH6bjEhG5MQzNe"
 }
 ```
 
@@ -205,9 +287,39 @@ const data = await res.json();
 
 ```json
 {
-  "message": "swapType is required"
+  "message": "slippageTolerance is required (missing: slippageTolerance, originAsset, depositType, destinationAsset, amount, refundTo, refundType, recipient, recipientType, deadline)",
+  "hint": "A quote needs all of these fields. Copy exampleRequest and adjust it.",
+  "docs": "https://www.usetidepool.tech/docs/quickstart",
+  "missingFields": [
+    "slippageTolerance",
+    "originAsset",
+    "depositType",
+    "destinationAsset",
+    "amount",
+    "refundTo",
+    "refundType",
+    "recipient",
+    "recipientType",
+    "deadline"
+  ],
+  "exampleRequest": {
+    "dry": true,
+    "swapType": "EXACT_INPUT",
+    "slippageTolerance": 100,
+    "originAsset": "nep141:usdc.tidepool-sandbox.testnet",
+    "depositType": "INTENTS",
+    "destinationAsset": "nep141:wnear.tidepool-sandbox.testnet",
+    "amount": "10000000",
+    "refundTo": "alice.testnet",
+    "refundType": "INTENTS",
+    "recipient": "alice.testnet",
+    "recipientType": "DESTINATION_CHAIN",
+    "deadline": "2026-10-30T16:48:07.766Z"
+  }
 }
 ```
 
 ### 401 Unauthorized - API key or JWT token is invalid
+
+Tidepool does not return this: API keys and JWTs are optional on `/v0/quote`, and any `X-API-Key` / `Authorization: Bearer` value is accepted (it only selects the lower fee tier).
 

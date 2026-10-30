@@ -83,7 +83,20 @@ const BASE = 'https://www.usetidepool.tech';
 const q = await fetch(`${BASE}/v0/quote`, {
   method: 'POST',
   headers: { 'content-type': 'application/json', authorization: 'Bearer dummy' },
-  body: JSON.stringify({ /* QuoteRequest */ }),
+  body: JSON.stringify({
+    dry: false,
+    swapType: 'EXACT_INPUT',
+    slippageTolerance: 100,
+    originAsset: 'nep141:usdc.tidepool-sandbox.testnet',
+    depositType: 'INTENTS',
+    destinationAsset: 'nep141:wnear.tidepool-sandbox.testnet',
+    amount: '5000000',
+    refundTo: 'you.testnet',
+    refundType: 'INTENTS',
+    recipient: 'you.testnet',
+    recipientType: 'INTENTS',
+    deadline: new Date(Date.now() + 10 * 60_000).toISOString(),
+  }),  // all required fields; optional ones are listed in /docs/concepts/swap-types
 }).then(r => r.json());
 
 for (;;) {

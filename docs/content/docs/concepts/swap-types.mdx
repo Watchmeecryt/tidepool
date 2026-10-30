@@ -1,51 +1,316 @@
 ---
 title: Swap types
-description: EXACT_INPUT, EXACT_OUTPUT, FLEX_INPUT and ANY_INPUT, with examples.
+description: EXACT_INPUT, EXACT_OUTPUT, FLEX_INPUT and ANY_INPUT, each with a full request, a real response and deposit handling.
 icon: Shuffle
 ---
 
-`swapType` decides which side of the trade `amount` fixes.
+Every quote request includes a `swapType` that sets how `amount` is read and how your deposit is handled. Open the tab for your case. Each one has a **full request** (every field NEAR's [Swap Types](https://docs.near-intents.org/integration/distribution-channels/1click-api/swap-types) page shows), with the highlighted lines marking what makes it different, a sample response and the deposit-handling rules.
+
+<Callout title="Basis points and live numbers">
+`slippageTolerance` is in **basis points** (`100` = 1%) for every swap type. The responses below are pasted from **live dry quotes** against `POST /v0/quote` on 2026-10-30 (`dry: true`, so nothing was committed). Prices move, so your numbers will differ. Assets are Tidepool testnet tokens from [`GET /v0/tokens`](/docs/api-reference/get-tokens): wNEAR (`nep141:wnear.tidepool-sandbox.testnet`, 24 decimals) and USDC (`nep141:usdc.tidepool-sandbox.testnet`, 6 decimals).
+</Callout>
+
+## Full quote response
+
+Every swap type returns this envelope. The tabs below show only its `quote` object, because that is where the swap types differ. This is the complete response of the `EXACT_INPUT` request below (a live dry quote):
+
+```json
+{
+  "correlationId": "dacaca8e-1550-4d2f-b90c-8c49aed44111",
+  "timestamp": "2026-10-30T16:29:50.881Z",
+  "quoteRequest": {
+    "dry": true,
+    "swapType": "EXACT_INPUT",
+    "slippageTolerance": 100,
+    "originAsset": "nep141:wnear.tidepool-sandbox.testnet",
+    "depositType": "INTENTS",
+    "destinationAsset": "nep141:usdc.tidepool-sandbox.testnet",
+    "amount": "1000000000000000000000000",
+    "recipient": "user.testnet",
+    "recipientType": "INTENTS",
+    "refundTo": "user.testnet",
+    "refundType": "INTENTS",
+    "deadline": "2030-01-01T00:00:00.000Z"
+  },
+  "quote": {
+    "amountIn": "1000000000000000000000000",
+    "amountInFormatted": "1",
+    "amountInUsd": "4.3400",
+    "minAmountIn": "1000000000000000000000000",
+    "amountOut": "4321511",
+    "amountOutFormatted": "4.321511",
+    "amountOutUsd": "4.3205",
+    "minAmountOut": "4278295",
+    "timeEstimate": 10
+  },
+  "signature": "ed25519:51phhfZt7iryC34tdLj5LTMLuJe8y4SESeYGZpzY7H5LBr14WLNWm4x65acqqs5mFm72KGpJBZC1WKMs154Cvfbd"
+}
+```
+
+`quoteRequest` echoes your request. With `dry: false` the `quote` object also carries `depositAddress`, `deadline` and `timeWhenInactive` (and a `depositMemo` for memo chains). See [Quotes and pricing](/docs/concepts/quotes#dry-vs-live).
 
 <Tabs items={['EXACT_INPUT', 'EXACT_OUTPUT', 'FLEX_INPUT', 'ANY_INPUT']}>
 <Tab value="EXACT_INPUT">
-`amount` is what you **send**. `amountIn = minAmountIn = amount`. Output floats with price, floored by `minAmountOut`.
-
-Send exactly 10 USDC, receive about 10 USDC worth of wNEAR:
+**Fix the amount you send.** You commit to sending an exact `amount` of `originAsset`; the quote returns the output you will receive. `amountIn = minAmountIn = amount`, and the output floats with price, floored by `minAmountOut`.
 
 ```json
-{ "swapType": "EXACT_INPUT", "amount": "10000000", "slippageTolerance": 100 }
+{
+  "dry": true,
+  "swapType": "EXACT_INPUT", // [!code highlight]
+  "slippageTolerance": 100,
+  "originAsset": "nep141:wnear.tidepool-sandbox.testnet",
+  "depositType": "INTENTS",
+  "destinationAsset": "nep141:usdc.tidepool-sandbox.testnet",
+  "amount": "1000000000000000000000000", // [!code highlight]
+  "recipient": "user.testnet",
+  "recipientType": "INTENTS",
+  "refundTo": "user.testnet",
+  "refundType": "INTENTS",
+  "deadline": "2030-01-01T00:00:00.000Z"
+}
 ```
 
-A larger deposit swaps `amountIn` and refunds the excess in the same transaction.
+`amount` is the **1 wNEAR** you intend to send (24 decimals). Response `quote` (live dry quote):
+
+```json
+{
+  "amountIn": "1000000000000000000000000",
+  "amountInFormatted": "1",
+  "amountInUsd": "4.3400",
+  "minAmountIn": "1000000000000000000000000",
+  "amountOut": "4321511",
+  "amountOutFormatted": "4.321511",
+  "amountOutUsd": "4.3205",
+  "minAmountOut": "4278295",
+  "timeEstimate": 10
+}
+```
+
+`amountOut` is the output you receive for sending exactly `amount`: 4.321511 USDC, and never less than `minAmountOut` (4.278295 USDC, 1% below).
+
+**Deposit handling**
+
+- Deposit **below** `amountIn` → refunded by the `deadline` (status `INCOMPLETE_DEPOSIT`, then `REFUNDED`).
+- Deposit **above** `amountIn` → the swap proceeds with `amountIn` and the excess is refunded to `refundTo` in the same transaction.
+
+<Callout>
+The example uses `depositType: "INTENTS"`; `ORIGIN_CHAIN` works too (see the [Quickstart](/docs/quickstart)). `CONFIDENTIAL_INTENTS` is accepted by NEAR's API but returns 400 on Tidepool, see [Moving to mainnet 1Click](/docs/guides/mainnet-migration).
+</Callout>
 </Tab>
 <Tab value="EXACT_OUTPUT">
-`amount` is what the recipient **receives**. Tidepool works out the input needed (`minAmountIn`) and asks you to deposit `amountIn = minAmountIn × (1 + slippage)` as a buffer. At settlement it uses only what the current price requires and **refunds the rest**. If the price moved so far that the deposit no longer covers the output, everything is refunded with `PRICE_MOVED`.
-
-Receive exactly 1 wNEAR:
+**Fix the amount you receive.** You commit to receiving an exact `amount` of `destinationAsset`; the quote returns the input required. Slippage applies to the **input** side, so `amountOut = minAmountOut = amount`.
 
 ```json
-{ "swapType": "EXACT_OUTPUT", "amount": "1000000000000000000000000", "slippageTolerance": 100 }
+{
+  "dry": true,
+  "swapType": "EXACT_OUTPUT", // [!code highlight]
+  "slippageTolerance": 100,
+  "originAsset": "nep141:wnear.tidepool-sandbox.testnet",
+  "depositType": "INTENTS",
+  "destinationAsset": "nep141:usdc.tidepool-sandbox.testnet",
+  "amount": "10000000", // [!code highlight]
+  "recipient": "user.testnet",
+  "recipientType": "INTENTS",
+  "refundTo": "user.testnet",
+  "refundType": "INTENTS",
+  "deadline": "2030-01-01T00:00:00.000Z"
+}
 ```
+
+`amount` is the **10 USDC** you want to end up with. The response returns `amountIn` (the input to send, with slippage baked in) and `minAmountIn` (the minimum actually needed). Response `quote` (live dry quote):
+
+```json
+{
+  "amountIn": "2337145241142745775307346",
+  "amountInFormatted": "2.337145241142745775307346",
+  "amountInUsd": "10.1432",
+  "minAmountIn": "2314005189250243341888462",
+  "amountOut": "10000000",
+  "amountOutFormatted": "10",
+  "amountOutUsd": "9.9976",
+  "minAmountOut": "10000000",
+  "timeEstimate": 10
+}
+```
+
+Here `amountIn` is 2.337145… wNEAR, `minAmountIn` is 2.314005… wNEAR, so `amountIn = minAmountIn × 1.01` (your 1% slippage).
+
+**Deposit handling**
+
+- Deposit **below** `minAmountIn` → refunded by the `deadline`.
+- Deposit **above** `amountIn` → the swap proceeds and the excess is refunded to `refundTo` after the swap completes.
+- If the price moved so far that the deposit no longer covers the output, everything is refunded with `PRICE_MOVED`.
+
+<Callout type="info" title="amountIn is a buffer, not a worse price">
+`amountIn` looks higher than `minAmountIn` by roughly your slippage. That gap is a **buffer to guarantee execution**. At settlement Tidepool uses only what the current price requires, and anything unused is refunded.
+</Callout>
+
+<Callout>
+The example uses `depositType: "INTENTS"`; `ORIGIN_CHAIN` works too. `CONFIDENTIAL_INTENTS` returns 400 on Tidepool.
+</Callout>
 </Tab>
 <Tab value="FLEX_INPUT">
-Like `EXACT_INPUT`, but a deposit down to `minAmountIn = amount × (1 − slippage)` is still accepted and swapped pro rata. Useful when fees or rounding on the sending side may shave a little off.
+**One token, variable amount.** Still one known `originAsset` through one deposit address, but the deposit **amount can vary** within a band. Use it when you do not know the exact amount at quote time, for example sweeping a wallet whose balance is still settling, or when fees or rounding on the sending side may shave a little off.
 
 ```json
-{ "swapType": "FLEX_INPUT", "amount": "10000000", "slippageTolerance": 100 }
+{
+  "dry": true,
+  "swapType": "FLEX_INPUT", // [!code highlight]
+  "slippageTolerance": 100,
+  "originAsset": "nep141:wnear.tidepool-sandbox.testnet",
+  "depositType": "INTENTS",
+  "destinationAsset": "nep141:usdc.tidepool-sandbox.testnet",
+  "amount": "1000000000000000000000000", // [!code highlight]
+  "recipient": "user.testnet",
+  "recipientType": "INTENTS",
+  "refundTo": "user.testnet",
+  "refundType": "INTENTS",
+  "deadline": "2030-01-01T00:00:00.000Z"
+}
 ```
 
-Here any deposit of at least 9.9 USDC is swapped.
+`slippageTolerance` applies to **both** sides, so the quote comes back as a band. Response `quote` (live dry quote):
+
+```json
+{
+  "amountIn": "1000000000000000000000000",
+  "amountInFormatted": "1",
+  "amountInUsd": "4.3400",
+  "minAmountIn": "990000000000000000000000",
+  "amountOut": "4321511",
+  "amountOutFormatted": "4.321511",
+  "amountOutUsd": "4.3205",
+  "minAmountOut": "4278295",
+  "timeEstimate": 10
+}
+```
+
+**Deposit handling** (for the 1 wNEAR → ~4.32 USDC quote above, at 1% slippage)
+
+- Deposit **0.99 wNEAR or more** (`minAmountIn`) → swapped pro rata; you receive at least `minAmountOut`.
+- Deposit **above the quoted 1 wNEAR** → still swapped (the quote is not a cap).
+- Deposit **below 0.99 wNEAR** → refunded after the `deadline`, as long as the total received stays under `minAmountIn`.
+
+<Callout>
+The example uses `depositType: "INTENTS"`; `ORIGIN_CHAIN` works too. `CONFIDENTIAL_INTENTS` is not supported for `FLEX_INPUT` on NEAR, and returns 400 on Tidepool for every swap type.
+</Callout>
 </Tab>
 <Tab value="ANY_INPUT">
-The deposit address accepts any number of deposits, of any size (`minAmountIn` is `1`), until the deadline. Each deposit is converted at the live price and paid out on its own. List the payouts with [`GET /v0/any-input/withdrawals`](/docs/api-reference/get-any-input-quote-withdrawals). Tidepool also returns the full page in `tidepool.withdrawals` there.
+**Collect many deposits into one destination.** The deposit address accepts any number of deposits, of any size (`minAmountIn` is `1`), until the deadline. Each deposit is converted at the live price and paid out on its own to `recipient`. List the payouts with [`GET /v0/any-input/withdrawals`](/docs/api-reference/get-any-input-quote-withdrawals); Tidepool also returns the full page in `tidepool.withdrawals`.
 
 ```json
-{ "swapType": "ANY_INPUT", "amount": "10000000", "slippageTolerance": 100 }
+{
+  "dry": true,
+  "swapType": "ANY_INPUT", // [!code highlight]
+  "slippageTolerance": 100,
+  "originAsset": "nep141:wnear.tidepool-sandbox.testnet", // [!code highlight]
+  "depositType": "INTENTS",
+  "destinationAsset": "nep141:usdc.tidepool-sandbox.testnet",
+  "amount": "1000000000000000000000000", // [!code highlight]
+  "recipient": "user.testnet",
+  "recipientType": "INTENTS",
+  "refundTo": "user.testnet",
+  "refundType": "INTENTS",
+  "deadline": "2030-01-01T00:00:00.000Z"
+}
 ```
 
-On mainnet 1Click, `ANY_INPUT` is only available to authorized partners. Tidepool allows it for everyone, so check access before you rely on it in production. Limits on testnet: `depositMode` must be `SIMPLE`, so Stellar and XRP deposits are rejected; `simulate` is rejected; and payouts of native SOL, XLM, SUI, BTC or XRP are rejected, because each deposit would be converted separately and could exceed that asset's [cap](/docs/guides/bridges).
+Response `quote` (live dry quote). `amountIn` and `amountOut` only price the `amount` you asked about; they are not a promise for later deposits:
+
+```json
+{
+  "amountIn": "1000000000000000000000000",
+  "amountInFormatted": "1",
+  "amountInUsd": "4.3400",
+  "minAmountIn": "1",
+  "amountOut": "4321511",
+  "amountOutFormatted": "4.321511",
+  "amountOutUsd": "4.3205",
+  "minAmountOut": "4278295",
+  "timeEstimate": 10
+}
+```
+
+**Deposit handling**
+
+- Deposits of **any size** (at least 1 base unit) arrive at the deposit address and are each converted at the **live price at settlement**, so there is no fixed rate when you create the quote. `minAmountIn` is `1`.
+- Each deposit is paid out on its own to `recipient`. NEAR's partner pool instead sweeps once it clears a $1,000 USD threshold; do not expect that batching here.
+- The deposit address stays open until the `deadline`.
+- Refunds follow the usual rules (`refundTo`, `refundType`), so set `refundTo` to an account you control.
+
+<Callout type="warn" title="Tidepool differences for ANY_INPUT">
+- **Open to everyone on testnet.** On mainnet 1Click, `ANY_INPUT` is only available to authorized partners (and public `ANY_INPUT` requests cannot contain `appFees`). Tidepool allows it for everyone and accepts `appFees`, so check access before you rely on it in production.
+- **`originAsset` must be a real asset id** from `/v0/tokens` and **`amount` must be greater than zero**. NEAR's `"originAsset": "1cs_v1:any"` with `"amount": "0"` is rejected with a 400 on Tidepool (`originAsset 1cs_v1:any is not supported`, `amount must be a positive integer string in base units`). The `originAsset` fixes which token the deposit address accepts.
+- **`depositType` can be `ORIGIN_CHAIN` or `INTENTS`.** `CONFIDENTIAL_INTENTS` returns 400.
+- Limits on testnet: `depositMode` must be `SIMPLE`, so Stellar and XRP deposits are rejected; `simulate` is rejected; and payouts of native SOL, XLM, SUI, BTC or XRP are rejected, because each deposit would be converted separately and could exceed that asset's [cap](/docs/guides/bridges).
+</Callout>
 </Tab>
 </Tabs>
+
+## All request fields
+
+The four requests above use the twelve required fields. Tidepool accepts every optional 1Click field as well; this table is the complete list.
+
+| Field | Required | Notes |
+| --- | --- | --- |
+| `dry` | yes | `true` prices only (no `depositAddress`, `deadline` or `timeWhenInactive` in the response). `false` creates a deposit address. |
+| `swapType` | yes | `EXACT_INPUT`, `EXACT_OUTPUT`, `FLEX_INPUT` or `ANY_INPUT`. |
+| `slippageTolerance` | yes | Basis points (`100` = 1%). |
+| `originAsset` | yes | Asset id from `/v0/tokens`. |
+| `depositType` | yes | `ORIGIN_CHAIN` or `INTENTS`. `CONFIDENTIAL_INTENTS` returns 400. |
+| `destinationAsset` | yes | Asset id from `/v0/tokens`. |
+| `amount` | yes | Integer string in base units. Input or output depending on `swapType`. |
+| `recipient` | yes | Account or address on the destination chain, or an intents account. |
+| `recipientType` | yes | `DESTINATION_CHAIN` or `INTENTS`. See the table below. |
+| `refundTo` | yes | Account or address that receives refunds. |
+| `refundType` | yes | `ORIGIN_CHAIN` or `INTENTS`. See the table below. |
+| `deadline` | yes | ISO timestamp. Live quotes need 60 s to 24 h ahead; dry quotes accept any. |
+| `depositMode` | no | `SIMPLE` (default) or `MEMO`. `MEMO` is for NEAR-native, Stellar and XRP `ORIGIN_CHAIN` deposits only. |
+| `referral` | no | Distribution channel id, lowercase. Accepted and echoed, no effect. |
+| `quoteWaitingTimeMs` | no | Accepted and echoed, no effect (there is one maker, so quotes are immediate). |
+| `appFees` | no | Array of `{ "recipient", "fee" }` (`fee` in basis points). Settled in the same transaction; reduces `amountOut`. |
+| `connectedWallets` | no | Accepted and echoed, no effect. |
+| `sessionId` | no | Accepted and echoed, no effect. |
+| `virtualChainRecipient`, `virtualChainRefundRecipient` | no | Accepted and echoed, no effect. |
+| `customRecipientMsg` | no | Accepted and echoed. Experimental on 1Click. |
+| `rebates`, `insured` | no | Accepted and echoed, no effect (no extra insurance fee is charged). |
+| `confidentiality` | no | Accepted and ignored; every swap settles publicly. See [Moving to mainnet 1Click](/docs/guides/mainnet-migration). |
+| `simulate` | no | **Tidepool only.** `STUCK` or `FAILED`, to simulate an outage. See [failure cases](/docs/guides/failure-cases#stuck-or-failed-swap-simulated-outage). |
+
+A request with **every** optional field set, accepted by the live API (this one is a dry `EXACT_INPUT` quote; `simulate` is left out because it changes the swap's outcome):
+
+```json
+{
+  "dry": true,
+  "swapType": "EXACT_INPUT",
+  "slippageTolerance": 100,
+  "originAsset": "nep141:wnear.tidepool-sandbox.testnet",
+  "depositType": "INTENTS",
+  "destinationAsset": "nep141:usdc.tidepool-sandbox.testnet",
+  "amount": "1000000000000000000000000",
+  "recipient": "user.testnet",
+  "recipientType": "INTENTS",
+  "refundTo": "user.testnet",
+  "refundType": "INTENTS",
+  "deadline": "2030-01-01T00:00:00.000Z",
+  "depositMode": "SIMPLE",
+  "referral": "tidepool-docs",
+  "quoteWaitingTimeMs": 3000,
+  "appFees": [
+    {
+      "recipient": "fees.testnet",
+      "fee": 50
+    }
+  ],
+  "connectedWallets": [
+    "user.testnet"
+  ],
+  "sessionId": "session_abc123",
+  "confidentiality": "public"
+}
+```
+
+Fields Tidepool does not recognize are echoed back in `quoteRequest` and otherwise ignored.
 
 ## Recipient and refund types
 

@@ -24,7 +24,46 @@ curl -s -X POST {{ORIGIN}}/v0/quote -H 'content-type: application/json' -d '{
   "deadline": "'$DEADLINE'"}' | tee quote.json
 ```
 
-Note `quote.depositAddress` and `quote.amountIn`.
+
+Real response (live, 2026-10-30; the quote expired unpaid after its ten-minute deadline):
+
+```json
+{
+  "correlationId": "fa54c0a7-b72d-44f0-925b-7a16c57db9fb",
+  "timestamp": "2026-10-30T16:35:05.964Z",
+  "quoteRequest": {
+    "dry": false,
+    "swapType": "EXACT_INPUT",
+    "slippageTolerance": 100,
+    "originAsset": "nep141:usdc.{{ROOT}}",
+    "depositType": "ORIGIN_CHAIN",
+    "destinationAsset": "nep141:wnear.{{ROOT}}",
+    "amount": "5000000",
+    "refundTo": "alice.testnet",
+    "refundType": "ORIGIN_CHAIN",
+    "recipient": "alice.testnet",
+    "recipientType": "DESTINATION_CHAIN",
+    "deadline": "2026-10-30T16:45:05Z"
+  },
+  "quote": {
+    "amountIn": "5000000",
+    "amountInFormatted": "5",
+    "amountInUsd": "4.9991",
+    "minAmountIn": "5000000",
+    "amountOut": "1151982460648148053760000",
+    "amountOutFormatted": "1.15198246064814805376",
+    "amountOutUsd": "4.9766",
+    "minAmountOut": "1140462636041666573222400",
+    "timeEstimate": 10,
+    "depositAddress": "c15f995960c9d8070ad228d7868662672dfc06c1d30397417e859c8733722f1b",
+    "deadline": "2026-10-30T16:45:05.000Z",
+    "timeWhenInactive": "2026-10-30T16:45:05.000Z"
+  },
+  "signature": "ed25519:55u8wcnQSLLmBWRUeP7VkdXNP3gT68tQn1uohU7j3cx7wjJnCmwbYLbzXvWvhMeNG1dhV39BfLBUB4Ux8iz5kD11"
+}
+```
+
+The request has all twelve required fields. For the optional ones see [Swap types](/docs/concepts/swap-types#all-request-fields). `quote.depositAddress` is where you send `quote.amountIn` of the origin token.
 
 ## 3. Deposit
 
@@ -54,10 +93,66 @@ curl -X POST {{ORIGIN}}/v0/deposit/submit -H 'content-type: application/json' \
   -d '{"txHash":"<hash>","depositAddress":"<depositAddress>"}'
 ```
 
+Optional body fields: `memo` (the quote's `depositMemo`, for MEMO deposits) and `nearSenderAccount` (NEAR-native MEMO deposits). A real, complete response, with the full SUCCESS status object, is in the [deposit/submit reference](/docs/api-reference/submit-deposit-tx).
+
 ## 4. Watch it settle
 
 ```bash
 curl "{{ORIGIN}}/v0/status?depositAddress=<depositAddress>"
+```
+
+Real response right after the quote above, before any deposit:
+
+```json
+{
+  "correlationId": "fa54c0a7-b72d-44f0-925b-7a16c57db9fb",
+  "quoteResponse": {
+    "correlationId": "fa54c0a7-b72d-44f0-925b-7a16c57db9fb",
+    "timestamp": "2026-10-30T16:35:05.964Z",
+    "quoteRequest": {
+      "dry": false,
+      "swapType": "EXACT_INPUT",
+      "slippageTolerance": 100,
+      "originAsset": "nep141:usdc.{{ROOT}}",
+      "depositType": "ORIGIN_CHAIN",
+      "destinationAsset": "nep141:wnear.{{ROOT}}",
+      "amount": "5000000",
+      "refundTo": "alice.testnet",
+      "refundType": "ORIGIN_CHAIN",
+      "recipient": "alice.testnet",
+      "recipientType": "DESTINATION_CHAIN",
+      "deadline": "2026-10-30T16:45:05Z"
+    },
+    "quote": {
+      "amountIn": "5000000",
+      "amountInFormatted": "5",
+      "amountInUsd": "4.9991",
+      "minAmountIn": "5000000",
+      "amountOut": "1151982460648148053760000",
+      "amountOutFormatted": "1.15198246064814805376",
+      "amountOutUsd": "4.9766",
+      "minAmountOut": "1140462636041666573222400",
+      "timeEstimate": 10,
+      "depositAddress": "c15f995960c9d8070ad228d7868662672dfc06c1d30397417e859c8733722f1b",
+      "deadline": "2026-10-30T16:45:05.000Z",
+      "timeWhenInactive": "2026-10-30T16:45:05.000Z"
+    },
+    "signature": "ed25519:55u8wcnQSLLmBWRUeP7VkdXNP3gT68tQn1uohU7j3cx7wjJnCmwbYLbzXvWvhMeNG1dhV39BfLBUB4Ux8iz5kD11"
+  },
+  "status": "PENDING_DEPOSIT",
+  "updatedAt": "2026-10-30T16:35:05.979Z",
+  "swapDetails": {
+    "intentHashes": [],
+    "nearTxHashes": [],
+    "originChainTxHashes": [],
+    "destinationChainTxHashes": [],
+    "withdrawFee": "0"
+  },
+  "tidepool": {
+    "explorer": [],
+    "intentsAccount": "c15f995960c9d8070ad228d7868662672dfc06c1d30397417e859c8733722f1b"
+  }
+}
 ```
 
 You will see `PENDING_DEPOSIT` or `KNOWN_DEPOSIT_TX`, then `PROCESSING`, then `SUCCESS` with `swapDetails.nearTxHashes`. Open them on [NearBlocks testnet](https://testnet.nearblocks.io).

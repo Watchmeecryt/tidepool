@@ -6,6 +6,8 @@ description: "POST /v0/submit-intent · 1Click-compatible"
 
 <p><span className="tp-method tp-post">POST</span><code>{"/v0/submit-intent"}</code></p>
 
+Send the signed `intent` from `/v0/generate-intent` as `signedData`. The request below is the real, correctly signed intent for the quote in the generate-intent example. The throwaway signer holds no tokens, so the verifier rejected it: that is the real **400**. The **200** body is the spec's example, because producing a real one would mean transferring funds from a funded account (not done for these docs); it has the spec's fields `intentHash` and `correlationId`; Tidepool also adds `tidepool.txHash` and `tidepool.explorerUrl` (the relayed verifier transaction) to a successful response.
+
 Submits a signed intent to execute.   After generating an intent for a quote or limit order via `/generate-intent` and having the user sign it with their wallet, submit the signed intent through this endpoint.   The system validates the signature, processes the intent, and returns the intent hash upon successful submission.   **Request Type Variants:**   - `swap_transfer`: Submit a signed swap intent (requires signedData object) Tidepool: relays the signed intent to the testnet verifier with execute_intents. The response adds `tidepool.txHash` and `tidepool.explorerUrl`.
 
 **Operation id:** `submitIntent` · **Auth:** optional (`X-API-Key` or `Authorization: Bearer`, any value)
@@ -21,15 +23,10 @@ curl -X POST "https://www.usetidepool.tech/v0/submit-intent" \
   -d '{
   "type": "swap_transfer",
   "signedData": {
-    "payload": {
-      "callbackUrl": "string",
-      "message": "string",
-      "nonce": "string",
-      "recipient": "string"
-    },
-    "public_key": "string",
-    "signature": "string",
-    "standard": "nep413"
+    "standard": "raw_ed25519",
+    "payload": "{\"signer_id\":\"9cf39ad040a13205c3ab109a8566fd779394a548f76b1aed5107efcdfe6c7ceb\",\"verifying_contract\":\"verifier.tidepool-sandbox.testnet\",\"deadline\":\"2026-10-30T16:46:46.836Z\",\"nonce\":\"zzaNW9Xepvi5ae6mv24WI+LwgljdXAm7/aV4EbWp738=\",\"intents\":[{\"intent\":\"transfer\",\"receiver_id\":\"54e8db801fab4ec416719b8b3044c21bacb4652c698ad4c5846086e5cf27b3a4\",\"tokens\":{\"nep141:usdc.tidepool-sandbox.testnet\":\"5000000\"}}]}",
+    "public_key": "ed25519:BZg3g99ye1xAzqJBHGusEk7Uv24gxY3UV95Jzf2aWuiS",
+    "signature": "ed25519:sQwAfReCF77FguZu2LxNPP3KXPJ88DUPhbU1vwWUBprvmkGzkeJfSKmNfa8Gw7fJk3d5mzvFqrMpPEdG7UeTNNN"
   }
 }'
 ```
@@ -44,15 +41,10 @@ const res = await fetch('https://www.usetidepool.tech/v0/submit-intent', {
   body: JSON.stringify({
     "type": "swap_transfer",
     "signedData": {
-      "payload": {
-        "callbackUrl": "string",
-        "message": "string",
-        "nonce": "string",
-        "recipient": "string"
-      },
-      "public_key": "string",
-      "signature": "string",
-      "standard": "nep413"
+      "standard": "raw_ed25519",
+      "payload": "{\"signer_id\":\"9cf39ad040a13205c3ab109a8566fd779394a548f76b1aed5107efcdfe6c7ceb\",\"verifying_contract\":\"verifier.tidepool-sandbox.testnet\",\"deadline\":\"2026-10-30T16:46:46.836Z\",\"nonce\":\"zzaNW9Xepvi5ae6mv24WI+LwgljdXAm7/aV4EbWp738=\",\"intents\":[{\"intent\":\"transfer\",\"receiver_id\":\"54e8db801fab4ec416719b8b3044c21bacb4652c698ad4c5846086e5cf27b3a4\",\"tokens\":{\"nep141:usdc.tidepool-sandbox.testnet\":\"5000000\"}}]}",
+      "public_key": "ed25519:BZg3g99ye1xAzqJBHGusEk7Uv24gxY3UV95Jzf2aWuiS",
+      "signature": "ed25519:sQwAfReCF77FguZu2LxNPP3KXPJ88DUPhbU1vwWUBprvmkGzkeJfSKmNfa8Gw7fJk3d5mzvFqrMpPEdG7UeTNNN"
     }
   }),
 });
@@ -64,6 +56,63 @@ const data = await res.json();
 
 ### Body
 
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `type` | "swap_transfer" | yes | The type of intent action |
+| `signedData` | MultiPayload | yes |  |
+| **Variant 1 of 8** | | | |
+| `signedData.payload` | object | yes | See [NEP-413](https://github.com/near/NEPs/blob/master/neps/nep-0413.md) |
+| `signedData.payload.callbackUrl` | string |  |  |
+| `signedData.payload.message` | string | yes |  |
+| `signedData.payload.nonce` | string | yes | Encoding: base64 |
+| `signedData.payload.recipient` | string | yes |  |
+| `signedData.public_key` | string | yes | Encoding: base58 |
+| `signedData.signature` | string | yes | Encoding: base58 |
+| `signedData.standard` | "nep413" | yes |  |
+| **Variant 2 of 8** | | | |
+| `signedData.payload` | string | yes | See [ERC-191](https://github.com/ethereum/ercs/blob/master/ERCS/erc-191.md) |
+| `signedData.signature` | string | yes | There is no public key member because the public key can be recovered via `ecrecover()` knowing the data and the signature. Encoding: base58 |
+| `signedData.standard` | "erc191" | yes |  |
+| **Variant 3 of 8** | | | |
+| `signedData.payload` | string | yes | See [TIP-191](https://github.com/tronprotocol/tips/blob/master/tip-191.md) |
+| `signedData.signature` | string | yes | There is no public key member because the public key can be recovered via `ecrecover()` knowing the data and the signature. Encoding: base58 |
+| `signedData.standard` | "tip191" | yes |  |
+| **Variant 4 of 8** | | | |
+| `signedData.payload` | string | yes |  |
+| `signedData.public_key` | string | yes | Encoding: base58 |
+| `signedData.signature` | string | yes | Encoding: base58 |
+| `signedData.standard` | "raw_ed25519" | yes |  |
+| **Variant 5 of 8** | | | |
+| `signedData.authenticator_data` | string | yes | Base64Url-encoded [authenticatorData](https://w3c.github.io/webauthn/#authenticator-data). Encoding: base64 |
+| `signedData.client_data_json` | string | yes | Serialized [clientDataJSON](https://w3c.github.io/webauthn/#dom-authenticatorresponse-clientdatajson) |
+| `signedData.payload` | string | yes |  |
+| `signedData.standard` | "webauthn" | yes |  |
+| `signedData.public_key` | string | yes | Encoding: base58 |
+| `signedData.signature` | string | yes | Encoding: base58 |
+| **Variant 6 of 8** | | | |
+| `signedData.authenticator_data` | string | yes | Base64Url-encoded [authenticatorData](https://w3c.github.io/webauthn/#authenticator-data). Encoding: base64 |
+| `signedData.client_data_json` | string | yes | Serialized [clientDataJSON](https://w3c.github.io/webauthn/#dom-authenticatorresponse-clientdatajson) |
+| `signedData.payload` | string | yes |  |
+| `signedData.standard` | "webauthn" | yes |  |
+| `signedData.public_key` | string | yes | Encoding: base58 |
+| `signedData.signature` | string | yes | Encoding: base58 |
+| **Variant 7 of 8** | | | |
+| `signedData.address` | object | yes | Wallet address in either [Raw](https://docs.ton.org/v3/documentation/smart-contracts/addresses/address-formats#raw-address) representation or [user-friendly](https://docs.ton.org/v3/documentation/smart-contracts/addresses/address-formats#user-friendly-address) format |
+| `signedData.domain` | string | yes | dApp domain |
+| `signedData.payload` | object | yes | See &#60;https://docs.tonconsole.com/academy/sign-data#choosing-the-right-format&#62; |
+| `signedData.payload.text` | string | yes |  |
+| `signedData.payload.type` | "text" | yes |  |
+| `signedData.public_key` | string | yes | Encoding: base58 |
+| `signedData.signature` | string | yes | Encoding: base58 |
+| `signedData.standard` | "ton_connect" | yes |  |
+| `signedData.timestamp` | object | yes | UNIX timestamp (in seconds or RFC3339) at the time of singing |
+| **Variant 1 of 2** | | | |
+| **Variant 2 of 2** | | | |
+| **Variant 8 of 8** | | | |
+| `signedData.payload` | string | yes |  |
+| `signedData.public_key` | string | yes | Encoding: base58 |
+| `signedData.signature` | string | yes | Encoding: base58 |
+| `signedData.standard` | "sep53" | yes |  |
 
 ## Responses
 
@@ -89,9 +138,11 @@ const data = await res.json();
 
 ```json
 {
-  "message": "error message"
+  "message": "Verifier rejected the signed intent: Smart contract panicked: insufficient balance or overflow; Smart contract panicked: insufficient balance or overflow"
 }
 ```
 
 ### 401 Unauthorized - API key or JWT token is invalid
+
+Tidepool does not return this: `/v0/submit-intent` takes no authentication.
 

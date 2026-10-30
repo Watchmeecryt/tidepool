@@ -6,6 +6,8 @@ description: "POST /v0/auth/refresh · 1Click-compatible"
 
 <p><span className="tp-method tp-post">POST</span><code>{"/v0/auth/refresh"}</code></p>
 
+Send the `refreshToken` from `/v0/auth/authenticate`. Real request and response (throwaway account).
+
 Exchange refresh token for a new access token Tidepool: exchanges a refresh token for a new access token.
 
 **Operation id:** `refresh`
@@ -19,7 +21,7 @@ Exchange refresh token for a new access token Tidepool: exchanges a refresh toke
 curl -X POST "https://www.usetidepool.tech/v0/auth/refresh" \
   -H 'content-type: application/json' \
   -d '{
-  "refreshToken": "string"
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ0aWRlcG9vbC10ZXN0bmV0IiwiaWF0IjoxNzkzMzc3ODYzLCJleHAiOjE3OTU5Njk4NjMsImp0aSI6ImZjZWI1ZmQ0LTRlNDctNDNlZC1hMmQyLTlkZWExNjllZDgzYSIsInN1YiI6IjljZjM5YWQwNDBhMTMyMDVjM2FiMTA5YTg1NjZmZDc3OTM5NGE1NDhmNzZiMWFlZDUxMDdlZmNkZmU2YzdjZWIiLCJ0eXAiOiJyZWZyZXNoIn0.HedwNuEPp3QNM3cL35BvsEm1c0XJwg-dI0NPm3_WBps"
 }'
 ```
 
@@ -31,7 +33,7 @@ const res = await fetch('https://www.usetidepool.tech/v0/auth/refresh', {
   method: 'POST',
   headers: { 'content-type': 'application/json' },
   body: JSON.stringify({
-    "refreshToken": "string"
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ0aWRlcG9vbC10ZXN0bmV0IiwiaWF0IjoxNzkzMzc3ODYzLCJleHAiOjE3OTU5Njk4NjMsImp0aSI6ImZjZWI1ZmQ0LTRlNDctNDNlZC1hMmQyLTlkZWExNjllZDgzYSIsInN1YiI6IjljZjM5YWQwNDBhMTMyMDVjM2FiMTA5YTg1NjZmZDc3OTM5NGE1NDhmNzZiMWFlZDUxMDdlZmNkZmU2YzdjZWIiLCJ0eXAiOiJyZWZyZXNoIn0.HedwNuEPp3QNM3cL35BvsEm1c0XJwg-dI0NPm3_WBps"
   }),
 });
 const data = await res.json();
@@ -52,8 +54,8 @@ const data = await res.json();
 
 ```json
 {
-  "accessToken": "string",
-  "expiresIn": 0
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ0aWRlcG9vbC10ZXN0bmV0IiwiaWF0IjoxNzkzMzc3ODcyLCJleHAiOjE3OTMzODE0NzIsImp0aSI6ImI0Mjg1NmRmLTNkYzUtNGZlNS1hZjkwLTQ3ZmE1ODc3ZWFmYSIsInN1YiI6IjljZjM5YWQwNDBhMTMyMDVjM2FiMTA5YTg1NjZmZDc3OTM5NGE1NDhmNzZiMWFlZDUxMDdlZmNkZmU2YzdjZWIiLCJ0eXAiOiJhY2Nlc3MifQ.dpe2WUH5ju2V6EHgy0hyt-i_nFeccRaSi3IhgbEDYNo",
+  "expiresIn": 3600
 }
 ```
 
@@ -67,4 +69,10 @@ const data = await res.json();
 </Accordion></Accordions>
 
 ### 401 Invalid or expired refresh token
+
+```json
+{
+  "message": "Invalid or expired refresh token"
+}
+```
 

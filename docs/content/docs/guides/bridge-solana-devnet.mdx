@@ -59,6 +59,62 @@ Each deposit address is an ed25519 key derived from the quote id and the server 
 
 Runnable: `SOL_SECRET_KEY='[...]' RECIPIENT=you.testnet npm run sol-deposit` in [tidepool-examples](https://github.com/zer0plugyut-afk/tidepool-examples).
 
+## Full quote request and response
+
+The request below sets every required field (plus `depositMode: "MEMO"` where this route needs it). It is a **dry** quote, so nothing is created. The response is the real, complete body from the live deployment on 2026-10-30; prices move, so your amounts will differ. Optional fields such as `appFees` or `referral` are in [Swap types](/docs/concepts/swap-types#all-request-fields).
+
+```bash
+curl -X POST https://www.usetidepool.tech/v0/quote -H 'content-type: application/json' -d '{
+  "dry": true,
+  "swapType": "EXACT_INPUT",
+  "slippageTolerance": 100,
+  "originAsset": "nep141:sol.tp-omft.testnet",
+  "depositType": "ORIGIN_CHAIN",
+  "destinationAsset": "nep141:usdc.tidepool-sandbox.testnet",
+  "amount": "5000000",
+  "refundTo": "13QkxhNMrTPxoCkRdYdJ65tFuwXPhL5gLS2Z5Nr6gjRK",
+  "refundType": "ORIGIN_CHAIN",
+  "recipient": "user.testnet",
+  "recipientType": "DESTINATION_CHAIN",
+  "deadline": "2030-01-01T00:00:00.000Z"
+}'
+```
+
+```json
+{
+  "correlationId": "7ba6d81b-efdf-43b0-9700-2b185df56fd8",
+  "timestamp": "2026-10-30T16:28:49.192Z",
+  "quoteRequest": {
+    "dry": true,
+    "swapType": "EXACT_INPUT",
+    "slippageTolerance": 100,
+    "originAsset": "nep141:sol.tp-omft.testnet",
+    "depositType": "ORIGIN_CHAIN",
+    "destinationAsset": "nep141:usdc.tidepool-sandbox.testnet",
+    "amount": "5000000",
+    "refundTo": "13QkxhNMrTPxoCkRdYdJ65tFuwXPhL5gLS2Z5Nr6gjRK",
+    "refundType": "ORIGIN_CHAIN",
+    "recipient": "user.testnet",
+    "recipientType": "DESTINATION_CHAIN",
+    "deadline": "2030-01-01T00:00:00.000Z"
+  },
+  "quote": {
+    "amountIn": "5000000",
+    "amountInFormatted": "0.005",
+    "amountInUsd": "0.4753",
+    "minAmountIn": "5000000",
+    "amountOut": "473325",
+    "amountOutFormatted": "0.473325",
+    "amountOutUsd": "0.4732",
+    "minAmountOut": "468591",
+    "timeEstimate": 60
+  },
+  "signature": "ed25519:5bPktYF3JrtMxh5YUpW5VPXK6c3XRrgijp4o2kMG6wFgKiP31RyvYHsjm9B3xfR4JkDTSMSzUMZrG6pFKg91qsfY"
+}
+```
+
+With `"dry": false` and a `deadline` between a minute and a day ahead, the `quote` also carries `depositAddress`, `deadline` and `timeWhenInactive`. See [Quotes and pricing](/docs/concepts/quotes#dry-vs-live) and the [status response](/docs/api-reference/get-execution-status) for what comes back after the deposit.
+
 ## 3. NEAR → Solana
 
 Quote with a Solana `destinationAsset`, `recipient: 'YourSolanaAddress'` and `recipientType: 'DESTINATION_CHAIN'`, then deposit on NEAR as usual. The verifier `ft_withdraw`s the bridged token to the relayer, which pays out on Solana: for SPL it creates your associated token account if needed and sends the tokens (`transferChecked`, or `mintTo` if the treasury is short); for SOL it sends a system transfer. Payouts are signed first and the signature is recorded before sending, so a crash or retry never pays twice (the signature status is checked first).

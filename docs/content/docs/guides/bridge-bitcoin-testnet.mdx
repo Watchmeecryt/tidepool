@@ -67,6 +67,62 @@ await OneClickService.submitDepositTx({ txHash: '<btc txid>', depositAddress });
 
 Give the quote a generous deadline: testnet4 blocks take about 10 minutes, but can be slower or faster. Runnable: `RECIPIENT=you.testnet npm run btc-deposit` in [tidepool-examples](https://github.com/zer0plugyut-afk/tidepool-examples) (it needs `BTC_PRIVATE_KEY_WIF`, a testnet4 key with a little tBTC, and prints the mempool.space links).
 
+## Full quote request and response
+
+The request below sets every required field (plus `depositMode: "MEMO"` where this route needs it). It is a **dry** quote, so nothing is created. The response is the real, complete body from the live deployment on 2026-10-30; prices move, so your amounts will differ. Optional fields such as `appFees` or `referral` are in [Swap types](/docs/concepts/swap-types#all-request-fields).
+
+```bash
+curl -X POST https://www.usetidepool.tech/v0/quote -H 'content-type: application/json' -d '{
+  "dry": true,
+  "swapType": "EXACT_INPUT",
+  "slippageTolerance": 100,
+  "originAsset": "nep141:btc.tp-omft.testnet",
+  "depositType": "ORIGIN_CHAIN",
+  "destinationAsset": "nep141:usdc.tidepool-sandbox.testnet",
+  "amount": "100000",
+  "refundTo": "tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx",
+  "refundType": "ORIGIN_CHAIN",
+  "recipient": "user.testnet",
+  "recipientType": "DESTINATION_CHAIN",
+  "deadline": "2030-01-01T00:00:00.000Z"
+}'
+```
+
+```json
+{
+  "correlationId": "c91a0e71-80c9-4689-be4f-b71b69c89a3a",
+  "timestamp": "2026-10-30T16:28:51.397Z",
+  "quoteRequest": {
+    "dry": true,
+    "swapType": "EXACT_INPUT",
+    "slippageTolerance": 100,
+    "originAsset": "nep141:btc.tp-omft.testnet",
+    "depositType": "ORIGIN_CHAIN",
+    "destinationAsset": "nep141:usdc.tidepool-sandbox.testnet",
+    "amount": "100000",
+    "refundTo": "tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx",
+    "refundType": "ORIGIN_CHAIN",
+    "recipient": "user.testnet",
+    "recipientType": "DESTINATION_CHAIN",
+    "deadline": "2030-01-01T00:00:00.000Z"
+  },
+  "quote": {
+    "amountIn": "100000",
+    "amountInFormatted": "0.001",
+    "amountInUsd": "77.4130",
+    "minAmountIn": "100000",
+    "amountOut": "77083295",
+    "amountOutFormatted": "77.083295",
+    "amountOutUsd": "77.0646",
+    "minAmountOut": "76312462",
+    "timeEstimate": 60
+  },
+  "signature": "ed25519:4oHbZYrC7HKWjHi9Y2xSc4XDEpFPDPh4PdsygwkWZ1KMC96Atohxa6MLcVQLUpFQuFh6EGLe3K9aWf2ioEHAwv6m"
+}
+```
+
+With `"dry": false` and a `deadline` between a minute and a day ahead, the `quote` also carries `depositAddress`, `deadline` and `timeWhenInactive`. See [Quotes and pricing](/docs/concepts/quotes#dry-vs-live) and the [status response](/docs/api-reference/get-execution-status) for what comes back after the deposit.
+
 ## 3. NEAR → BTC
 
 Quote with `destinationAsset: 'nep141:btc.tp-omft.testnet'`, `recipient: 'tb1qYourAddress'` and `recipientType: 'DESTINATION_CHAIN'`, then deposit on NEAR as usual. The verifier `ft_withdraw`s the bridged token to the relayer, which pays out on testnet4 from the treasury; you receive exactly the quoted amount and the treasury pays the miner fee. Payouts are signed first and the signed transaction is recorded before it is broadcast, so a crash or retry re-broadcasts the same bytes and never pays twice.

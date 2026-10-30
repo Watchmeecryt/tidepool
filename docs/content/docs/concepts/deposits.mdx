@@ -47,6 +47,8 @@ curl -X POST https://www.usetidepool.tech/v0/deposit/submit -H 'content-type: ap
   -d '{"txHash":"<hash>","depositAddress":"<depositAddress>"}'
 ```
 
+Optional body fields are `memo` and `nearSenderAccount`. The complete request and a real, full response are in the [deposit/submit reference](/docs/api-reference/submit-deposit-tx). An unknown `depositAddress` returns 404 `{"message":"Unknown depositAddress"}`; a body without `txHash` and `depositAddress` returns 400 `{"message":"txHash and depositAddress are required"}`.
+
 ## Bridged chains and MEMO
 
 For tokens bridged from other testnets, `ORIGIN_CHAIN` means a transfer on that chain:

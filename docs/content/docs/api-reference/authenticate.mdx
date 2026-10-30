@@ -6,6 +6,8 @@ description: "POST /v0/auth/authenticate · 1Click-compatible"
 
 <p><span className="tp-method tp-post">POST</span><code>{"/v0/auth/authenticate"}</code></p>
 
+The example signs with a throwaway ed25519 key (`raw_ed25519`); the account id is the key's 64-hex implicit account. The `payload` is a JSON string with `signer_id`, `verifying_contract`, `deadline`, `nonce` and `intents`. For `nep413` the same fields go in `payload.message` with `payload.nonce` (base64) and `payload.recipient`. The tokens below are real and expire (access token 1 hour), and belong to a throwaway account with no funds.
+
 Verifies wallet signature and issues session tokens Tidepool: free JWTs (HS256, access 1 h, refresh 30 d), valid on Tidepool only. Supported standards: nep413, raw_ed25519, erc191. The key must belong to the signer (NEAR implicit account, a NEAR access key, or a key registered on the verifier).
 
 **Operation id:** `authenticate`
@@ -20,15 +22,10 @@ curl -X POST "https://www.usetidepool.tech/v0/auth/authenticate" \
   -H 'content-type: application/json' \
   -d '{
   "signedData": {
-    "payload": {
-      "callbackUrl": "string",
-      "message": "string",
-      "nonce": "string",
-      "recipient": "string"
-    },
-    "public_key": "string",
-    "signature": "string",
-    "standard": "nep413"
+    "standard": "raw_ed25519",
+    "payload": "{\"signer_id\":\"9cf39ad040a13205c3ab109a8566fd779394a548f76b1aed5107efcdfe6c7ceb\",\"verifying_contract\":\"verifier.tidepool-sandbox.testnet\",\"deadline\":\"2026-10-30T17:31:02.946Z\",\"nonce\":\"nlD96hKm0mXHt7hirSeNEPHok7a854nbAoKspZB0Z94=\",\"intents\":[]}",
+    "public_key": "ed25519:BZg3g99ye1xAzqJBHGusEk7Uv24gxY3UV95Jzf2aWuiS",
+    "signature": "ed25519:3MXEnbBbMrA8E1R1UAXZkj9pPZV1SDa3YmQxHXYgGeMW2TG4SH5thYVgkmw8cTiE9xKuLnDRr26hF7tdi9WqArYQ"
   }
 }'
 ```
@@ -42,15 +39,10 @@ const res = await fetch('https://www.usetidepool.tech/v0/auth/authenticate', {
   headers: { 'content-type': 'application/json' },
   body: JSON.stringify({
     "signedData": {
-      "payload": {
-        "callbackUrl": "string",
-        "message": "string",
-        "nonce": "string",
-        "recipient": "string"
-      },
-      "public_key": "string",
-      "signature": "string",
-      "standard": "nep413"
+      "standard": "raw_ed25519",
+      "payload": "{\"signer_id\":\"9cf39ad040a13205c3ab109a8566fd779394a548f76b1aed5107efcdfe6c7ceb\",\"verifying_contract\":\"verifier.tidepool-sandbox.testnet\",\"deadline\":\"2026-10-30T17:31:02.946Z\",\"nonce\":\"nlD96hKm0mXHt7hirSeNEPHok7a854nbAoKspZB0Z94=\",\"intents\":[]}",
+      "public_key": "ed25519:BZg3g99ye1xAzqJBHGusEk7Uv24gxY3UV95Jzf2aWuiS",
+      "signature": "ed25519:3MXEnbBbMrA8E1R1UAXZkj9pPZV1SDa3YmQxHXYgGeMW2TG4SH5thYVgkmw8cTiE9xKuLnDRr26hF7tdi9WqArYQ"
     }
   }),
 });
@@ -65,6 +57,59 @@ const data = await res.json();
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `signedData` | MultiPayload | yes |  |
+| **Variant 1 of 8** | | | |
+| `signedData.payload` | object | yes | See [NEP-413](https://github.com/near/NEPs/blob/master/neps/nep-0413.md) |
+| `signedData.payload.callbackUrl` | string |  |  |
+| `signedData.payload.message` | string | yes |  |
+| `signedData.payload.nonce` | string | yes | Encoding: base64 |
+| `signedData.payload.recipient` | string | yes |  |
+| `signedData.public_key` | string | yes | Encoding: base58 |
+| `signedData.signature` | string | yes | Encoding: base58 |
+| `signedData.standard` | "nep413" | yes |  |
+| **Variant 2 of 8** | | | |
+| `signedData.payload` | string | yes | See [ERC-191](https://github.com/ethereum/ercs/blob/master/ERCS/erc-191.md) |
+| `signedData.signature` | string | yes | There is no public key member because the public key can be recovered via `ecrecover()` knowing the data and the signature. Encoding: base58 |
+| `signedData.standard` | "erc191" | yes |  |
+| **Variant 3 of 8** | | | |
+| `signedData.payload` | string | yes | See [TIP-191](https://github.com/tronprotocol/tips/blob/master/tip-191.md) |
+| `signedData.signature` | string | yes | There is no public key member because the public key can be recovered via `ecrecover()` knowing the data and the signature. Encoding: base58 |
+| `signedData.standard` | "tip191" | yes |  |
+| **Variant 4 of 8** | | | |
+| `signedData.payload` | string | yes |  |
+| `signedData.public_key` | string | yes | Encoding: base58 |
+| `signedData.signature` | string | yes | Encoding: base58 |
+| `signedData.standard` | "raw_ed25519" | yes |  |
+| **Variant 5 of 8** | | | |
+| `signedData.authenticator_data` | string | yes | Base64Url-encoded [authenticatorData](https://w3c.github.io/webauthn/#authenticator-data). Encoding: base64 |
+| `signedData.client_data_json` | string | yes | Serialized [clientDataJSON](https://w3c.github.io/webauthn/#dom-authenticatorresponse-clientdatajson) |
+| `signedData.payload` | string | yes |  |
+| `signedData.standard` | "webauthn" | yes |  |
+| `signedData.public_key` | string | yes | Encoding: base58 |
+| `signedData.signature` | string | yes | Encoding: base58 |
+| **Variant 6 of 8** | | | |
+| `signedData.authenticator_data` | string | yes | Base64Url-encoded [authenticatorData](https://w3c.github.io/webauthn/#authenticator-data). Encoding: base64 |
+| `signedData.client_data_json` | string | yes | Serialized [clientDataJSON](https://w3c.github.io/webauthn/#dom-authenticatorresponse-clientdatajson) |
+| `signedData.payload` | string | yes |  |
+| `signedData.standard` | "webauthn" | yes |  |
+| `signedData.public_key` | string | yes | Encoding: base58 |
+| `signedData.signature` | string | yes | Encoding: base58 |
+| **Variant 7 of 8** | | | |
+| `signedData.address` | object | yes | Wallet address in either [Raw](https://docs.ton.org/v3/documentation/smart-contracts/addresses/address-formats#raw-address) representation or [user-friendly](https://docs.ton.org/v3/documentation/smart-contracts/addresses/address-formats#user-friendly-address) format |
+| `signedData.domain` | string | yes | dApp domain |
+| `signedData.payload` | object | yes | See &#60;https://docs.tonconsole.com/academy/sign-data#choosing-the-right-format&#62; |
+| `signedData.payload.text` | string | yes |  |
+| `signedData.payload.type` | "text" | yes |  |
+| `signedData.public_key` | string | yes | Encoding: base58 |
+| `signedData.signature` | string | yes | Encoding: base58 |
+| `signedData.standard` | "ton_connect" | yes |  |
+| `signedData.timestamp` | object | yes | UNIX timestamp (in seconds or RFC3339) at the time of singing |
+| **Variant 1 of 2** | | | |
+| **Variant 2 of 2** | | | |
+| **Variant 8 of 8** | | | |
+| `signedData.payload` | string | yes |  |
+| `signedData.public_key` | string | yes | Encoding: base58 |
+| `signedData.signature` | string | yes | Encoding: base58 |
+| `signedData.standard` | "sep53" | yes |  |
 
 ## Responses
 
@@ -72,10 +117,10 @@ const data = await res.json();
 
 ```json
 {
-  "accessToken": "string",
-  "refreshToken": "string",
-  "expiresIn": 0,
-  "refreshExpiresIn": 0
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ0aWRlcG9vbC10ZXN0bmV0IiwiaWF0IjoxNzkzMzc3ODYzLCJleHAiOjE3OTMzODE0NjMsImp0aSI6ImExMDBjOWNkLWVmMmEtNGIyYi04ZGU5LTI0ODA1MDViNzU3MyIsInN1YiI6IjljZjM5YWQwNDBhMTMyMDVjM2FiMTA5YTg1NjZmZDc3OTM5NGE1NDhmNzZiMWFlZDUxMDdlZmNkZmU2YzdjZWIiLCJ0eXAiOiJhY2Nlc3MifQ.Uvfy77AvMuMGf8tgEwYWTO0OmXJZDjsTnTtwwtYTX64",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ0aWRlcG9vbC10ZXN0bmV0IiwiaWF0IjoxNzkzMzc3ODYzLCJleHAiOjE3OTU5Njk4NjMsImp0aSI6ImZjZWI1ZmQ0LTRlNDctNDNlZC1hMmQyLTlkZWExNjllZDgzYSIsInN1YiI6IjljZjM5YWQwNDBhMTMyMDVjM2FiMTA5YTg1NjZmZDc3OTM5NGE1NDhmNzZiMWFlZDUxMDdlZmNkZmU2YzdjZWIiLCJ0eXAiOiJyZWZyZXNoIn0.HedwNuEPp3QNM3cL35BvsEm1c0XJwg-dI0NPm3_WBps",
+  "expiresIn": 3600,
+  "refreshExpiresIn": 2592000
 }
 ```
 
@@ -92,5 +137,17 @@ const data = await res.json();
 
 ### 400 Invalid signed data
 
+```json
+{
+  "message": "signedData is required"
+}
+```
+
 ### 401 Signature verification failed
+
+```json
+{
+  "message": "Signature verification failed"
+}
+```
 

@@ -22,7 +22,7 @@ function example(s, depth = 0) {
   if (s.example !== undefined) return s.example;
   if (s.default !== undefined) return s.default;
   if (s.enum) return s.enum[0];
-  if (s.allOf) return Object.assign({}, ...s.allOf.map(x => example(x, depth + 1)));
+  if (s.allOf) { const parts = s.allOf.map(x => example(x, depth + 1)); const obj = parts.filter(x => x && typeof x === 'object' && !Array.isArray(x)); return obj.length === parts.length ? Object.assign({}, ...parts) : (parts.find(x => typeof x !== 'object') ?? Object.assign({}, ...obj)); }
   if (s.oneOf || s.anyOf) return example((s.oneOf || s.anyOf)[0], depth + 1);
   if (s.type === 'array') return [example(s.items, depth + 1)];
   if (s.type === 'object' || s.properties) return Object.fromEntries(Object.entries(s.properties || {}).map(([k, v]) => [k, example(v, depth + 1)]));
@@ -31,17 +31,23 @@ function example(s, depth = 0) {
 
 function fields(s, prefix = '', rows = [], depth = 0, seen = new Set()) {
   const ref = s.$ref; s = deref(s);
-  if (!s || depth > 3 || (ref && seen.has(ref))) return rows;
+  if (!s || depth > 5 || (ref && seen.has(ref))) return rows;
   if (ref) seen = new Set([...seen, ref]);
   if (s.type === 'array') return fields(s.items || {}, prefix + '[]', rows, depth, seen);
   if (s.allOf) { for (const x of s.allOf) fields(x, prefix, rows, depth, seen); return rows; }
+  if (s.oneOf || s.anyOf) {
+    const vs = s.oneOf || s.anyOf;
+    if (vs.length === 1) return fields(vs[0], prefix, rows, depth, seen);
+    vs.forEach((x, i) => { rows.push(`| **Variant ${i + 1} of ${vs.length}**${x.$ref ? `: \`${x.$ref.split('/').pop()}\`` : ''} | | | |`); fields(x, prefix, rows, depth, seen); });
+    return rows;
+  }
   const req = new Set(s.required || []);
   for (const [k, v] of Object.entries(s.properties || {})) {
     if (k === 'simulate' && /quoteRequest\.$/.test(prefix)) continue; // Tidepool strips simulate from the echoed quoteRequest
     const d = deref(v);
     rows.push(`| \`${prefix}${k}\` | ${esc(tname(v))} | ${req.has(k) ? 'yes' : ''} | ${esc(d.description || v.description)} |`);
     const inner = d.type === 'array' ? deref(d.items || {}) : d;
-    if (inner?.properties || inner?.allOf) fields(v, `${prefix}${k}${d.type === 'array' ? '[]' : ''}.`, rows, depth + 1, seen);
+    if (inner?.properties || inner?.allOf || inner?.oneOf || inner?.anyOf) fields(v, `${prefix}${k}${d.type === 'array' ? '[]' : ''}.`, rows, depth + 1, seen);
   }
   return rows;
 }
@@ -57,11 +63,19 @@ for (const [p, ops] of Object.entries(spec.paths)) for (const [method, op] of Ob
   const body = op.requestBody?.content?.['application/json']?.schema;
   const reqEx = ex.request ?? (body ? example(body) : undefined);
   const query = (op.parameters || []).filter(x => x.in === 'query');
+  const P = ex.path || p;
+  const hdr = Object.entries(ex.headers || {});
   const qs = ex.query ? '?' + new URLSearchParams(ex.query) : '';
   const auth = op.security?.length || spec.security?.length;
-  let curl = `curl${M === 'GET' ? '' : ` -X ${M}`} "${ORIGIN}${p}${qs}"`;
+  let curl = `curl${M === 'GET' ? '' : ` -X ${M}`} "${ORIGIN}${P}${qs}"`;
+  for (const [k, v] of hdr) curl += ` \\\n  -H '${k}: ${v}'`;
   if (body) curl += ` \\\n  -H 'content-type: application/json' \\\n  -d '${JSON.stringify(reqEx, null, 2).replace(/'/g, "'\\''")}'`;
-  const fetchJs = `const res = await fetch('${ORIGIN}${p}${qs}'${body ? `, {\n  method: '${M}',\n  headers: { 'content-type': 'application/json' },\n  body: JSON.stringify(${JSON.stringify(reqEx, null, 2).replace(/\n/g, '\n  ')}),\n}` : (M !== 'GET' ? `, { method: '${M}' }` : '')});\nconst data = await res.json();`;
+  const jsHeaders = [...(body ? [['content-type', 'application/json']] : []), ...hdr];
+  const opts = [];
+  if (M !== 'GET') opts.push(`  method: '${M}',`);
+  if (jsHeaders.length) opts.push(`  headers: { ${jsHeaders.map(([k, v]) => `'${k}': '${v}'`).join(', ')} },`);
+  if (body) opts.push(`  body: JSON.stringify(${JSON.stringify(reqEx, null, 2).replace(/\n/g, '\n  ')}),`);
+  const fetchJs = `const res = await fetch('${ORIGIN}${P}${qs}'${opts.length ? `, {\n${opts.join('\n')}\n}` : ''});\nconst data = await res.json();`;
   let md = `---\ntitle: ${JSON.stringify((op.summary || op.operationId).replace(/ \(.*\)$/, ""))}\nicon: ${ICONS[slug] || 'Code'}\ndescription: ${JSON.stringify(`${M} ${p}${tidepoolOnly ? ' · Tidepool extension' : ' · 1Click-compatible'}`)}\n---\n\n`;
   md += `<p><span className="tp-method tp-${method}">${M}</span><code>{${JSON.stringify(p)}}</code></p>\n\n`;
   if (tidepoolOnly) md += `<Callout title="Tidepool extension">This endpoint is not part of the 1Click API. Do not call it on mainnet.</Callout>\n\n`;
@@ -76,8 +90,15 @@ for (const [p, ops] of Object.entries(spec.paths)) for (const [method, op] of Ob
   for (const [code, r] of Object.entries(op.responses)) {
     const sch = r.content?.['application/json']?.schema;
     md += `### ${code} ${esc(r.description || '')}\n\n`;
-    const rex = ex.responses?.[code] ?? (sch ? example(sch) : null);
-    if (rex != null) md += json(rex) + '\n\n';
+    const show = (rex, title, note) => {
+      if (title) md += `**${title}**\n\n`;
+      if (note) md += note + '\n\n';
+      if (rex && rex.__text) md += rex.__text + '\n\n';
+      else if (rex != null) md += json(rex) + '\n\n';
+    };
+    const rex = ex.responses && code in ex.responses ? ex.responses[code] : (ex.responses && !code.startsWith('2') ? { __text: 'No real example was recorded for this status code.' } : (sch ? example(sch) : null));
+    show(rex);
+    for (const x of ex.extra?.[code] || []) show(x.body, x.title, x.note);
     if (sch && code.startsWith('2')) { const t = fields(sch); if (t.length) md += `<Accordions><Accordion title="Response fields">\n\n${table(t)}\n</Accordion></Accordions>\n\n`; }
   }
   fs.writeFileSync(path.join(out, slug + '.mdx'), md);

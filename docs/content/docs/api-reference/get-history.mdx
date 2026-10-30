@@ -6,6 +6,8 @@ description: "GET /v0/account/history · 1Click-compatible"
 
 <p><span className="tp-method tp-get">GET</span><code>{"/v0/account/history"}</code></p>
 
+Needs `Authorization: Bearer <accessToken>`. Lists swaps where the account is the `recipient`, `refundTo`, sender or signer, newest first. Real response for a throwaway account that created two quotes (a swap quote and an order).
+
 Returns paginated public and confidential transaction history. History is invite-only for now. For the initial request, omit both nextCursor and prevCursor to retrieve the latest history. For subsequent requests, pass either nextCursor or prevCursor from the previous response. Tidepool: needs a Tidepool JWT. Swaps where you are the refund address or recipient, newest first, with cursor paging.
 
 **Operation id:** `getHistory`
@@ -16,14 +18,17 @@ Returns paginated public and confidential transaction history. History is invite
 <Tab value="curl">
 
 ```bash
-curl "https://www.usetidepool.tech/v0/account/history"
+curl "https://www.usetidepool.tech/v0/account/history" \
+  -H 'Authorization: Bearer <accessToken>'
 ```
 
 </Tab>
 <Tab value="JavaScript">
 
 ```ts
-const res = await fetch('https://www.usetidepool.tech/v0/account/history');
+const res = await fetch('https://www.usetidepool.tech/v0/account/history', {
+  headers: { 'Authorization': 'Bearer <accessToken>' },
+});
 const data = await res.json();
 ```
 
@@ -53,36 +58,54 @@ const data = await res.json();
 {
   "items": [
     {
-      "status": "SUCCESS",
-      "depositType": "ORIGIN_CHAIN",
-      "recipientType": "DESTINATION_CHAIN",
-      "createdAt": "2025-01-15T10:30:00.000000Z",
-      "depositAddress": "string",
-      "depositMemo": "string",
-      "originAsset": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
-      "amountInFormatted": "100.50",
-      "amountInUsd": "100.50",
-      "destinationAsset": "nep141:sol-5ce3bf3a31af18be40ba30f721101b4341690186.omft.near",
-      "amountOutFormatted": "100.23",
-      "amountOutUsd": "100.23",
-      "recipient": "string",
-      "quoteTransactions": [
-        {
-          "sender": "string",
-          "txHash": "string"
-        }
-      ],
-      "refundTo": "string",
-      "refundType": "ORIGIN_CHAIN",
-      "refundReason": "string",
-      "refundedAmountFormatted": "string",
-      "refundedAmountUsd": "string",
-      "refundFee": "string",
-      "refundFeeFormatted": "string"
+      "status": "PENDING_DEPOSIT",
+      "depositType": "INTENTS",
+      "recipientType": "INTENTS",
+      "createdAt": "2026-10-30T16:31:46.340Z",
+      "depositAddress": "54e8db801fab4ec416719b8b3044c21bacb4652c698ad4c5846086e5cf27b3a4",
+      "depositMemo": null,
+      "originAsset": "nep141:usdc.tidepool-sandbox.testnet",
+      "amountInFormatted": "5",
+      "amountInUsd": "4.9988",
+      "destinationAsset": "nep141:wnear.tidepool-sandbox.testnet",
+      "amountOutFormatted": "1.146611853686635908",
+      "amountOutUsd": "4.9763",
+      "recipient": "9cf39ad040a13205c3ab109a8566fd779394a548f76b1aed5107efcdfe6c7ceb",
+      "quoteTransactions": [],
+      "refundTo": "9cf39ad040a13205c3ab109a8566fd779394a548f76b1aed5107efcdfe6c7ceb",
+      "refundType": "INTENTS",
+      "refundReason": null,
+      "refundedAmountFormatted": "0",
+      "refundedAmountUsd": "0",
+      "refundFee": null,
+      "refundFeeFormatted": "0"
+    },
+    {
+      "status": "PENDING_DEPOSIT",
+      "depositType": "INTENTS",
+      "recipientType": "INTENTS",
+      "createdAt": "2026-10-30T16:31:25.888Z",
+      "depositAddress": "b3e013f41cee40b33296f5e0185feae34c2f95059a05482e07cb610acd067322",
+      "depositMemo": null,
+      "originAsset": "nep141:wnear.tidepool-sandbox.testnet",
+      "amountInFormatted": "1",
+      "amountInUsd": "4.3400",
+      "destinationAsset": "nep141:usdc.tidepool-sandbox.testnet",
+      "amountOutFormatted": "3.465",
+      "amountOutUsd": "4.2880",
+      "recipient": "9cf39ad040a13205c3ab109a8566fd779394a548f76b1aed5107efcdfe6c7ceb",
+      "quoteTransactions": [],
+      "refundTo": "9cf39ad040a13205c3ab109a8566fd779394a548f76b1aed5107efcdfe6c7ceb",
+      "refundType": "INTENTS",
+      "refundReason": null,
+      "refundedAmountFormatted": "0",
+      "refundedAmountUsd": "0",
+      "refundFee": null,
+      "refundFeeFormatted": "0"
     }
   ],
-  "nextCursor": "string",
-  "prevCursor": "string"
+  "nextCursor": "MjAyNi0xMC0zMFQxNjozMTo0Ni4zNDBa",
+  "prevCursor": "MjAyNi0xMC0zMFQxNjozMToyNS44ODha"
 }
 ```
 
@@ -121,5 +144,13 @@ const data = await res.json();
 
 ### 401 Unauthorized - supplied user session token is invalid or expired
 
+```json
+{
+  "message": "Unauthorized: send Authorization: Bearer <accessToken> from /v0/auth/authenticate"
+}
+```
+
 ### 403 History is invite-only for now
+
+Tidepool does not return this: history is open to every authenticated account on testnet.
 

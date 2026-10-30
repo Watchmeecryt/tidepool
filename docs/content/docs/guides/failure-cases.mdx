@@ -7,6 +7,10 @@ icon: Bug
 
 Happy-path swaps are the easy part. This guide covers what your integration has to handle when a deposit goes wrong. Each case below was run against `https://www.usetidepool.tech` on NEAR testnet. The status JSON on this page is the real response from those runs, and every transaction is linked on NearBlocks.
 
+<Callout title="What the status blocks on this page leave out">
+The runs printed `status`, `updatedAt`, `swapDetails` and `tidepool` from each `/v0/status` response, so the blocks below start at `status`. The live response also carries `correlationId` and `quoteResponse` (the complete quote response for that deposit address, with the original `quoteRequest`, `quote` and `signature`) above those fields. Both are unchanged by these failure cases. A full, real status object with every field is in the [status reference](/docs/api-reference/get-execution-status) and in [First swap](/docs/guides/first-swap#4-watch-it-settle).
+</Callout>
+
 <Callout title="Same semantics as 1Click">
 Tidepool uses the 1Click status values (`PENDING_DEPOSIT`, `KNOWN_DEPOSIT_TX`, `INCOMPLETE_DEPOSIT`, `PROCESSING`, `SUCCESS`, `REFUNDED`, `FAILED`) and the same `swapDetails` fields (`depositedAmount`, `refundedAmount`, `refundReason`). Code that handles these cases here should handle them the same way against 1Click. Only the extra `tidepool` object is Tidepool-specific, and 1Click clients can ignore it.
 </Callout>
