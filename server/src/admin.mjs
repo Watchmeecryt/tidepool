@@ -3,7 +3,7 @@
 import crypto from 'node:crypto';
 import { db } from './store.mjs';
 import { TOKENS, fromUnits } from './config.mjs';
-import { log, isOurs, ourList } from './analytics.mjs';
+import { log, isOurs, ourList, ourCount } from './analytics.mjs';
 
 const PW = process.env.ADMIN_PASSWORD || '';
 const KEY = crypto.createHash('sha256').update('tidepool-admin-session:' + PW).digest();
@@ -93,7 +93,7 @@ function dashboard(all) {
   const q = all ? '?all=1' : '';
   const stat = (n, l) => `<div class="stat"><b>${n}</b><small>${l}</small></div>`;
   return page('Usage', `<header><h1>Tide<span>pool</span> usage</h1><div style="display:flex;gap:8px;align-items:center"><a class="btn ghost" href="/admin${all ? '' : '?all=1'}">${all ? 'Hide' : 'Show'} our wallets</a><form method="post" action="/admin/logout" style="margin:0"><button class="btn ghost" type="submit">Sign out</button></form></div></header>
-<p class="mute" style="margin-top:-8px">${all ? 'Showing <b>all</b> wallets, including ours.' : `Hiding our own wallets (${ourList().map(esc).join(', ')}).`} Request log since ${fmtT(Date.parse(log.since))}; swaps and faucet backfilled from the db.</p>
+<p class="mute" style="margin-top:-8px">${all ? 'Showing <b>all</b> wallets, including ours.' : `Hiding our own wallets (${ourList().slice(0, 2 + 3 + 1).map(esc).join(', ')}, and ${ourCount()} listed treasury, relayer, example and test addresses).`} Request log since ${fmtT(Date.parse(log.since))}; swaps and faucet backfilled from the db.</p>
 <div class="stats">${stat(shown.length, 'wallets')}${stat(swaps.length, 'live quotes')}${stat(swaps.filter(s => s.status !== 'PENDING_DEPOSIT').length, 'swaps (deposit seen)')}${stat(`<span class="ok">${cnt('SUCCESS')}</span>`, 'success')}${stat(`<span class="warn">${cnt('REFUNDED')}</span>`, 'refunded')}${stat(`<span class="bad">${cnt('FAILED')}</span>`, 'failed')}${stat(shown.reduce((a, w) => a + w.faucet, 0), 'faucet claims')}${stat(reqTotal, 'logged requests')}</div>
 <div class="grid"><div class="card"><h2>Swaps by status (by quote day)</h2>${bars(D, [{ k: 'SUCCESS', n: 'success', c: '#2f9e6a' }, { k: 'REFUNDED', n: 'refunded', c: '#ffad24' }, { k: 'FAILED', n: 'failed', c: '#d9534f' }, { k: 'PENDING', n: 'pending/expired', c: '#8a8278' }])}</div>
 <div class="card"><h2>Quotes</h2>${bars(D, [{ k: 'quotes', n: 'live', c: '#a65f0c' }, { k: 'dryQuotes', n: 'dry (logged)', c: '#ffd078' }])}</div>
