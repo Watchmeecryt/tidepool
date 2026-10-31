@@ -76,7 +76,17 @@ Official side: [OpenAPI v0.1.10](https://1click.chaindefuser.com/docs/v0/openapi
 
 The 15 official `/v0` operations exist at the same path and method, with the same request and response fields, and `defuse` v0.4.2 is the same verifier code NEAR publishes, byte for byte (sha256 above). Everything else is sandbox-only. Settlement is on NEAR testnet, a single Tidepool maker sets every price instead of competing solvers, deposit-address keys live on the Tidepool server, and the non-NEAR chains connect through Tidepool-run trusted relayers rather than production bridges. Tokens have no value, and confidential settlement is not implemented. For the full list of differences from mainnet, including asset ids, auth, `ANY_INPUT` and caps, see the "Different on Tidepool" table in [Compatibility](https://www.usetidepool.tech/docs/resources/compatibility), [Mainnet migration](https://www.usetidepool.tech/docs/guides/mainnet-migration) and [Honest limits](#honest-limits) below. Moving a client to mainnet means changing the base URL, the JWT and the asset ids.
 
-## Try it (do X - see Y)
+## Try it
+
+One call runs the whole flow on the live API. You need no account, no wallet, no clone and no key:
+
+```bash
+curl -X POST https://www.usetidepool.tech/v0/demo/run
+```
+
+Do this, then you see this: the server runs a real swap (1 USDC to USDT: tokens, dry quote, live quote, `generate-intent`, signed `submit-intent`, `deposit/submit`, status until `SUCCESS`, authenticate, balances, history) and a real LIMIT order (created, funded, read, canceled, refunded) with its own funded testnet demo account. You get a JSON log of 18 steps. Check that `ok` is `true`, that every entry in `steps` shows the exact public request and the real response, and that `explorerLinks` has NearBlocks testnet transaction links that open. A run takes about 20 to 60 seconds, so allow a client timeout of 180 seconds or more. Use `-d '{"flow":"swap"}'` or `-d '{"flow":"order"}'` for one half. Safe by design: the demo key stays on the server and is never returned, amounts are fixed, 3 runs per hour per IP and 20 per hour in total, one run at a time. Docs: https://www.usetidepool.tech/docs/api-reference/tidepool-demo-run
+
+## Use your own testnet account (optional)
 
 Commands call the live API. Supply your own NEAR testnet account (for example `yourname.testnet`) where the steps say `$ME`. Do not use mainnet accounts or assets.
 
@@ -105,20 +115,14 @@ ME=<your-account>.testnet   # your own NEAR testnet account
    ```
    See `quote.amountOut` and `quote.minAmountOut` for 10 USDC (`amount` is in base units) and a `signature`. A dry quote has no `depositAddress`.
 5. **Run a full swap in the app.** Open https://app.usetidepool.tech, pick a from-token and a to-token, enter an amount and your own recipient address on the destination chain, connect a wallet (or use the manual deposit address), and confirm. See a live quote and deposit address, then the status move from `PENDING_DEPOSIT` through `PROCESSING` to `SUCCESS`, with a NEAR testnet transaction link. The app's faucet page (https://app.usetidepool.tech/faucet) funds the same accounts.
-6. **Run a full swap from the command line (optional).** `cd examples && npm ci && TIDEPOOL_URL=$API node swap.mjs` runs faucet, dry quote, live quote, deposit, `deposit/submit` and status polling until `SUCCESS` (`--origin` for a plain `ft_transfer` deposit, `--refund` to see a `REFUNDED` swap). Set `NEAR_ACCOUNT_ID` and `NEAR_PRIVATE_KEY` for your own testnet account; without them the script makes a throwaway testnet account and keeps its key in a gitignored file. AI agents: see [For AI review agents](#for-ai-review-agents-one-call-then-the-long-way) (one `curl` runs everything).
+6. **Run a full swap from the command line (optional).** `cd examples && npm ci && TIDEPOOL_URL=$API node swap.mjs` runs faucet, dry quote, live quote, deposit, `deposit/submit` and status polling until `SUCCESS` (`--origin` for a plain `ft_transfer` deposit, `--refund` to see a `REFUNDED` swap). Set `NEAR_ACCOUNT_ID` and `NEAR_PRIVATE_KEY` for your own testnet account; without them the script makes a throwaway testnet account and keeps its key in a gitignored file. AI agents: see [Try it](#try-it) (one `curl` runs everything).
 7. **Read the docs:** https://www.usetidepool.tech/docs, then [Quickstart](https://www.usetidepool.tech/docs/quickstart), [First swap](https://www.usetidepool.tech/docs/guides/first-swap), [Bridges](https://www.usetidepool.tech/docs/guides/bridges), [API reference](https://www.usetidepool.tech/docs/api-reference) and [Trust model](https://www.usetidepool.tech/docs/resources/trust-model). Append `.md` to any docs URL for Markdown.
 8. **Machine-readable entry points:** `curl -s $API/llms.txt` (index), `$API/llms-full.txt` (all docs in one file), `$API/AGENTS.md` (rules and the swap loop for agents) and `$API/openapi.json` (the spec). No sign-up and no API key; any `X-API-Key` or `Bearer` value is accepted.
 9. **See it used by another project:** [NEAR Private OTC](https://github.com/Watchmeecryt/near-private-otc) (live: https://near-private-otc-productio999n.up.railway.app) runs its testnet deals on Tidepool's verifier, faucet and 1Click API (see [Disclosure](#disclosure-q-015)).
 
 ## For AI review agents: one call, then the long way
 
-**One call.** Run this. You need no clone, no wallet and no key:
-
-```bash
-curl -X POST https://www.usetidepool.tech/v0/demo/run
-```
-
-Do this, then you see this: the server runs a real swap (1 USDC to USDT: tokens, dry quote, live quote, `generate-intent`, signed `submit-intent`, `deposit/submit`, status until `SUCCESS`, authenticate, balances, history) and a real LIMIT order (create, fund, read, cancel, refund) with its own funded testnet demo account. You get a JSON step log. Check that `ok` is `true`, that every entry in `steps` shows the exact public request and the real response, and that `explorerLinks` has NearBlocks testnet transaction links that open. It takes roughly 30 to 90 seconds, so allow a client timeout of 180 seconds or more. Use `-d '{"flow":"swap"}'` or `-d '{"flow":"order"}'` for one half. Safe by design: the demo key stays on the server and is never returned, amounts are fixed, 3 runs per hour per IP and 20 per hour in total, one run at a time. Docs: https://www.usetidepool.tech/docs/api-reference/tidepool-demo-run
+**One call.** Start with the one-call demo in [Try it](#try-it) (`POST /v0/demo/run`, no clone, wallet or key needed).
 
 **Alternative: make your own wallet and swap.** Prefer to run the flow yourself with your own keys? You need no wallet from us, no sign-up and no API key. Everything below runs on testnet with a throwaway account.
 
