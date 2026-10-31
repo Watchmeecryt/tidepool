@@ -3,7 +3,7 @@
 **A 1Click-compatible testnet sandbox for NEAR Intents.** Community-built and unaffiliated with NEAR or 1Click.
 
 <div class="features">
-<div class="feature"><b>Real verifier</b><span>The official, unmodified intents contract (<a href="{{RELEASE}}">defuse v0.4.2</a>) on NEAR testnet.</span></div>
+<div class="feature"><b>Real verifier</b><span>The official, unmodified intents contract (<a href="{{RELEASE}}">defuse v0.4.5</a>) on NEAR testnet.</span></div>
 <div class="feature"><b>Same API shapes</b><span>Tokens, quote, deposit/submit and status match the 1Click Swap API v0.1.10. The official SDK works as is.</span></div>
 <div class="feature"><b>Real fills, real refunds</b><span>A live maker fills your quotes on-chain. Missed deadlines refund automatically.</span></div>
 <div class="feature"><b>Free test tokens</b><span>USDC, USDT, wNEAR, wBTC, ETH and XAUT from the faucet, to a wallet or straight into the verifier.</span></div>

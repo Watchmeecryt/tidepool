@@ -1,6 +1,6 @@
 # Tidepool
 
-**A free testnet sandbox for NEAR Intents.** It runs NEAR's official, unmodified Intents verifier (`defuse` v0.4.2) on NEAR testnet and puts an API in front of it that matches the 1Click Swap API (OpenAPI v0.1.10). Point a 1Click client at Tidepool, swap test tokens across NEAR and eight other testnets, and spend no mainnet funds.
+**A free testnet sandbox for NEAR Intents.** It runs NEAR's official, unmodified Intents verifier (`defuse` v0.4.5) on NEAR testnet and puts an API in front of it that matches the 1Click Swap API (OpenAPI v0.1.10). Point a 1Click client at Tidepool, swap test tokens across NEAR and eight other testnets, and spend no mainnet funds.
 
 - **Live API and docs:** https://www.usetidepool.tech (docs: https://www.usetidepool.tech/docs)
 - **Swap app (human UI):** https://app.usetidepool.tech, repo [Watchmeecryt/tidepool-app](https://github.com/Watchmeecryt/tidepool-app)
@@ -17,7 +17,7 @@ NEAR Intents has no testnet and none is planned (`HACKATHON.md` Q-007). To test 
 
 | Piece | Where | What it does |
 | --- | --- | --- |
-| Verifier | `contracts/verifier/` | NEAR's `defuse` wasm from the `near/intents` `defuse/v0.4.2` release, unmodified, deployed at `verifier.tidepool-sandbox.testnet`. sha256 `f67f9559b3b512c52dfa11723a28b9119bcf773ac01780370d6409e5f1fb20e5`, checked live by `/v0/health`. |
+| Verifier | `contracts/verifier/` | NEAR's `defuse` contract built unmodified from the `near/intents` `defuse/v0.4.5` tag (commit `16d04f6`) with the repo's pinned reproducible-build image (NEAR publishes no wasm for v0.4.5), deployed at `verifier.tidepool-sandbox.testnet`. sha256 `a1afab98916d9f213746544dcf8e4e6bdb22c0be6bc5dfbd8ea8814c9922b547`, checked live by `/v0/health`. |
 | Test tokens | `contracts/token/` | A minimal NEP-141 token (owner mint, auto storage registration); six NEAR tokens: USDC, USDT, wNEAR, wBTC, ETH, XAUT. |
 | API | `server/` | 1Click v0.1.10 shapes: `/v0/tokens`, `/v0/quote`, `/v0/deposit/submit`, `/v0/status`, `/v0/generate-intent`, `/v0/submit-intent`, orders, auth, account and any-input withdrawals, plus `/v0/faucet` and `/v0/health`. Swap types `EXACT_INPUT`, `EXACT_OUTPUT`, `FLEX_INPUT`, `ANY_INPUT`; `appFees`; `depositMode: MEMO`. |
 | Maker | `server/src/engine.mjs` | A real solver that prices from CoinGecko plus a fixed fee and settles each swap with one `execute_intents` call on the verifier. |
@@ -36,7 +36,7 @@ Tidepool puts a 1Click-shaped HTTP API (`server/src/index.mjs`) in front of NEAR
 flowchart LR
   C["Client: swap app, bot or AI agent<br/>(any 1Click client or SDK)"] -->|"HTTPS /v0/*"| A["Tidepool 1Click-compatible API<br/>index.mjs, orders.mjs, intents.mjs, auth.mjs"]
   A --> Q["Quote and solver layer<br/>engine.mjs: one maker, CoinGecko price + fixed fee"]
-  Q -->|"execute_intents: two token_diff intents"| V["Official defuse v0.4.2 verifier, unmodified<br/>verifier.tidepool-sandbox.testnet (NEAR testnet)"]
+  Q -->|"execute_intents: two token_diff intents"| V["Official defuse v0.4.5 verifier, unmodified<br/>verifier.tidepool-sandbox.testnet (NEAR testnet)"]
   V <-->|"ft_transfer_call in, ft_withdraw out"| B["Tidepool-run trusted relayers<br/>evm.mjs, solana.mjs, stellar.mjs, sui.mjs, btc.mjs, xrp.mjs"]
   B <--> E["Ethereum, Base and Arbitrum Sepolia"]
   B <--> S["Solana devnet"]
@@ -74,7 +74,7 @@ Official side: [OpenAPI v0.1.10](https://1click.chaindefuser.com/docs/v0/openapi
 
 ### What is identical and what is sandbox-only
 
-The 15 official `/v0` operations exist at the same path and method, with the same request and response fields, and `defuse` v0.4.2 is the same verifier code NEAR publishes, byte for byte (sha256 above). Everything else is sandbox-only. Settlement is on NEAR testnet, a single Tidepool maker sets every price instead of competing solvers, deposit-address keys live on the Tidepool server, and the non-NEAR chains connect through Tidepool-run trusted relayers rather than production bridges. Tokens have no value, and confidential settlement is not implemented. For the full list of differences from mainnet, including asset ids, auth, `ANY_INPUT` and caps, see the "Different on Tidepool" table in [Compatibility](https://www.usetidepool.tech/docs/resources/compatibility), [Mainnet migration](https://www.usetidepool.tech/docs/guides/mainnet-migration) and [Honest limits](#honest-limits) below. Moving a client to mainnet means changing the base URL, the JWT and the asset ids.
+The 15 official `/v0` operations exist at the same path and method, with the same request and response fields, and `defuse` v0.4.5 is NEAR's verifier source at tag `defuse/v0.4.5`, built unmodified with the repo's pinned reproducible-build image (sha256 above). Everything else is sandbox-only. Settlement is on NEAR testnet, a single Tidepool maker sets every price instead of competing solvers, deposit-address keys live on the Tidepool server, and the non-NEAR chains connect through Tidepool-run trusted relayers rather than production bridges. Tokens have no value, and confidential settlement is not implemented. For the full list of differences from mainnet, including asset ids, auth, `ANY_INPUT` and caps, see the "Different on Tidepool" table in [Compatibility](https://www.usetidepool.tech/docs/resources/compatibility), [Mainnet migration](https://www.usetidepool.tech/docs/guides/mainnet-migration) and [Honest limits](#honest-limits) below. Moving a client to mainnet means changing the base URL, the JWT and the asset ids.
 
 ## Try it
 
@@ -95,7 +95,7 @@ API=https://www.usetidepool.tech
 ME=<your-account>.testnet   # your own NEAR testnet account
 ```
 
-1. **`curl -s $API/v0/health`** - see `"network":"testnet"`, the verifier account, its wasm sha256 equal to the `defuse` v0.4.2 hash above, and maker and bridge status.
+1. **`curl -s $API/v0/health`** - see `"network":"testnet"`, the verifier account, its wasm sha256 equal to the `defuse` v0.4.5 hash above, and maker and bridge status.
 2. **`curl -s $API/v0/tokens`** - see 23 tokens with `assetId` (for example `nep141:usdc.tidepool-sandbox.testnet`), `decimals` and a live USD `price`, across `near`, `eth`, `base`, `arb`, `sol`, `btc`, `stellar`, `sui` and `xrp`.
 3. **Get test tokens into your verifier balance:**
    ```bash
@@ -167,7 +167,7 @@ REFUNDED or FAILED. Amounts are strings in base units. Testnet only.
 
 No project template was used apart from the docs scaffold. Pre-existing and third-party code:
 
-- **NEAR Intents verifier:** `defuse` wasm from [near/intents](https://github.com/near/intents) release `defuse/v0.4.2`, used unmodified (`contracts/verifier/`).
+- **NEAR Intents verifier:** `defuse` wasm from [near/intents](https://github.com/near/intents) tag `defuse/v0.4.5`, built from source unmodified (`contracts/verifier/`).
 - **Docs** (`docs/package.json`): Next.js 16, React 19, Fumadocs (`fumadocs-core`, `fumadocs-mdx`, `fumadocs-ui`) created with Create Fumadocs, Tailwind CSS 4, Phosphor icons, Biome, `serve`.
 - **Server** (`server/package.json`): `near-api-js`, `ethers`, `@mysten/sui`, `@stellar/stellar-base`, `xrpl`, `bitcoinjs-lib`, `bip32`, `ecpair`, `tiny-secp256k1`, `tweetnacl`, `@noble/hashes`, `bs58`, `bs58check`, `@grpc/grpc-js`, `@grpc/proto-loader`, `marked`, `yaml`. Plain Node.js (ESM), no web framework. Prices from CoinGecko.
 - **Contracts:** `near-sdk` and `near-contract-standards` 5.29.1 (Rust, NEP-141 token); Solidity 0.8.26 with Foundry (EVM test token and vault); Sui Move (test coins).

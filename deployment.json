@@ -2,7 +2,7 @@
   "root": "tidepool-sandbox.testnet",
   "verifier": "verifier.tidepool-sandbox.testnet",
   "maker": "maker.tidepool-sandbox.testnet",
-  "verifierWasmSha256": "f67f9559b3b512c52dfa11723a28b9119bcf773ac01780370d6409e5f1fb20e5",
+  "verifierWasmSha256": "a1afab98916d9f213746544dcf8e4e6bdb22c0be6bc5dfbd8ea8814c9922b547",
   "tokens": [
     "nep141:usdc.tidepool-sandbox.testnet",
     "nep141:usdt.tidepool-sandbox.testnet",

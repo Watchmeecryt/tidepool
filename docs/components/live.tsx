@@ -116,7 +116,7 @@ export function StatusWidget() {
   const c = h.checks;
   const cards: [string, boolean, string][] = [
     ['NEAR testnet RPC', c.rpc?.ok, c.rpc?.ok ? `block ${c.rpc.height} · ${c.rpc.ms} ms` : 'unreachable'],
-    ['Verifier code', c.verifier?.ok, c.verifier?.ok ? 'matches defuse v0.4.2' : 'hash mismatch'],
+    ['Verifier code', c.verifier?.ok, c.verifier?.ok ? 'matches defuse v0.4.5' : 'hash mismatch'],
     ['Price feed', c.prices?.source === 'coingecko', c.prices?.source || '?'],
     ['Maker inventory', c.makerInventory?.ok, c.makerInventory?.ok ? 'online' : 'error'],
   ];

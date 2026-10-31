@@ -1,0 +1,7 @@
+{
+  "name": "tidepool-sandbox-tests",
+  "private": true,
+  "type": "module",
+  "description": "Local near-sandbox test: deploy the pinned old verifier wasm, seed state, upgrade in place to the new wasm, run Tidepool's verifier flows. Usage: node upgrade-test.mjs <old.wasm> <new.wasm> <token.wasm>",
+  "dependencies": { "bs58": "^6.0.0", "near-sandbox": "^0.3.4" }
+}

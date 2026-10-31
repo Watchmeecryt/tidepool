@@ -6,7 +6,7 @@ import { BRAND, ldJson, organization, software, website } from '@/lib/seo';
 const ORIGIN = 'https://www.usetidepool.tech';
 
 const features = [
-  { t: 'Official verifier', d: 'defuse v0.4.2, byte-identical to the GitHub release and re-checked by /v0/health.' },
+  { t: 'Official verifier', d: 'defuse v0.4.5, built unmodified from the upstream tag and re-checked by /v0/health.' },
   { t: '1Click API shapes', d: 'Same /v0/quote, /v0/status and schemas. The official TypeScript SDK works with one line changed.' },
   { t: 'A real maker', d: 'Quotes every pair from live prices and settles atomically with signed intents.' },
   { t: 'Refunds you can test', d: 'Partial deposits, missed deadlines and slippage all refund on chain, exactly like production.' },
@@ -44,7 +44,7 @@ export default function HomePage() {
         <div className="relative mx-auto max-w-6xl px-6 pb-20 pt-16 sm:pt-24">
           <div className="grid items-center gap-12 lg:grid-cols-[1.15fr_1fr]">
             <div className="text-center lg:text-left">
-              <span className="tp-pill tp-rise"><span className="tp-live" /> Live on NEAR testnet · defuse v0.4.2</span>
+              <span className="tp-pill tp-rise"><span className="tp-live" /> Live on NEAR testnet · defuse v0.4.5</span>
               <h1 className="tp-display tp-rise tp-d1 mt-6 text-[2.6rem] sm:text-7xl">
                 Test NEAR Intents<br />swaps <span className="tp-gradient-text">before they<br className="hidden sm:block" /> cost anything.</span>
               </h1>

@@ -8,7 +8,7 @@ description: "GET /v0/health · Tidepool extension"
 
 <Callout title="Tidepool extension">This endpoint is not part of the 1Click API. Do not call it on mainnet.</Callout>
 
-Cached for 10 seconds. Re-checks the verifier code hash against the `defuse/v0.4.2` release. See [Live status](/docs/status).
+Cached for 10 seconds. Re-checks the verifier code hash against the build of the `defuse/v0.4.5` tag. See [Live status](/docs/status).
 
 **Operation id:** `TidepoolHealth`
 
@@ -45,8 +45,8 @@ const data = await res.json();
   "service": "tidepool",
   "network": "testnet",
   "verifier": "verifier.tidepool-sandbox.testnet",
-  "verifierWasmSha256": "f67f9559b3b512c52dfa11723a28b9119bcf773ac01780370d6409e5f1fb20e5",
-  "verifierRelease": "https://github.com/near/intents/releases/tag/defuse/v0.4.2",
+  "verifierWasmSha256": "a1afab98916d9f213746544dcf8e4e6bdb22c0be6bc5dfbd8ea8814c9922b547",
+  "verifierRelease": "https://github.com/near/intents/tree/defuse/v0.4.5",
   "maker": "maker.tidepool-sandbox.testnet",
   "checks": {
     "rpc": {
@@ -56,7 +56,7 @@ const data = await res.json();
     },
     "verifier": {
       "ok": true,
-      "codeHashHex": "f67f9559b3b512c52dfa11723a28b9119bcf773ac01780370d6409e5f1fb20e5"
+      "codeHashHex": "a1afab98916d9f213746544dcf8e4e6bdb22c0be6bc5dfbd8ea8814c9922b547"
     },
     "prices": {
       "ok": true,

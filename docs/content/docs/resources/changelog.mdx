@@ -4,6 +4,13 @@ description: What changed in Tidepool and when.
 icon: ClockCounterClockwise
 ---
 
+## 2026-10-31 · Verifier: upgraded to NEAR Intents v0.4.5
+
+- **Same contract, new code:** `verifier.tidepool-sandbox.testnet` was upgraded in place from `defuse/v0.4.2` to [`defuse/v0.4.5`](https://github.com/near/intents/tree/defuse/v0.4.5) (commit `16d04f6`). Same account, same keys and every balance kept. The v0.4.x line needs no state migration.
+- **Built from source:** NEAR publishes no wasm for 0.4.3 to 0.4.5, so the wasm is a reproducible build of the unmodified tag with NEAR's pinned builder image. Its sha256 starts `a1afab98…` and `GET /v0/health` compares it to the code on chain.
+- **Tested first:** the old contract was deployed in a local sandbox, seeded with balances, upgraded in place and then run through deposits, signed swaps, refunds and the faucet batch. All checks passed (see `sandbox/`).
+- **API unchanged:** every 1Click endpoint, request and response shape is the same.
+
 ## 2026-10-31 · API: one-call demo for AI review agents
 
 - **New endpoint:** `POST /v0/demo/run` runs the whole 1Click flow on testnet in one request, with no clone and no key: tokens, dry and live quote, `generate-intent`, signed `submit-intent`, `deposit/submit`, status until `SUCCESS`, `authenticate`, balances and history, then a LIMIT order (create, fund, read, cancel, refund). Pass `{"flow":"swap"|"order"|"all"}` (default `all`).

@@ -31,7 +31,7 @@ Tidepool is a testnet version of the 1Click API: a free 1Click testnet endpoint 
 
 Tidepool gives you everything a 1Click swap needs, on testnet:
 
-- **The official NEAR Intents verifier** (`defuse` v0.4.2, wasm byte-identical to the GitHub release) deployed at `verifier.tidepool-sandbox.testnet`.
+- **The official NEAR Intents verifier** (`defuse` v0.4.5, wasm built unmodified from the upstream tag) deployed at `verifier.tidepool-sandbox.testnet`.
 - **Six NEAR test tokens**: USDC, USDT, wNEAR, wBTC, ETH and XAUT, with a public faucet. Test USDC and USDT (plus native SOL, XLM, SUI, BTC and XRP) are also bridged in from Base, Arbitrum and Ethereum Sepolia, Solana devnet, Stellar testnet, Sui testnet, Bitcoin testnet4 and XRP Ledger testnet; see [Test bridges](/docs/guides/bridges).
 - **A live maker** that quotes every pair from real CoinGecko prices and fills every quote by signing intents on the verifier.
 - **The 1Click Swap API shape** (`/v0/tokens`, `/v0/quote`, `/v0/deposit/submit`, `/v0/status`, plus the intent, order, auth and account endpoints), so the official SDK works by changing one base URL.

@@ -16,5 +16,5 @@ icon: Question
 <Accordion title="Which chains can I swap between?">NEAR testnet, plus Base Sepolia, Arbitrum Sepolia, Ethereum Sepolia, Solana devnet, Stellar testnet, Sui testnet, Bitcoin testnet4, XRP Ledger testnet through Tidepool's [test bridges](/docs/guides/bridges). Read the live list from `GET /v0/tokens`.</Accordion>
 <Accordion title="Does the official SDK work?">Yes. `@defuse-protocol/one-click-sdk-typescript` 0.1.26 was tested with `getTokens`, `getQuote` and `getExecutionStatus`. Set `OpenAPI.BASE`.</Accordion>
 <Accordion title="Can I run my own Tidepool?">The code is in a private repository today. Contact the maintainer for access.</Accordion>
-<Accordion title="Is the verifier modified?">No. Its wasm hash matches the `defuse/v0.4.2` release and is checked on every `/v0/health` call.</Accordion>
+<Accordion title="Is the verifier modified?">No. It is built unmodified from the `defuse/v0.4.5` tag with the upstream reproducible-build image, and its wasm hash is checked on every `/v0/health` call.</Accordion>
 </Accordions>

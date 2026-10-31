@@ -9,8 +9,8 @@ import { isValidClassicAddress, isValidXAddress, xAddressToClassicAddress } from
 export const ROOT = process.env.TIDEPOOL_ROOT || 'tidepool-sandbox.testnet';
 export const VERIFIER = `verifier.${ROOT}`;
 export const MAKER = `maker.${ROOT}`;
-export const VERIFIER_WASM_SHA256 = 'f67f9559b3b512c52dfa11723a28b9119bcf773ac01780370d6409e5f1fb20e5'; // near/intents release defuse/v0.4.2
-export const VERIFIER_RELEASE = 'https://github.com/near/intents/releases/tag/defuse/v0.4.2';
+export const VERIFIER_WASM_SHA256 = 'a1afab98916d9f213746544dcf8e4e6bdb22c0be6bc5dfbd8ea8814c9922b547'; // near/intents tag defuse/v0.4.5 (commit 16d04f6), reproducible build; NEAR publishes no wasm for this version
+export const VERIFIER_RELEASE = 'https://github.com/near/intents/tree/defuse/v0.4.5';
 
 // Test tokens mirror common 1Click assets. Testnet only, no value, not bridged.
 export const TOKENS = [

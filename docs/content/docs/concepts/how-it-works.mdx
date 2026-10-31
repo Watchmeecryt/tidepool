@@ -10,7 +10,7 @@ Tidepool has five moving parts. The verifier, the maker and the per-quote deposi
 
 ## The verifier
 
-The verifier is the **official NEAR Intents contract** (`defuse` v0.4.2), deployed unmodified at [`verifier.tidepool-sandbox.testnet`](https://testnet.nearblocks.io/address/verifier.tidepool-sandbox.testnet). Its wasm SHA-256 is `f67f9559…20e5`, byte-identical to the [GitHub release](https://github.com/near/intents/releases/tag/defuse/v0.4.2). [`/v0/health`](/docs/api-reference/tidepool-health) re-checks the on-chain code hash on every call.
+The verifier is the **official NEAR Intents contract** (`defuse` v0.4.5), deployed unmodified at [`verifier.tidepool-sandbox.testnet`](https://testnet.nearblocks.io/address/verifier.tidepool-sandbox.testnet). Its wasm SHA-256 is `a1afab98…b547`, built unmodified from the [`defuse/v0.4.5` tag](https://github.com/near/intents/tree/defuse/v0.4.5) with the repo's pinned reproducible-build image (NEAR publishes no wasm for this version). [`/v0/health`](/docs/api-reference/tidepool-health) re-checks the on-chain code hash on every call.
 
 The verifier keeps an internal multi-token ledger (NEP-245). Tokens enter it via `ft_transfer_call` and leave via `ft_withdraw` intents. Inside it, accounts swap by signing **intents**: NEP-413 messages that say "my balance of X goes down by a, my balance of Y goes up by b". The verifier executes a batch only if every `token_diff` in the batch nets to zero, so neither side can be shortchanged. That atomicity is the whole trust story of a swap.
 
