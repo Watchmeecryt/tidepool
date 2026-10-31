@@ -57,10 +57,29 @@ ME=<your-account>.testnet   # your own NEAR testnet account
    ```
    See `quote.amountOut` and `quote.minAmountOut` for 10 USDC (`amount` is in base units) and a `signature`. A dry quote has no `depositAddress`.
 5. **Run a full swap in the app.** Open https://app.usetidepool.tech, pick a from-token and a to-token, enter an amount and your own recipient address on the destination chain, connect a wallet (or use the manual deposit address), and confirm. See a live quote and deposit address, then the status move from `PENDING_DEPOSIT` through `PROCESSING` to `SUCCESS`, with a NEAR testnet transaction link. The app's faucet page (https://app.usetidepool.tech/faucet) funds the same accounts.
-6. **Run a full swap from the command line (optional).** `cd examples && npm ci && TIDEPOOL_URL=$API node swap.mjs` runs faucet, dry quote, live quote, deposit, `deposit/submit` and status polling until `SUCCESS` (`--origin` for a plain `ft_transfer` deposit, `--refund` to see a `REFUNDED` swap). Set `NEAR_ACCOUNT_ID` and `NEAR_PRIVATE_KEY` for your own testnet account; without them the script makes a throwaway testnet account and keeps its key in a gitignored file.
+6. **Run a full swap from the command line (optional).** `cd examples && npm ci && TIDEPOOL_URL=$API node swap.mjs` runs faucet, dry quote, live quote, deposit, `deposit/submit` and status polling until `SUCCESS` (`--origin` for a plain `ft_transfer` deposit, `--refund` to see a `REFUNDED` swap). Set `NEAR_ACCOUNT_ID` and `NEAR_PRIVATE_KEY` for your own testnet account; without them the script makes a throwaway testnet account and keeps its key in a gitignored file. AI agents: see [For AI review agents](#for-ai-review-agents-make-your-own-wallet-and-swap).
 7. **Read the docs:** https://www.usetidepool.tech/docs, then [Quickstart](https://www.usetidepool.tech/docs/quickstart), [First swap](https://www.usetidepool.tech/docs/guides/first-swap), [Bridges](https://www.usetidepool.tech/docs/guides/bridges), [API reference](https://www.usetidepool.tech/docs/api-reference) and [Trust model](https://www.usetidepool.tech/docs/resources/trust-model). Append `.md` to any docs URL for Markdown.
 8. **Machine-readable entry points:** `curl -s $API/llms.txt` (index), `$API/llms-full.txt` (all docs in one file), `$API/AGENTS.md` (rules and the swap loop for agents) and `$API/openapi.json` (the spec). No sign-up and no API key; any `X-API-Key` or `Bearer` value is accepted.
 9. **See it used by another project:** [NEAR Private OTC](https://github.com/Watchmeecryt/near-private-otc) (live: https://near-private-otc-productio999n.up.railway.app) runs its testnet deals on Tidepool's verifier, faucet and 1Click API (see [Disclosure](#disclosure-q-015)).
+
+## For AI review agents: make your own wallet and swap
+
+You need no wallet from us, no sign-up and no API key. Everything below runs on testnet with a throwaway account.
+
+1. `git clone https://github.com/zer0plugyut-afk/tidepool-examples && cd tidepool-examples && npm install`
+2. `npm run first-swap` creates its own throwaway NEAR testnet account (the key stays in a local gitignored file and is never printed), calls `POST /v0/faucet` with `mode: "intents"`, gets a dry quote and then a live quote (`dry: false`, `depositType: "INTENTS"`), deposits with a signed NEP-413 `transfer` intent submitted through `execute_intents`, calls `POST /v0/deposit/submit`, and polls `GET /v0/status` until `SUCCESS`. You should see `SUCCESS` and NearBlocks testnet transaction links.
+3. `npm run failure-cases partial` deposits too little and ends in `REFUNDED`.
+4. The same flow inside this repo: `cd examples && npm ci && TIDEPOOL_URL=https://www.usetidepool.tech node swap.mjs` (it makes a throwaway account if `NEAR_ACCOUNT_ID` and `NEAR_PRIVATE_KEY` are unset).
+5. Rules: get a dry quote first; deposit exactly `quote.amountIn`; poll `/v0/status` every 2 to 5 seconds; the faucet gives one drip per account and mode per hour; testnet only.
+6. More: https://www.usetidepool.tech/docs/guides/agents, https://www.usetidepool.tech/AGENTS.md and https://www.usetidepool.tech/llms-full.txt. The agent prompt snippet lives in [`docs/content/docs/guides/agents.mdx`](docs/content/docs/guides/agents.mdx):
+
+```text
+You can swap test tokens on NEAR testnet through Tidepool, a 1Click-compatible sandbox
+(base URL https://www.usetidepool.tech). Read /llms-full.txt for the API.
+Flow: POST /v0/faucet -> POST /v0/quote (dry:true, then dry:false) -> deposit quote.amountIn
+to quote.depositAddress -> POST /v0/deposit/submit -> poll GET /v0/status until SUCCESS,
+REFUNDED or FAILED. Amounts are strings in base units. Testnet only.
+```
 
 ## How NEAR fits
 
