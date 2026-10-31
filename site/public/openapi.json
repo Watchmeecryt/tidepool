@@ -1545,6 +1545,107 @@
           }
         }
       }
+    },
+    "/v0/demo/run": {
+      "post": {
+        "operationId": "TidepoolDemoRun",
+        "tags": [
+          "Tidepool"
+        ],
+        "summary": "Run the full demo flow in one call (Tidepool extension)",
+        "description": "Runs the whole 1Click flow on NEAR testnet in one call, with no key and no clone. The server uses an already-funded demo account whose key stays server-side and is never returned. `flow: swap` does tokens, dry quote, live quote, generate-intent, signed submit-intent, deposit/submit, status polling until final, authenticate, balances and history (1 USDC to USDT, INTENTS deposit). `flow: order` creates a LIMIT order (SELL 1 USDC at 1.5), funds it, reads it as it goes OPEN, cancels it and shows the refund. `all` (default) does both. The response is a JSON step log: every step has the exact public request (method, url, headers, body with signatures and tokens redacted), the real response and timing, plus explorer links to the real transactions. Amounts are fixed. Limits: 3 runs per hour per IP, 20 per hour in total, one run at a time, 150 s timeout. Runs take roughly 30 to 90 s, so set your client timeout to at least 180 s. Tidepool extension, not part of 1Click.",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "flow": {
+                    "type": "string",
+                    "enum": [
+                      "swap",
+                      "order",
+                      "all"
+                    ],
+                    "default": "all",
+                    "description": "Which flow to run."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Every step succeeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TidepoolDemoRunResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown flow"
+          },
+          "409": {
+            "description": "Another demo run is in progress"
+          },
+          "429": {
+            "description": "Rate limited (per IP and global)"
+          },
+          "502": {
+            "description": "A step failed; the log shows which"
+          },
+          "503": {
+            "description": "Demo disabled, or the demo account is low on test funds"
+          },
+          "504": {
+            "description": "Timed out; the steps so far are returned"
+          }
+        }
+      },
+      "get": {
+        "operationId": "TidepoolDemoInfo",
+        "tags": [
+          "Tidepool"
+        ],
+        "summary": "Describe the demo, or run it with ?flow= (Tidepool extension)",
+        "description": "A bare GET returns a short description and the limits. `GET /v0/demo/run?flow=all` (or `swap`, `order`, `run=1`) runs the demo like the POST. Prefer the POST.",
+        "parameters": [
+          {
+            "name": "flow",
+            "in": "query",
+            "required": false,
+            "description": "swap, order or all. Setting it runs the demo.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "swap",
+                "order",
+                "all"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Description, or the step log when run",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -32818,6 +32919,74 @@
           }
         },
         "additionalProperties": false
+      },
+      "TidepoolDemoRunResult": {
+        "type": "object",
+        "required": [
+          "ok",
+          "flow",
+          "steps"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "flow": {
+            "type": "string",
+            "enum": [
+              "swap",
+              "order",
+              "all"
+            ]
+          },
+          "network": {
+            "type": "string",
+            "example": "testnet"
+          },
+          "demoAccount": {
+            "type": "string"
+          },
+          "durationMs": {
+            "type": "integer"
+          },
+          "error": {
+            "description": "Present when ok is false: the failing step, or a timeout message."
+          },
+          "summary": {
+            "type": "object",
+            "description": "swap: depositAddress, status, amounts. order: id, fillStatus, payoutStatus, refundTx."
+          },
+          "explorerLinks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "steps": {
+            "type": "array",
+            "description": "In order. Each has step, flow, title, request {method,url,headers,body}, response {status,body}, ms. Client-side steps have a note instead.",
+            "items": {
+              "type": "object"
+            }
+          },
+          "limits": {
+            "type": "object"
+          },
+          "docs": {
+            "type": "string"
+          },
+          "about": {
+            "type": "string"
+          }
+        }
       }
     }
   },

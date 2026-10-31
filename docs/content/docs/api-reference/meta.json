@@ -18,6 +18,8 @@
     "cancel-order",
     "get-order",
     "tidepool-faucet",
-    "tidepool-health"
+    "tidepool-health",
+    "tidepool-demo-run",
+    "tidepool-demo-info"
   ]
 }

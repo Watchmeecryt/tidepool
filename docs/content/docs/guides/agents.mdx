@@ -14,9 +14,31 @@ Tidepool is built to be read and used by coding agents and autonomous agents.
 - [`/openapi.json`](/openapi.json): the machine-readable API.
 - Any docs page as Markdown: add `.md` to its URL, for example [`/docs/quickstart.md`](/docs/quickstart.md).
 
+## One-call demo
+
+Reviewing Tidepool, or checking that your agent can reach it? One request runs the whole 1Click flow on testnet. No clone, no key, no account:
+
+```bash
+curl -X POST https://www.usetidepool.tech/v0/demo/run
+```
+
+Do this, then you see this: the server uses a funded testnet demo account (its key stays on the server and is never returned) and runs a real swap and a real LIMIT order. It takes roughly 30 to 90 seconds, so set your client timeout to 180 seconds or more. The response is a JSON step log with `ok: true` and a list of NearBlocks `explorerLinks` to the real transactions. Each entry in `steps` holds the exact public request (method, URL, headers, body) and the real response:
+
+| Flow | What runs |
+| --- | --- |
+| `swap` | `GET /v0/tokens`, dry quote, live quote, `generate-intent`, signed `submit-intent`, `deposit/submit`, poll `/v0/status` until `SUCCESS`, `authenticate`, balances, history. 1 USDC to USDT. |
+| `order` | `POST /v0/orders` (LIMIT, SELL 1 USDC at 1.5), fund it, read it, cancel it, read the refund. |
+| `all` (default) | Both. |
+
+```bash
+curl -X POST https://www.usetidepool.tech/v0/demo/run -H 'content-type: application/json' -d '{"flow":"swap"}'
+```
+
+Limits: amounts are fixed at 1 USDC, 3 runs per hour per IP, 20 per hour in total, one run at a time, 150 second timeout. The server refuses to run when the demo account is low on test funds. Details: [`POST /v0/demo/run`](/docs/api-reference/tidepool-demo-run). Tidepool extension, testnet only.
+
 ## A full swap from a script
 
-The public [tidepool-examples](https://github.com/zer0plugyut-afk/tidepool-examples) repo ships `npm run first-swap`. It uses a fresh testnet account, so it needs no setup beyond Node 20:
+Want to run it yourself with your own account? The public [tidepool-examples](https://github.com/zer0plugyut-afk/tidepool-examples) repo ships `npm run first-swap`. It uses a fresh testnet account, so it needs no setup beyond Node 20:
 
 ```bash
 git clone https://github.com/zer0plugyut-afk/tidepool-examples && cd tidepool-examples && npm install

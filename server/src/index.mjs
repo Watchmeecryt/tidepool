@@ -22,6 +22,7 @@ import { xrpHealth, startTreasuryWatch as startXrpWatch } from './xrp.mjs';
 import { db } from './store.mjs';
 import { record } from './analytics.mjs';
 import { admin } from './admin.mjs';
+import { runDemo, demoInfo, DemoRefused } from './demo.mjs';
 import { renderPage, docs, llmsTxt, llmsFull, agentsMd } from './site.mjs';
 
 await loadKeys({ env: process.env.TIDEPOOL_KEYS, dir: process.env.TIDEPOOL_KEYS ? null : new URL('../../.secrets', import.meta.url).pathname });
@@ -126,6 +127,20 @@ const server = http.createServer(async (req, res) => {
     if (p === '/v0/deposit/submit' && req.method === 'POST') return json(res, 200, submitDeposit(await readBody(req)));
     if (p === '/v0/status' && req.method === 'GET') { const s = statusOf(url.searchParams.get('depositAddress'), url.searchParams.get('depositMemo')); return s ? json(res, 200, s) : json(res, 404, { message: 'Deposit address not found' }); }
     // ---- Tidepool extensions ----
+    if (p === '/v0/demo/run' && ['GET', 'POST'].includes(req.method)) {
+      // One-call demo: runs swap and/or LIMIT order with the server-held demo account (see demo.mjs). Tidepool extension.
+      const flowQ = url.searchParams.get('flow');
+      if (req.method === 'GET' && flowQ === null && url.searchParams.get('run') === null) return json(res, 200, demoInfo());
+      try {
+        const body = req.method === 'POST' ? await readBody(req) : { flow: flowQ || 'all' };
+        const xff = String(req.headers['x-forwarded-for'] || '').split(',').map(x => x.trim()).filter(Boolean);
+        const out = await runDemo({ body, ip: xff.at(-1) || req.socket.remoteAddress, origin: process.env.PUBLIC_URL || 'https://www.usetidepool.tech', base: `http://127.0.0.1:${process.env.PORT || 8080}` });
+        return json(res, out.code, out.body);
+      } catch (e) {
+        if (e instanceof DemoRefused) { res._err = e.message; if (e.extra?.retryAfterSeconds) res.setHeader('retry-after', String(e.extra.retryAfterSeconds)); return json(res, e.code, { ok: false, message: e.message, ...e.extra }); }
+        throw e;
+      }
+    }
     if (p === '/v0/faucet' && req.method === 'POST') return json(res, 200, await drip(await readBody(req), ip(req)));
     if (p === '/v0/health') { if (Date.now() - healthCache.at > 10_000) healthCache = { at: Date.now(), body: await health() }; return json(res, 200, healthCache.body); }
     if (p === '/v0/any-input/withdrawals' && req.method === 'GET') { const q = url.searchParams; if (!q.get('depositAddress')) throw new BadRequest('depositAddress is required'); const w = anyInputWithdrawals(q.get('depositAddress'), q.get('depositMemo'), { timestampFrom: q.get('timestampFrom'), page: q.get('page'), limit: q.get('limit'), sortOrder: q.get('sortOrder') || 'desc' }); return w ? json(res, 200, w) : json(res, 404, { message: 'Deposit address not found' }); }

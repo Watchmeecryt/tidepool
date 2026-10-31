@@ -1636,5 +1636,16 @@
    }
   },
   "notes": "Real response for a live `ANY_INPUT` quote that has not received a deposit yet, so `tidepool.withdrawals` is empty. After deposits, each payout appears as an entry of `tidepool.withdrawals` (and the newest one in the top-level fields, as in 1Click); see the fields table."
+ },
+ "TidepoolDemoRun": {
+  "request": {
+   "flow": "all"
+  },
+  "notes": "**One call, no key.** `curl -X POST https://www.usetidepool.tech/v0/demo/run` runs a real swap and a real LIMIT order on testnet and returns every step as the exact public request plus the real response. See the [AI review agent guide](/docs/guides/agents#one-call-demo).",
+  "responses": {
+   "200": {
+    "__text": "Real output is long (about 25 steps). Shape, trimmed:\n\n```json\n{\n  \"ok\": true,\n  \"flow\": \"all\",\n  \"network\": \"testnet\",\n  \"summary\": { \"swap\": { \"status\": \"SUCCESS\" }, \"order\": { \"fillStatus\": \"CANCELED\", \"payoutStatus\": \"COMPLETED\" } },\n  \"explorerLinks\": [{ \"label\": \"swap: deposit\", \"url\": \"https://testnet.nearblocks.io/txns/<hash>\" }],\n  \"steps\": [{ \"step\": 1, \"title\": \"List supported tokens\", \"request\": { \"method\": \"GET\", \"url\": \"…/v0/tokens\" }, \"response\": { \"status\": 200 } }]\n}\n```"
+   }
+  }
  }
 }

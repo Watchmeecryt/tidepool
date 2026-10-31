@@ -1,0 +1,50 @@
+---
+title: "Describe the demo, or run it with ?flow="
+icon: Compass
+description: "GET /v0/demo/run · Tidepool extension"
+---
+
+<p><span className="tp-method tp-get">GET</span><code>{"/v0/demo/run"}</code></p>
+
+<Callout title="Tidepool extension">This endpoint is not part of the 1Click API. Do not call it on mainnet.</Callout>
+
+A bare GET returns a short description and the limits. `GET /v0/demo/run?flow=all` (or `swap`, `order`, `run=1`) runs the demo like the POST. Prefer the POST.
+
+**Operation id:** `TidepoolDemoInfo`
+
+## Request
+
+<Tabs items={['curl', 'JavaScript']}>
+<Tab value="curl">
+
+```bash
+curl "https://www.usetidepool.tech/v0/demo/run"
+```
+
+</Tab>
+<Tab value="JavaScript">
+
+```ts
+const res = await fetch('https://www.usetidepool.tech/v0/demo/run');
+const data = await res.json();
+```
+
+</Tab>
+</Tabs>
+
+### Query parameters
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| `flow` | "swap" \| "order" \| "all" |  | swap, order or all. Setting it runs the demo. |
+
+## Responses
+
+### 200 Description, or the step log when run
+
+```json
+{}
+```
+
+### 429 Rate limited
+

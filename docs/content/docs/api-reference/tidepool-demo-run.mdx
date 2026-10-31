@@ -1,0 +1,114 @@
+---
+title: "Run the full demo flow in one call"
+icon: RocketLaunch
+description: "POST /v0/demo/run · Tidepool extension"
+---
+
+<p><span className="tp-method tp-post">POST</span><code>{"/v0/demo/run"}</code></p>
+
+<Callout title="Tidepool extension">This endpoint is not part of the 1Click API. Do not call it on mainnet.</Callout>
+
+**One call, no key.** `curl -X POST https://www.usetidepool.tech/v0/demo/run` runs a real swap and a real LIMIT order on testnet and returns every step as the exact public request plus the real response. See the [AI review agent guide](/docs/guides/agents#one-call-demo).
+
+Runs the whole 1Click flow on NEAR testnet in one call, with no key and no clone. The server uses an already-funded demo account whose key stays server-side and is never returned. `flow: swap` does tokens, dry quote, live quote, generate-intent, signed submit-intent, deposit/submit, status polling until final, authenticate, balances and history (1 USDC to USDT, INTENTS deposit). `flow: order` creates a LIMIT order (SELL 1 USDC at 1.5), funds it, reads it as it goes OPEN, cancels it and shows the refund. `all` (default) does both. The response is a JSON step log: every step has the exact public request (method, url, headers, body with signatures and tokens redacted), the real response and timing, plus explorer links to the real transactions. Amounts are fixed. Limits: 3 runs per hour per IP, 20 per hour in total, one run at a time, 150 s timeout. Runs take roughly 30 to 90 s, so set your client timeout to at least 180 s. Tidepool extension, not part of 1Click.
+
+**Operation id:** `TidepoolDemoRun`
+
+## Request
+
+<Tabs items={['curl', 'JavaScript']}>
+<Tab value="curl">
+
+```bash
+curl -X POST "https://www.usetidepool.tech/v0/demo/run" \
+  -H 'content-type: application/json' \
+  -d '{
+  "flow": "all"
+}'
+```
+
+</Tab>
+<Tab value="JavaScript">
+
+```ts
+const res = await fetch('https://www.usetidepool.tech/v0/demo/run', {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({
+    "flow": "all"
+  }),
+});
+const data = await res.json();
+```
+
+</Tab>
+</Tabs>
+
+### Body
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `flow` | "swap" \\| "order" \\| "all" |  | Which flow to run. |
+
+## Responses
+
+### 200 Every step succeeded
+
+Real output is long (about 25 steps). Shape, trimmed:
+
+```json
+{
+  "ok": true,
+  "flow": "all",
+  "network": "testnet",
+  "summary": { "swap": { "status": "SUCCESS" }, "order": { "fillStatus": "CANCELED", "payoutStatus": "COMPLETED" } },
+  "explorerLinks": [{ "label": "swap: deposit", "url": "https://testnet.nearblocks.io/txns/<hash>" }],
+  "steps": [{ "step": 1, "title": "List supported tokens", "request": { "method": "GET", "url": "…/v0/tokens" }, "response": { "status": 200 } }]
+}
+```
+
+<Accordions><Accordion title="Response fields">
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `ok` | boolean | yes |  |
+| `flow` | "swap" \\| "order" \\| "all" | yes |  |
+| `network` | string |  |  |
+| `demoAccount` | string |  |  |
+| `durationMs` | integer |  |  |
+| `error` | object |  | Present when ok is false: the failing step, or a timeout message. |
+| `summary` | object |  | swap: depositAddress, status, amounts. order: id, fillStatus, payoutStatus, refundTx. |
+| `explorerLinks` | object[] |  |  |
+| `explorerLinks[].[]label` | string |  |  |
+| `explorerLinks[].[]url` | string |  |  |
+| `steps` | object[] | yes | In order. Each has step, flow, title, request &#123;method,url,headers,body&#125;, response &#123;status,body&#125;, ms. Client-side steps have a note instead. |
+| `limits` | object |  |  |
+| `docs` | string |  |  |
+| `about` | string |  |  |
+
+</Accordion></Accordions>
+
+### 400 Unknown flow
+
+No real example was recorded for this status code.
+
+### 409 Another demo run is in progress
+
+No real example was recorded for this status code.
+
+### 429 Rate limited (per IP and global)
+
+No real example was recorded for this status code.
+
+### 502 A step failed; the log shows which
+
+No real example was recorded for this status code.
+
+### 503 Demo disabled, or the demo account is low on test funds
+
+No real example was recorded for this status code.
+
+### 504 Timed out; the steps so far are returned
+
+No real example was recorded for this status code.
+

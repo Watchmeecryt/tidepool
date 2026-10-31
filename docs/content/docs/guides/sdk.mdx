@@ -70,7 +70,7 @@ For NEAR → EVM, swap the assets and set `recipient` to a `0x` address. Stellar
 
 ## Other languages
 
-Any OpenAPI generator works with [`/openapi.json`](/openapi.json), which mirrors the 1Click v0.1.10 schemas plus two Tidepool-only operations (`/v0/faucet`, `/v0/health`):
+Any OpenAPI generator works with [`/openapi.json`](/openapi.json), which mirrors the 1Click v0.1.10 schemas plus Tidepool-only operations (`/v0/faucet`, `/v0/health`, `/v0/demo/run`):
 
 ```bash
 npx @openapitools/openapi-generator-cli generate -i https://www.usetidepool.tech/openapi.json -g python -o tidepool-client
