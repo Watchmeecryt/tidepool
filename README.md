@@ -28,6 +28,54 @@ NEAR Intents has no testnet and none is planned (`HACKATHON.md` Q-007). To test 
 | Swap app | [tidepool-app](https://github.com/Watchmeecryt/tidepool-app) | Static React client of this API: swap or bridge UI, wallet connect per chain, faucet page. |
 | Scripts | `scripts/`, `examples/` | Idempotent testnet bootstrap; `examples/swap.mjs` runs a full swap end to end. |
 
+## Architecture
+
+Tidepool puts a 1Click-shaped HTTP API (`server/src/index.mjs`) in front of NEAR's unmodified `defuse` verifier. The path of a request, as implemented in `server/src/`:
+
+```mermaid
+flowchart LR
+  C["Client: swap app, bot or AI agent<br/>(any 1Click client or SDK)"] -->|"HTTPS /v0/*"| A["Tidepool 1Click-compatible API<br/>index.mjs, orders.mjs, intents.mjs, auth.mjs"]
+  A --> Q["Quote and solver layer<br/>engine.mjs: one maker, CoinGecko price + fixed fee"]
+  Q -->|"execute_intents: two token_diff intents"| V["Official defuse v0.4.2 verifier, unmodified<br/>verifier.tidepool-sandbox.testnet (NEAR testnet)"]
+  V <-->|"ft_transfer_call in, ft_withdraw out"| B["Tidepool-run trusted relayers<br/>evm.mjs, solana.mjs, stellar.mjs, sui.mjs, btc.mjs, xrp.mjs"]
+  B <--> E["Ethereum, Base and Arbitrum Sepolia"]
+  B <--> S["Solana devnet"]
+  B <--> O["Bitcoin testnet4, Stellar, Sui and XRP Ledger testnets"]
+```
+
+Swap lifecycle, as the code runs it:
+
+1. **Quote.** `POST /v0/quote` with `dry: false` prices the swap in `engine.mjs`, signs the quote and returns a `depositAddress` (derived on the server; a shared address plus memo for `depositMode: MEMO`). `dry: true` prices only.
+2. **Deposit.** The client sends `quote.amountIn` to that address on the origin chain, or funds it with a signed transfer intent through `/v0/generate-intent` and `/v0/submit-intent`. `POST /v0/deposit/submit` with the transaction hash records the hash and moves the swap to `KNOWN_DEPOSIT_TX`. Non-NEAR deposits are swept to the relayer's treasury, then minted as `nep141:<chain>-….tp-omft.testnet` and credited into the verifier.
+3. **Status.** `GET /v0/status?depositAddress=…` moves through `PENDING_DEPOSIT`, `KNOWN_DEPOSIT_TX` or `INCOMPLETE_DEPOSIT`, `PROCESSING`, then a final `SUCCESS`, `REFUNDED` or `FAILED`.
+4. **Settle.** The maker and the deposit account each sign a `token_diff` intent, submitted in one atomic `execute_intents` call on the verifier. The payout is an `ft_withdraw` or transfer intent: to a NEAR account directly, or to the bridge account so the relayer releases the asset on the destination chain. A failed or short swap is refunded the same way.
+
+### Endpoint mapping to the official 1Click API
+
+Official side: [OpenAPI v0.1.10](https://1click.chaindefuser.com/docs/v0/openapi.yaml), base URL `https://1click.chaindefuser.com`. Tidepool serves the same path and method for every operation. Row notes list the differences. "Same shape" means the same request and response fields; the `tidepool` object that Tidepool adds to some responses is extra and can be ignored.
+
+| Tidepool (`https://www.usetidepool.tech`) | Official 1Click (same path) | Shape |
+| --- | --- | --- |
+| `GET /v0/tokens` | `GET /v0/tokens` | Same shape. Testnet asset ids and the `blockchain` values `near`, `eth`, `base`, `arb`, `sol`, `stellar`, `sui`, `btc`, `xrp`. |
+| `POST /v0/quote` | `POST /v0/quote` | Same shape. Extras: optional `simulate` (`STUCK` or `FAILED`) and a `tidepool` object. `confidentiality` is accepted and ignored; `CONFIDENTIAL_INTENTS` types return 400. `ANY_INPUT` needs a real `originAsset` and an `amount` above `"0"` (official example: `1cs_v1:any`, `"0"`). |
+| `POST /v0/deposit/submit` | `POST /v0/deposit/submit` | Same shape. |
+| `GET /v0/status` | `GET /v0/status` | Same shape. `swapDetails.slippage` is a fraction (`0.0012` is 0.12%); `nearTxHashes` includes the swap's own transaction; extra `tidepool` object (explorer links, notes). |
+| `GET /v0/any-input/withdrawals` | `GET /v0/any-input/withdrawals` | Same shape for the spec's single object (newest); the full page is also under `tidepool.withdrawals`. |
+| `POST /v0/generate-intent` | `POST /v0/generate-intent` | Same shape. Only for quotes with `depositType: INTENTS`; standards `nep413`, `raw_ed25519`, `erc191`, `tip191`, `sep53`. |
+| `POST /v0/submit-intent` | `POST /v0/submit-intent` | Same shape. |
+| `POST /v0/auth/authenticate` | `POST /v0/auth/authenticate` | Same shape. Free JWTs; `nep413`, `raw_ed25519` and `erc191` only. A Tidepool JWT does not work on mainnet. |
+| `POST /v0/auth/refresh` | `POST /v0/auth/refresh` | Same shape. |
+| `GET /v0/account/balances` | `GET /v0/account/balances` | Same shape. Returns verifier balances only (`source: private`). |
+| `GET /v0/account/history` | `GET /v0/account/history` | Same shape. |
+| `POST /v0/orders`, `GET /v0/orders` | `POST /v0/orders`, `GET /v0/orders` | Same shape (JSON:API). `LIMIT` orders only; the maker fills once, no partial fills; default deadline 7 days. |
+| `GET /v0/orders/{orderId}`, `POST /v0/orders/{orderId}/cancel` | `GET /v0/orders/{orderId}`, `POST /v0/orders/{orderId}/cancel` | Same shape. |
+| `POST /v0/faucet` | none | Tidepool extension. |
+| `GET /v0/health` | none | Tidepool extension. |
+
+### What is identical and what is sandbox-only
+
+The 15 official `/v0` operations exist at the same path and method, with the same request and response fields, and `defuse` v0.4.2 is the same verifier code NEAR publishes, byte for byte (sha256 above). Everything else is sandbox-only. Settlement is on NEAR testnet, a single Tidepool maker sets every price instead of competing solvers, deposit-address keys live on the Tidepool server, and the non-NEAR chains connect through Tidepool-run trusted relayers rather than production bridges. Tokens have no value, and confidential settlement is not implemented. For the full list of differences from mainnet, including asset ids, auth, `ANY_INPUT` and caps, see the "Different on Tidepool" table in [Compatibility](https://www.usetidepool.tech/docs/resources/compatibility), [Mainnet migration](https://www.usetidepool.tech/docs/guides/mainnet-migration) and [Honest limits](#honest-limits) below. Moving a client to mainnet means changing the base URL, the JWT and the asset ids.
+
 ## Try it (do X - see Y)
 
 Commands call the live API. Supply your own NEAR testnet account (for example `yourname.testnet`) where the steps say `$ME`. Do not use mainnet accounts or assets.
