@@ -4,6 +4,12 @@ description: What changed in Tidepool and when.
 icon: ClockCounterClockwise
 ---
 
+## 2026-10-31 · Tidepool App: NEAR Connect for NEAR wallets
+
+- **New NEAR connection:** the **Connect** button for NEAR now opens [NEAR Connect](https://github.com/hot-dao/near-selector) by HOT Labs, which lists the NEAR testnet wallets it supports (HOT, Meteor, Intear and more). It replaces the NEAR Wallet Selector pop-up.
+- **Same behavior:** one-click NEAR deposit (`ft_transfer_call` to the verifier), the account shown after connecting, disconnect, and staying connected after a reload all work as before. Manual deposit is unchanged.
+- **Other chains unchanged:** EVM (RainbowKit), Solana, Sui, Stellar, Bitcoin and XRP Ledger wallets are not affected.
+
 ## 2026-10-30 · Docs: every request and response in full
 
 - **Swap types:** [Swap types](/docs/concepts/swap-types) now mirrors NEAR's page field for field. `EXACT_INPUT`, `EXACT_OUTPUT`, `FLEX_INPUT` and `ANY_INPUT` each show a full quote request (the lines that differ per swap type are highlighted), the real `quote` from a live dry quote, and what happens to deposits. It also has the complete response envelope, a table of every request field, and a request that sets every optional field.
