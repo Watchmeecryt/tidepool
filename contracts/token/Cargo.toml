@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 description = "Tidepool testnet NEP-141 token (no real value)"
 repository = "https://github.com/Watchmeecryt/tidepool"
+license = "MIT"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

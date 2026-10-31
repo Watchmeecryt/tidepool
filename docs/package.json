@@ -1,6 +1,7 @@
 {
   "name": "docs",
   "version": "0.0.51",
+  "license": "MIT",
   "private": true,
   "scripts": {
     "build": "next build",
