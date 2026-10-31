@@ -7,7 +7,7 @@
 - **Repo:** https://github.com/Watchmeecryt/tidepool
 - **Hackathon:** NEAR HACKATHON, track `open` (Open Innovation; hints: chain abstraction, build your own)
 - **License:** MIT ([LICENSE](LICENSE))
-- **Built by:** [@log0dev](https://x.com/log0dev) on X. Community-built, not affiliated with NEAR, Defuse Labs or 1Click. Test tokens have no value.
+- **Built by:** [@priva_cie](https://x.com/priva_cie) on X. Community-built, not affiliated with NEAR, Defuse Labs or 1Click. Test tokens have no value.
 
 ## Problem
 
@@ -118,7 +118,7 @@ No project template was used apart from the docs scaffold. Pre-existing and thir
 
 ## Disclosure (Q-015)
 
-The same builder is also submitting a second, independent project to NEAR HACKATHON: **NEAR Private OTC**, track `defi` (a private OTC deal board; repo https://github.com/Watchmeecryt/near-private-otc, live app https://near-private-otc-productio999n.up.railway.app). Both projects are built by [@log0dev](https://x.com/log0dev) on X.
+The same builder is also submitting a second, independent project to NEAR HACKATHON: **NEAR Private OTC**, track `defi` (a private OTC deal board; repo https://github.com/Watchmeecryt/near-private-otc, live app https://near-private-otc-productio999n.up.railway.app). Both projects are built by [@priva_cie](https://x.com/priva_cie) on X.
 
 They are different products with different problems, users, tracks, code and deployments. Tidepool is general infrastructure any NEAR Intents developer can use. NEAR Private OTC is a separate application that uses Tidepool as its testnet backend, like any other client of the API would. Each repo has its own code, contracts and deployment. This is not the same project submitted twice, and this repo is submitted once.
 
