@@ -1,6 +1,6 @@
 # Tidepool
 
-**A free testnet sandbox for NEAR Intents.** It runs NEAR's official, unmodified Intents verifier (`defuse` v0.4.2) on NEAR testnet and puts an API in front of it that matches the 1Click Swap API (OpenAPI v0.1.10). Point a 1Click client at Tidepool, swap test tokens across NEAR and seven other testnets, and spend no mainnet funds.
+**A free testnet sandbox for NEAR Intents.** It runs NEAR's official, unmodified Intents verifier (`defuse` v0.4.2) on NEAR testnet and puts an API in front of it that matches the 1Click Swap API (OpenAPI v0.1.10). Point a 1Click client at Tidepool, swap test tokens across NEAR and eight other testnets, and spend no mainnet funds.
 
 - **Live API and docs:** https://www.usetidepool.tech (docs: https://www.usetidepool.tech/docs)
 - **Swap app (human UI):** https://app.usetidepool.tech, repo [Watchmeecryt/tidepool-app](https://github.com/Watchmeecryt/tidepool-app)
@@ -132,7 +132,7 @@ REFUNDED or FAILED. Amounts are strings in base units. Testnet only.
 ## How NEAR fits
 
 - Every swap settles on NEAR testnet through one `execute_intents` call on NEAR's unmodified verifier with two `token_diff` intents, so it is atomic: both legs apply or neither does. Each deposit, settlement and refund is a public testnet transaction listed in `/v0/status`.
-- Deposits can arrive on NEAR (`ft_transfer`, `ft_transfer_call`, or a signed intents transfer) or on any of the seven other testnets; payouts can go to any of them. Non-NEAR assets are bridged into the verifier as NEP-141 tokens. This is chain abstraction on a testnet: one API and one verifier balance in front of nine chains.
+- Deposits can arrive on NEAR (`ft_transfer`, `ft_transfer_call`, or a signed intents transfer) or on any of the eight other testnets; payouts can go to any of them. Non-NEAR assets are bridged into the verifier as NEP-141 tokens. This is chain abstraction on a testnet: one API and one verifier balance in front of nine chains.
 - Developers can test 1Click clients, `appFees`, `ANY_INPUT`, `MEMO` deposits, refunds and failed swaps (see [Failure cases](https://www.usetidepool.tech/docs/guides/failure-cases)) without mainnet funds. Moving to mainnet is a base-URL and asset-id change ([Mainnet migration](https://www.usetidepool.tech/docs/guides/mainnet-migration)).
 
 ## Hackathon track and window
