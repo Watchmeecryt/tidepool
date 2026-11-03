@@ -12,10 +12,10 @@ Tidepool is built to be read and used by coding agents and autonomous agents.
 
 ## A full swap from a script
 
-The public [tidepool-examples](https://github.com/zer0plugyut-afk/tidepool-examples) repo ships `npm run first-swap`. It uses a fresh testnet account, so it needs no setup beyond Node 20:
+The public [tidepool-examples](https://github.com/Watchmeecryt/tidepool-examples) repo ships `npm run first-swap`. It uses a fresh testnet account, so it needs no setup beyond Node 20:
 
 ```bash
-git clone https://github.com/zer0plugyut-afk/tidepool-examples && cd tidepool-examples && npm install
+git clone https://github.com/Watchmeecryt/tidepool-examples && cd tidepool-examples && npm install
 npm run first-swap              # faucet → quote → deposit → status → SUCCESS
 npm run failure-cases partial   # deposit too little, wait for REFUNDED
 ```

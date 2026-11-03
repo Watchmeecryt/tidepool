@@ -115,7 +115,7 @@ icon: ClockCounterClockwise
 - **ANY_INPUT:** now documented as supported (it was listed under "Not supported"), with its Tidepool limits. The official API restricts it to authorized partners; Tidepool is open to everyone.
 - **Chains:** the `blockchain` enum in `openapi.json` now lists all 38 official values (it only allowed `near`), and the pages that listed only NEAR and the EVM chains now include Solana, Stellar and Sui.
 - **Errors and auth:** the API reference describes the real error shapes (`{ "message" }`, JSON:API on `/v0/orders`, the extra `hint`, `field` and `exampleRequest` on quote errors) and that `/v0/orders` needs a token or any `X-API-Key`.
-- **Examples:** pages point at the public [tidepool-examples](https://github.com/zer0plugyut-afk/tidepool-examples) repo (`npm run first-swap`, `evm-deposit`, `failure-cases`) instead of scripts from the private repo.
+- **Examples:** pages point at the public [tidepool-examples](https://github.com/Watchmeecryt/tidepool-examples) repo (`npm run first-swap`, `evm-deposit`, `failure-cases`) instead of scripts from the private repo.
 - **Compatibility page:** new rows for the `blockchain` values, Stellar `nep141` vs `nep245` asset ids, the `swapDetails.slippage` unit (Tidepool emits a fraction, `0.0012` = 0.12%), and Tidepool-only extras.
 - Fixed duplicated text, broken or redirected external links, the roadmap (Solana, Stellar and Sui bridges added) and the `/docs/api` nav link in the fallback site.
 
@@ -193,14 +193,14 @@ icon: ClockCounterClockwise
 - **New:** `ANY_INPUT` swaps and [`/v0/any-input/withdrawals`](/docs/api-reference/get-any-input-quote-withdrawals).
 - **New:** free JWTs via [`/v0/auth/*`](/docs/api-reference/authenticate), and [`/v0/account/*`](/docs/api-reference/get-balances).
 - **New:** `depositMode: MEMO` for NEAR-native `ORIGIN_CHAIN` deposits ([memo deposit](https://testnet.nearblocks.io/txns/DPtbS93K5HMsf6LFVDvkYFVr9bFWhkjW2Qu1uobamXjt)).
-- `confidentiality` stays accepted and ignored. Examples for every feature are in [tidepool-examples](https://github.com/zer0plugyut-afk/tidepool-examples).
+- `confidentiality` stays accepted and ignored. Examples for every feature are in [tidepool-examples](https://github.com/Watchmeecryt/tidepool-examples).
 
 ## 2026-10-27 · 1Click status codes, compatibility table, examples repo
 
 - **Breaking (fix):** `POST /v0/quote` and `POST /v0/deposit/submit` now return **HTTP 200** on success instead of 201, matching the 1Click spec. Clients that checked `res.ok` are unaffected.
 - New [Compatibility](/docs/resources/compatibility) page: same as mainnet 1Click, different, and not supported yet.
 - Trust-model note at the top of the landing page and docs; "Run your first test swap" is the primary call to action.
-- New public examples repo [tidepool-examples](https://github.com/zer0plugyut-afk/tidepool-examples) (MIT) with a live conformance report.
+- New public examples repo [tidepool-examples](https://github.com/Watchmeecryt/tidepool-examples) (MIT) with a live conformance report.
 
 ## 2026-10-26 · NEAR RPC failover
 

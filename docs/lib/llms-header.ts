@@ -21,7 +21,7 @@ export const llmsHeader = `# ${BRAND.name}: ${BRAND.tagline}
 - Compatibility vs mainnet 1Click: ${SITE}/docs/resources/compatibility
 - Settlement distinction: since 2026-10-27 mainnet 1Click settles every swap confidentially and swapDetails.nearTxHashes lists only shield/unshield (https://docs.near-intents.org/changelog/entries/2026-10-27-1click-confidential.md). Tidepool testnet swaps settle publicly, so nearTxHashes includes the swap hash; confidential settlement runs on NEAR's private infrastructure, which isn't exposed to outside builders. Rely on status, not on a swap hash.
 - Dev prompt for coding agents: ${SITE}/docs/guides/agents#prompt-snippet
-- Runnable examples (MIT): https://github.com/zer0plugyut-afk/tidepool-examples (conformance report: CONFORMANCE.md)
+- Runnable examples (MIT): https://github.com/Watchmeecryt/tidepool-examples (conformance report: CONFORMANCE.md)
 
 Quick try:
     curl ${SITE}/v0/tokens

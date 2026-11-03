@@ -34,7 +34,7 @@ near contract call-function as-transaction usdc.tidepool-sandbox.testnet ft_tran
   prepaid-gas '100 Tgas' attached-deposit '1 yoctoNEAR' sign-as you.testnet network-config testnet sign-with-keychain send
 ```
 
-**From an intents balance** (for example after an `intents` faucet drip): sign a NEP-413 `transfer` intent `{ "intent": "transfer", "receiver_id": "<depositAddress>", "tokens": { "nep141:usdc.tidepool-sandbox.testnet": "5000000" } }` and submit it with `execute_intents` on the verifier. `npm run first-swap` in [tidepool-examples](https://github.com/zer0plugyut-afk/tidepool-examples) does exactly this.
+**From an intents balance** (for example after an `intents` faucet drip): sign a NEP-413 `transfer` intent `{ "intent": "transfer", "receiver_id": "<depositAddress>", "tokens": { "nep141:usdc.tidepool-sandbox.testnet": "5000000" } }` and submit it with `execute_intents` on the verifier. `npm run first-swap` in [tidepool-examples](https://github.com/Watchmeecryt/tidepool-examples) does exactly this.
 
 Before your first intents signature, your account needs a public key registered on the verifier (`add_public_key`), or it must be an implicit account.
 

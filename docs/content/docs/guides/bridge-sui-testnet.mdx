@@ -68,7 +68,7 @@ await OneClickService.submitDepositTx({ txHash: '<sui tx digest>', depositAddres
 // Poll GET /v0/status?depositAddress=...
 ```
 
-Runnable: `RECIPIENT=you.testnet npm run sui-deposit` in [tidepool-examples](https://github.com/zer0plugyut-afk/tidepool-examples) (it needs `SUI_SECRET_KEY`, a testnet key with a little SUI, and prints the Suiscan links). The example builds the transaction offline because `@mysten/sui` 1.x cannot resolve one over gRPC; the public Sui JSON-RPC is deprecated, so Tidepool itself talks to the testnet fullnode over gRPC.
+Runnable: `RECIPIENT=you.testnet npm run sui-deposit` in [tidepool-examples](https://github.com/Watchmeecryt/tidepool-examples) (it needs `SUI_SECRET_KEY`, a testnet key with a little SUI, and prints the Suiscan links). The example builds the transaction offline because `@mysten/sui` 1.x cannot resolve one over gRPC; the public Sui JSON-RPC is deprecated, so Tidepool itself talks to the testnet fullnode over gRPC.
 
 ## Full quote request and response
 

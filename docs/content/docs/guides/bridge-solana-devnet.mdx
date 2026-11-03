@@ -57,7 +57,7 @@ await OneClickService.submitDepositTx({ txHash: '<signature>', depositAddress: q
 
 Each deposit address is an ed25519 key derived from the quote id and the server master seed; no on-chain program is involved. The relayer sweeps the deposit into the treasury (the deposit key signs, the relayer pays the fee), mints the matching NEP-141 to the Tidepool root and credits it to the verifier with `ft_transfer_call`. The swap then settles like any NEAR-only swap. Deposits are credited at `confirmed` commitment.
 
-Runnable: `SOL_SECRET_KEY='[...]' RECIPIENT=you.testnet npm run sol-deposit` in [tidepool-examples](https://github.com/zer0plugyut-afk/tidepool-examples).
+Runnable: `SOL_SECRET_KEY='[...]' RECIPIENT=you.testnet npm run sol-deposit` in [tidepool-examples](https://github.com/Watchmeecryt/tidepool-examples).
 
 ## Full quote request and response
 

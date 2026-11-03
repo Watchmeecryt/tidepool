@@ -111,7 +111,7 @@ With `"dry": false` and a `deadline` between a minute and a day ahead, the `quot
 
 Quote with `destinationAsset: 'nep141:eth-0x2e6ad9e6d59bb4585ea0e6762c3b637dde29dad2.tp-omft.testnet'`, `recipient: '0xYourAddress'` and `recipientType: 'DESTINATION_CHAIN'`, then deposit on NEAR as usual. The verifier `ft_withdraw`s the bridged token to the relayer, which calls `release` on the vault. Status stays `PROCESSING` until the Ethereum Sepolia payout confirms, then turns `SUCCESS` with the payout in `destinationChainTxHashes`.
 
-Runnable: `EVM_PRIVATE_KEY=0x… EVM_CHAIN=eth RECIPIENT=you.testnet WITHDRAW=1 npm run evm-deposit` in [tidepool-examples](https://github.com/zer0plugyut-afk/tidepool-examples). It deposits USDC on the EVM chain, receives wNEAR on NEAR, and with `WITHDRAW=1` sends it back. Use a testnet-only key with a little gas ETH.
+Runnable: `EVM_PRIVATE_KEY=0x… EVM_CHAIN=eth RECIPIENT=you.testnet WITHDRAW=1 npm run evm-deposit` in [tidepool-examples](https://github.com/Watchmeecryt/tidepool-examples). It deposits USDC on the EVM chain, receives wNEAR on NEAR, and with `WITHDRAW=1` sends it back. Use a testnet-only key with a little gas ETH.
 
 ## Refunds
 

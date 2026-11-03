@@ -1171,7 +1171,7 @@
     "/v1/agents/{agent_id}/deposit": {
       "post": {
         "summary": "Fund the agent wallet",
-        "description": "testnet_faucet:true drips test tokens into the agent wallet. Otherwise returns a deposit address and waits (PENDING_DEPOSIT) until the balance rises.",
+        "description": "testnet_faucet:true drips test tokens into the agent wallet. Otherwise returns a deposit address and waits (PENDING_DEPOSIT) until the balance rises. No grant token is needed; an Idempotency-Key is still required.",
         "security": [
           {
             "bearerAuth": []
@@ -1184,12 +1184,12 @@
           {
             "name": "x-grant-token",
             "in": "header",
-            "required": true,
+            "required": false,
             "schema": {
               "type": "string",
               "pattern": "^ngt_[A-Za-z0-9_-]{43}$"
             },
-            "description": "Grant token. Its sha256 hex was registered as the credential by a signed grant_issue intent."
+            "description": "Optional for deposits (no grant is needed, like the official API). If sent it must be a valid grant for this agent."
           },
           {
             "name": "Idempotency-Key",

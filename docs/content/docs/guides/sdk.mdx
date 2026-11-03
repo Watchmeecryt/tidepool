@@ -64,7 +64,7 @@ const q = await OneClickService.getQuote({
 // q.quote.depositAddress is a 0x address on Base Sepolia: send usdcBase.contractAddress tokens there with ERC-20 transfer.
 ```
 
-For NEAR → EVM, swap the assets and set `recipient` to a `0x` address. Stellar and XRP Ledger origins need `depositMode: MEMO` (see [Deposit modes](/docs/concepts/deposits#bridged-chains-and-memo)). The runnable scripts `npm run evm-deposit`, `sol-deposit`, `stellar-deposit`, `sui-deposit`, `btc-deposit`, `xrp-deposit` in [tidepool-examples](https://github.com/zer0plugyut-afk/tidepool-examples) cover each chain.
+For NEAR → EVM, swap the assets and set `recipient` to a `0x` address. Stellar and XRP Ledger origins need `depositMode: MEMO` (see [Deposit modes](/docs/concepts/deposits#bridged-chains-and-memo)). The runnable scripts `npm run evm-deposit`, `sol-deposit`, `stellar-deposit`, `sui-deposit`, `btc-deposit`, `xrp-deposit` in [tidepool-examples](https://github.com/Watchmeecryt/tidepool-examples) cover each chain.
 
 > Asset ids differ from mainnet: Tidepool tokens live under `tidepool-sandbox.testnet`. Read them from `getTokens()` instead of hardcoding mainnet ids.
 

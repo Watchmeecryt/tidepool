@@ -126,7 +126,7 @@ ME=<your-account>.testnet   # your own NEAR testnet account
 
 **Alternative: make your own wallet and swap.** Prefer to run the flow yourself with your own keys? You need no wallet from us, no sign-up and no API key. Everything below runs on testnet with a throwaway account.
 
-1. `git clone https://github.com/zer0plugyut-afk/tidepool-examples && cd tidepool-examples && npm install`
+1. `git clone https://github.com/Watchmeecryt/tidepool-examples && cd tidepool-examples && npm install`
 2. `npm run first-swap` creates its own throwaway NEAR testnet account (the key stays in a local gitignored file and is never printed), calls `POST /v0/faucet` with `mode: "intents"`, gets a dry quote and then a live quote (`dry: false`, `depositType: "INTENTS"`), deposits with a signed NEP-413 `transfer` intent submitted through `execute_intents`, calls `POST /v0/deposit/submit`, and polls `GET /v0/status` until `SUCCESS`. You should see `SUCCESS` and NearBlocks testnet transaction links.
 3. `npm run failure-cases partial` deposits too little and ends in `REFUNDED`.
 4. The same flow inside this repo: `cd examples && npm ci && TIDEPOOL_URL=https://www.usetidepool.tech node swap.mjs` (it makes a throwaway account if `NEAR_ACCOUNT_ID` and `NEAR_PRIVATE_KEY` are unset).
@@ -220,7 +220,7 @@ No project template was used apart from the docs scaffold. Pre-existing and thir
 - **Scripts and examples:** `near-api-js`, `@mysten/sui`, `@stellar/stellar-base`, `xrpl`, `bs58`, `tweetnacl`.
 - **Swap app** ([tidepool-app](https://github.com/Watchmeecryt/tidepool-app)): React 19, Vite, TypeScript, wagmi/viem/RainbowKit, `@hot-labs/near-connect`, Solana wallet adapters, Sui and Stellar SDKs. It is a separate repo created on 2026-10-30.
 - **AI assistance:** parts of the code and docs were written with AI coding agents (allowed by Q-005).
-- **More examples:** further runnable scripts are in the separate public [tidepool-examples](https://github.com/zer0plugyut-afk/tidepool-examples) repo (not part of this submission).
+- **More examples:** further runnable scripts are in the separate public [tidepool-examples](https://github.com/Watchmeecryt/tidepool-examples) repo (not part of this submission).
 
 ## Disclosure (Q-015)
 

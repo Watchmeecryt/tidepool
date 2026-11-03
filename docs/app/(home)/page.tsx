@@ -24,7 +24,7 @@ const covered = [
   { t: 'MEMO deposits', d: 'depositMode MEMO for NEAR-native origin-chain tokens, Stellar and XRP Ledger.', href: '/docs/resources/compatibility' },
   { t: 'Auth', d: 'authenticate and refresh JWTs. Any API key is accepted.', href: '/docs/api-reference/authenticate' },
   { t: 'Stuck & failed swaps', d: 'Reproduce partial deposits, expired quotes and simulated stuck or failed swaps.', href: '/docs/guides/failure-cases' },
-  { t: '31/31 spec checks', d: 'Response codes and schemas checked against the official 1Click OpenAPI.', href: 'https://github.com/zer0plugyut-afk/tidepool-examples/blob/main/CONFORMANCE.md' },
+  { t: '31/31 spec checks', d: 'Response codes and schemas checked against the official 1Click OpenAPI.', href: 'https://github.com/Watchmeecryt/tidepool-examples/blob/main/CONFORMANCE.md' },
 ];
 
 const icon = (d: string) => <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg>;
@@ -57,7 +57,7 @@ export default function HomePage() {
                 <Link href="/docs/quickstart" className="tp-btn tp-btn-primary">Run your first test swap →</Link>
                 <a href="https://app.usetidepool.tech" className="tp-btn tp-btn-ghost">Open the app</a>
                 <Link href="/docs/guides/faucet" className="tp-btn tp-btn-ghost">Get test tokens</Link>
-                <a href="https://github.com/zer0plugyut-afk/tidepool-examples" className="tp-btn tp-btn-ghost">Examples repo</a>
+                <a href="https://github.com/Watchmeecryt/tidepool-examples" className="tp-btn tp-btn-ghost">Examples repo</a>
               </div>
             </div>
             <div className="tp-rise tp-d4 tp-terminal mx-auto w-full max-w-xl">
