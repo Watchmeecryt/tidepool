@@ -22,7 +22,7 @@ export function issueKey({ name } = {}, ip) {
   const mine = sql.prepare('SELECT COUNT(*) n FROM partner_keys WHERE ip_hash = ? AND created_at > ?').get(ipHash(ip), since).n;
   if (mine >= KEYS_PER_IP_PER_DAY) throw fail(429, 'rate_limited', 'request', `At most ${KEYS_PER_IP_PER_DAY} keys per IP per 24 hours. Reuse an existing key: keys do not expire.`, { retry_after_seconds: 3600 });
   if (sql.prepare('SELECT COUNT(*) n FROM partner_keys WHERE created_at > ?').get(since).n >= KEYS_PER_DAY_TOTAL) throw fail(429, 'rate_limited', 'request', 'Key issuance is temporarily at capacity, try again later', { retry_after_seconds: 3600 });
-  const key = 'naa_' + crypto.randomBytes(24).toString('base64url');
+  const key = 'naa_' + crypto.randomBytes(32).toString('base64url');
   const id = crypto.randomBytes(12).toString('hex');
   const created_at = new Date().toISOString();
   sql.prepare('INSERT INTO partner_keys (id, key_hash, prefix, name, ip_hash, created_at) VALUES (?,?,?,?,?,?)').run(id, sha256(key), key.slice(0, 8), name || null, ipHash(ip), created_at);
