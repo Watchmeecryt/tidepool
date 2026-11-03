@@ -3,7 +3,7 @@
   "info": {
     "title": "Tidepool Agent API (NEAR testnet)",
     "version": "1.0.0",
-    "description": "A testnet implementation of the NEAR Intents Agent API shape, on the same host as the /v0 1Click sandbox. Compatible with @near-intents-agent-api/sdk (set baseUrl to the Tidepool origin; the SDK appends /v1). Owners are NEAR testnet accounts only. Get a free key with POST /v1/keys. Errors are JSON:API: {errors:[{status,code,layer,title,detail,source,meta}],meta:{request_id}}. Docs: /docs/guides/agent-api, /llms.txt."
+    "description": "A testnet implementation of the NEAR Intents Agent API shape, on the same host as the /v0 1Click sandbox. Compatible with @near-intents-agent-api/sdk (set baseUrl to the Tidepool origin; the SDK appends /v1). Owners are NEAR testnet accounts only. Withdrawals go to NEAR accounts or, for bridged USDC/USDT, to Base, Arbitrum and Ethereum Sepolia; other chains, confidential mode, passkey/EVM owners, shielding, approvals and scheduled executions are not supported. Get a free key with POST /v1/keys. Errors are JSON:API: {errors:[{status,code,layer,title,detail,source,meta}],meta:{request_id}}. Docs: /docs/guides/agent-api, /llms.txt."
   },
   "servers": [
     {

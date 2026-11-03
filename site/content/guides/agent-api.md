@@ -48,7 +48,9 @@ Owner account: for an implicit account (64 hex characters) the `account_id` must
 | `POST /v1/agents/ID/swap`, `/transfer`, `/withdraw`, `/deposit` | Agent actions |
 | `GET /v1/openapi.json`, `GET /v1/e2e.js` | Spec and reference script |
 
-Not supported on testnet (HTTP 501 `not_supported`): shielding, native-chain wallets, approvals, scheduled executions, proofs, confidential mode, passkey and EVM owners. Withdrawals support chain `near` (NEAR-native tokens, to a NEAR account) and chains `base`, `arb` and `eth` (the bridged USDC/USDT of that chain, to a 0x address; Tidepool's relayer releases the ERC-20 and the status carries `destination_tx_hash`). Other chains return 400 `route_unavailable`. `GET /v1/releases/latest` returns the verifier release Tidepool runs (the SDK's `getLatestRelease`).
+**Supported:** owners that are NEAR testnet accounts; `agent_create`, `grant_issue`, `grant_revoke`, `policy_update`, `freeze` and `unfreeze` intents; swap (with `dry`), transfer, deposit (testnet faucet or deposit address); withdraw to NEAR accounts (`chain` `near`, NEAR-native tokens) and, for the bridged USDC/USDT, to Base Sepolia, Arbitrum Sepolia and Ethereum Sepolia addresses (`chain` `base`, `arb`, `eth`; the status carries `destination_tx_hash`); balances, history, long-poll status, idempotency keys, policy enforcement, and `GET /v1/releases`, `/v1/releases/latest`, `/v1/releases/{version}` (the SDK's `getLatestRelease`).
+
+**Not supported:** withdrawals to Solana, Stellar, Sui, Bitcoin, XRP and Zcash testnets (HTTP 400 `route_unavailable`; use `/v0/quote` for those payouts); a memo on EVM withdrawals; confidential mode (400 `unsupported_feature`); passkey and EVM owners and other owner intent types (400 `unsupported_owner_type`, `unsupported_intent_type`); shielding, native-chain wallets, approvals, containment, scheduled executions, per-agent releases and proofs (HTTP 501 `not_supported`).
 
 ## Policy model
 

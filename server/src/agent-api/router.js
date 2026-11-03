@@ -84,7 +84,7 @@ export async function handleV1(req, res, url, { origin, ip, openapi }) {
       const data = rows.slice(0, lim).map((r) => agentView(agent(r.id)));
       return send(res, 200, { data, next_cursor: rows.length > lim ? data[data.length - 1].created_at : null });
     }
-    if (UNSUPPORTED.test(path)) throw fail(501, 'not_supported', 'api', 'This feature (shielding, native-chain wallets, approvals, scheduled executions, releases, proofs) is not available on Tidepool testnet');
+    if (UNSUPPORTED.test(path)) throw fail(501, 'not_supported', 'api', 'This feature (shielding, native-chain wallets, approvals, containment, scheduled executions, per-agent releases, proofs) is not available on Tidepool testnet');
     const m = path.match(/^\/agents\/([^/]+)(?:\/(.+))?$/);
     if (m) {
       const a = agent(decodeURIComponent(m[1])), sub = m[2] || '';
