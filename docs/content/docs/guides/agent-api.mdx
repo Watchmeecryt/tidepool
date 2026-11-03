@@ -1,0 +1,91 @@
+---
+title: Agent API
+description: Free testnet Agent API for policy-bound agent wallets, compatible with the official SDK.
+icon: Robot
+---
+
+The Tidepool Agent API is a free NEAR **testnet** implementation of the NEAR Intents Agent API: an owner creates a policy-bound agent wallet, issues the agent a revocable grant, and the agent then swaps, transfers, withdraws and deposits inside that policy. It lives on the same host as the `/v0` 1Click sandbox, under `/v1`, and works with the official `@near-intents-agent-api/sdk` by changing only its `baseUrl`.
+
+Testnet only. Tokens have no value. Owners are NEAR testnet accounts (an implicit account is just an ed25519 key, so no wallet or on-chain account is needed).
+
+## 1. Get a free key (no sign-up, no human)
+
+```bash
+curl -s -X POST https://www.usetidepool.tech/v1/keys -H 'content-type: application/json' -d '{"name":"my-agent"}'
+```
+
+The response contains `api_key` (`naa_...`, shown once). Send it as `Authorization: Bearer <key>` or `x-api-key`. Limits: 600 requests per minute per key, 25 agents per key, 5 new keys per IP per 24 hours. Keys do not expire, so reuse yours.
+
+```bash
+export TP=https://www.usetidepool.tech/v1
+export KEY=naa_...                       # from the response above
+curl -s $TP/whoami -H "authorization: Bearer $KEY"
+curl -s $TP/tokens -H "authorization: Bearer $KEY"     # asset ids for swaps, limits and policies
+curl -s $TP/network
+```
+
+## 2. Run the whole flow in one command
+
+The reference script gets a key, creates an owner and an agent, issues a grant, funds the agent from the faucet, then swaps (dry and real), transfers, withdraws, reads status and history, and checks that policy violations are rejected. It needs Node 20 or newer and no dependencies. It prints PASS or FAIL per step.
+
+```bash
+curl -s https://www.usetidepool.tech/v1/e2e.js -o agent-api-e2e.mjs && node agent-api-e2e.mjs https://www.usetidepool.tech
+```
+
+## 3. The model
+
+1. **Owner intents** (signed with the owner key, NEP-413 / ed25519): `agent_create`, `grant_issue`, `grant_revoke`, `policy_update`, `agent_freeze`, `agent_unfreeze`. Call `POST /v1/generate-intent`, sign `intent.payload` with the owner key, send it to `POST /v1/submit-intent`, then poll `GET /v1/status?correlation_id=...`.
+2. **Agent actions** (no owner signature): `swap`, `transfer`, `withdraw`, `deposit`. They need the API key, an `x-grant-token` (an `ngt_` token whose sha256 hex the owner registered with `grant_issue`) and an `Idempotency-Key`. They return 202 with a `correlation_id`; poll `GET /v1/status`.
+3. **Dry runs**: `POST /v1/agents/ID/swap` or `/withdraw` with `"dry": true` needs only the API key. It returns a quote and `warnings` and never refuses for policy or balance reasons.
+
+Owner account: for an implicit account (64 hex characters) the `account_id` must equal the hex of the ed25519 public key; for a named account the key must be a full-access key of that account.
+
+## Endpoints
+
+| Method and path | Purpose |
+| --- | --- |
+| `POST /v1/keys` | Free self-serve key (no auth) |
+| `GET /v1/whoami`, `/v1/quotas`, `/v1/network`, `/v1/tokens` | Identity, limits, network, assets |
+| `POST /v1/generate-intent`, `POST /v1/submit-intent` | Owner intents |
+| `GET /v1/status?correlation_id=...&wait_ms=30000` | Long-poll any intent or action |
+| `GET /v1/agents`, `/v1/agents/ID`, `/wallet`, `/balances`, `/policy`, `/policy/history`, `/grants`, `/history` | Read agents |
+| `POST /v1/agents/ID/swap`, `/transfer`, `/withdraw`, `/deposit` | Agent actions |
+| `GET /v1/openapi.json`, `GET /v1/e2e.js` | Spec and reference script |
+
+Not supported on testnet (HTTP 501 `not_supported`): shielding, native-chain wallets, approvals, scheduled executions, releases, proofs, confidential mode, passkey and EVM owners. Withdrawals support chain `near` and NEAR-native tokens only.
+
+## Policy model
+
+A policy is stored per agent and enforced by the API before any action runs. Changes apply immediately and are versioned (send `expected_revision` with `policy_update`). Check order: frozen, action, asset, destination, per-transaction limit, USD budget, cumulative limits, actions per hour.
+
+```json
+{
+  "frozen": false,
+  "actions": ["swap", "transfer", "withdraw"],
+  "assets": "any",
+  "limits": { "per_transaction": { "ASSET_ID": "50000000" }, "daily": {}, "hourly": {}, "monthly": {} },
+  "max_actions_per_hour": null,
+  "destinations": { "mode": "any", "list": [] },
+  "budget": { "daily_usd": "100", "weekly_usd": null, "monthly_usd": null }
+}
+```
+
+Violations return HTTP 403 with `layer: "policy"` and a code such as `policy_action_denied`, `policy_asset_denied`, `policy_destination_denied`, `policy_transaction_limit_exceeded`, `policy_budget_exceeded` or `policy_action_limit_exceeded`. A frozen agent returns 409 `wallet_frozen`; a revoked grant returns 403 `grant_revoked`.
+
+## Idempotency and errors
+
+Repeating an action with the same `Idempotency-Key` and body replays the original execution; the same key with a different body returns 409 `idempotency_conflict`. Concurrent actions on one agent return 409 `wallet_busy` (retryable). Errors are JSON:API: `{"errors":[{"status","code","layer","title","detail","source":{"pointer"},"meta":{"retryable"}}],"meta":{"request_id"}}`.
+
+## Official SDK
+
+```ts
+import { createAgentApi } from '@near-intents-agent-api/sdk';
+const api = createAgentApi({ baseUrl: 'https://www.usetidepool.tech', apiKey: process.env.KEY }); // the SDK appends /v1
+const tokens = await api.getTokens();
+```
+
+The SDK needs Node 24 or newer. Use the Tidepool origin as `baseUrl`, and an `naa_` key from `POST /v1/keys`.
+
+## For agents
+
+Read [`/llms.txt`](https://www.usetidepool.tech/llms.txt) first. To start without asking a human: `POST /v1/keys`, then follow this page. The OpenAPI spec is at [`/v1/openapi.json`](https://www.usetidepool.tech/v1/openapi.json).

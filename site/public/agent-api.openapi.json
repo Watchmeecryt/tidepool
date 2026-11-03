@@ -1,1 +1,1456 @@
-{"openapi":"3.1.0","info":{"title":"Tidepool Agent API","version":"1"},"paths":{}}
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Tidepool Agent API (NEAR testnet)",
+    "version": "1.0.0",
+    "description": "A testnet implementation of the NEAR Intents Agent API shape, on the same host as the /v0 1Click sandbox. Compatible with @near-intents-agent-api/sdk (set baseUrl to the Tidepool origin; the SDK appends /v1). Owners are NEAR testnet accounts only. Get a free key with POST /v1/keys. Errors are JSON:API: {errors:[{status,code,layer,title,detail,source,meta}],meta:{request_id}}. Docs: /docs/guides/agent-api, /llms.txt."
+  },
+  "servers": [
+    {
+      "url": "https://www.usetidepool.tech"
+    }
+  ],
+  "paths": {
+    "/v1": {
+      "get": {
+        "summary": "Index",
+        "description": "Service index with the self-serve key URL. No auth.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "JSON:API error document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/keys": {
+      "post": {
+        "summary": "Get a free partner API key (self-serve)",
+        "description": "No auth, no sign-up. Returns an naa_ key once; store it. Limits: 5 keys per IP per 24h, 600 requests/min per key, 25 agents per key. Testnet only.",
+        "security": [],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 64
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Key issued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeyIssued"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "JSON:API error document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/whoami": {
+      "get": {
+        "summary": "Identify the key",
+        "description": "Returns the tenant the key belongs to.",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "JSON:API error document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/quotas": {
+      "get": {
+        "summary": "Rate limits and usage for this key",
+        "description": "",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "JSON:API error document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/network": {
+      "get": {
+        "summary": "Network and verifier",
+        "description": "Always near-testnet; owner type is near only.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "JSON:API error document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tokens": {
+      "get": {
+        "summary": "Supported assets",
+        "description": "Use asset_id values in swaps, transfers, withdrawals and policies.",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "JSON:API error document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/generate-intent": {
+      "post": {
+        "summary": "Build an owner intent to sign",
+        "description": "Types: agent_create, grant_issue, grant_revoke, policy_update, agent_freeze, agent_unfreeze. Returns a nep413 payload (message, nonce, recipient) and a correlation_id. Sign with the owner ed25519 key, then POST /v1/submit-intent.",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "description": "Unique per action. Same key + same body replays the original execution; same key + different body returns 409 idempotency_conflict."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "agent_create",
+                      "grant_issue",
+                      "grant_revoke",
+                      "policy_update",
+                      "agent_freeze",
+                      "agent_unfreeze"
+                    ]
+                  },
+                  "agent_id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "owner": {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "enum": [
+                          "near"
+                        ]
+                      },
+                      "account_id": {
+                        "type": "string"
+                      },
+                      "public_key": {
+                        "type": "string",
+                        "description": "ed25519:<base58>"
+                      }
+                    }
+                  },
+                  "policy": {
+                    "$ref": "#/components/schemas/Policy"
+                  },
+                  "expected_revision": {
+                    "type": "integer"
+                  },
+                  "credential": {
+                    "type": "string",
+                    "description": "sha256 hex of the grant token string"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "expires_at": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "grant_id": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Intent to sign",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "JSON:API error document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/submit-intent": {
+      "post": {
+        "summary": "Submit a signed owner intent",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "type",
+                  "correlation_id",
+                  "signed_data"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string"
+                  },
+                  "correlation_id": {
+                    "type": "string"
+                  },
+                  "signed_data": {
+                    "type": "object",
+                    "required": [
+                      "standard",
+                      "payload",
+                      "public_key",
+                      "signature"
+                    ],
+                    "properties": {
+                      "standard": {
+                        "enum": [
+                          "nep413"
+                        ]
+                      },
+                      "payload": {
+                        "type": "object",
+                        "description": "The payload returned by generate-intent, unchanged"
+                      },
+                      "public_key": {
+                        "type": "string"
+                      },
+                      "signature": {
+                        "type": "string",
+                        "description": "base64 ed25519 signature of the NEP-413 hash"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "JSON:API error document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/status": {
+      "get": {
+        "summary": "Status of an intent or action",
+        "description": "Long-polls up to wait_ms (max 30000) until a terminal state: SUCCESS, FAILED, REFUNDED, UNCERTAIN, NEEDS_REVIEW.",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Execution"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "JSON:API error document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "correlation_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "wait_ms",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "maximum": 30000
+            }
+          }
+        ]
+      }
+    },
+    "/v1/agents": {
+      "get": {
+        "summary": "List agents for this key",
+        "description": "",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "JSON:API error document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/agents/{agent_id}": {
+      "get": {
+        "summary": "Get an agent",
+        "description": "",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "JSON:API error document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/agents/{agent_id}/wallet": {
+      "get": {
+        "summary": "Agent wallet (implicit NEAR account)",
+        "description": "",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "JSON:API error document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/agents/{agent_id}/balances": {
+      "get": {
+        "summary": "Balances in the verifier",
+        "description": "Non-zero balances unless an asset filter is given.",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "JSON:API error document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "asset",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/agents/{agent_id}/policy": {
+      "get": {
+        "summary": "Current policy and revision",
+        "description": "",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "JSON:API error document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/agents/{agent_id}/policy/history": {
+      "get": {
+        "summary": "Policy revisions",
+        "description": "",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "JSON:API error document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/agents/{agent_id}/grants": {
+      "get": {
+        "summary": "Grants issued for the agent",
+        "description": "",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "JSON:API error document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/agents/{agent_id}/history": {
+      "get": {
+        "summary": "Executed actions",
+        "description": "",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "JSON:API error document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/agents/{agent_id}/swap": {
+      "post": {
+        "summary": "Swap (or dry-run quote)",
+        "description": "dry:true needs only the API key and never refuses for policy or balance reasons: it returns warnings[]. A real swap needs x-grant-token and Idempotency-Key and is checked against the policy.",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-grant-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^ngt_[A-Za-z0-9_-]{43}$"
+            },
+            "description": "Grant token. Its sha256 hex was registered as the credential by a signed grant_issue intent."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "description": "Unique per action. Same key + same body replays the original execution; same key + different body returns 409 idempotency_conflict."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "origin_asset",
+                  "destination_asset",
+                  "amount"
+                ],
+                "properties": {
+                  "origin_asset": {
+                    "type": "string",
+                    "description": "Asset id from GET /v1/tokens, e.g. nep141:usdc.tidepool-sandbox.testnet"
+                  },
+                  "destination_asset": {
+                    "type": "string",
+                    "description": "Asset id from GET /v1/tokens, e.g. nep141:usdc.tidepool-sandbox.testnet"
+                  },
+                  "amount": {
+                    "type": "string",
+                    "pattern": "^[0-9]+$",
+                    "description": "Atomic (base-unit) integer string"
+                  },
+                  "dry": {
+                    "type": "boolean"
+                  },
+                  "slippage_bps": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Dry run result (dry: true)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Accepted. Poll GET /v1/status?correlation_id=...",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Execution"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "JSON:API error document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/agents/{agent_id}/transfer": {
+      "post": {
+        "summary": "Transfer inside the verifier to another account",
+        "description": "",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-grant-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ngt_[A-Za-z0-9_-]{43}$"
+            },
+            "description": "Grant token. Its sha256 hex was registered as the credential by a signed grant_issue intent."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "description": "Unique per action. Same key + same body replays the original execution; same key + different body returns 409 idempotency_conflict."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "asset",
+                  "amount",
+                  "recipient"
+                ],
+                "properties": {
+                  "asset": {
+                    "type": "string",
+                    "description": "Asset id from GET /v1/tokens, e.g. nep141:usdc.tidepool-sandbox.testnet"
+                  },
+                  "amount": {
+                    "type": "string",
+                    "pattern": "^[0-9]+$",
+                    "description": "Atomic (base-unit) integer string"
+                  },
+                  "recipient": {
+                    "type": "string",
+                    "description": "NEAR account id"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Dry run result (dry: true)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Accepted. Poll GET /v1/status?correlation_id=...",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Execution"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "JSON:API error document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/agents/{agent_id}/withdraw": {
+      "post": {
+        "summary": "Withdraw to a NEAR testnet account",
+        "description": "chain must be near; NEAR-native tokens only (other routes return route_unavailable). dry:true supported.",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-grant-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^ngt_[A-Za-z0-9_-]{43}$"
+            },
+            "description": "Grant token. Its sha256 hex was registered as the credential by a signed grant_issue intent."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "description": "Unique per action. Same key + same body replays the original execution; same key + different body returns 409 idempotency_conflict."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "asset",
+                  "amount",
+                  "chain",
+                  "recipient"
+                ],
+                "properties": {
+                  "asset": {
+                    "type": "string",
+                    "description": "Asset id from GET /v1/tokens, e.g. nep141:usdc.tidepool-sandbox.testnet"
+                  },
+                  "amount": {
+                    "type": "string",
+                    "pattern": "^[0-9]+$",
+                    "description": "Atomic (base-unit) integer string"
+                  },
+                  "chain": {
+                    "enum": [
+                      "near"
+                    ]
+                  },
+                  "recipient": {
+                    "type": "string"
+                  },
+                  "dry": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Dry run result (dry: true)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Accepted. Poll GET /v1/status?correlation_id=...",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Execution"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "JSON:API error document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/agents/{agent_id}/deposit": {
+      "post": {
+        "summary": "Fund the agent wallet",
+        "description": "testnet_faucet:true drips test tokens into the agent wallet. Otherwise returns a deposit address and waits (PENDING_DEPOSIT) until the balance rises.",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-grant-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ngt_[A-Za-z0-9_-]{43}$"
+            },
+            "description": "Grant token. Its sha256 hex was registered as the credential by a signed grant_issue intent."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "description": "Unique per action. Same key + same body replays the original execution; same key + different body returns 409 idempotency_conflict."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "origin_asset"
+                ],
+                "properties": {
+                  "origin_asset": {
+                    "type": "string",
+                    "description": "Asset id from GET /v1/tokens, e.g. nep141:usdc.tidepool-sandbox.testnet"
+                  },
+                  "amount": {
+                    "type": "string",
+                    "pattern": "^[0-9]+$",
+                    "description": "Atomic (base-unit) integer string"
+                  },
+                  "testnet_faucet": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Dry run result (dry: true)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Accepted. Poll GET /v1/status?correlation_id=...",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Execution"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "JSON:API error document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "naa_ key"
+      },
+      "apiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key"
+      }
+    },
+    "schemas": {
+      "KeyIssued": {
+        "type": "object",
+        "properties": {
+          "api_key": {
+            "type": "string",
+            "pattern": "^naa_[A-Za-z0-9_-]{43}$"
+          },
+          "api_key_id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "limits": {
+            "type": "object"
+          },
+          "usage": {
+            "type": "object"
+          }
+        }
+      },
+      "Execution": {
+        "type": "object",
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING_SIGNATURE",
+              "QUEUED",
+              "PROCESSING",
+              "PENDING_DEPOSIT",
+              "SUCCESS",
+              "FAILED",
+              "REFUNDED",
+              "UNCERTAIN",
+              "NEEDS_REVIEW"
+            ]
+          },
+          "failure_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "details": {
+            "type": "object",
+            "description": "tx_hash, amount_out, agent_id, grant, ..."
+          }
+        }
+      },
+      "Policy": {
+        "type": "object",
+        "description": "Enforced off-chain by the API; changes apply immediately. confidential, owner_approval, timelock and schedule are rejected.",
+        "properties": {
+          "frozen": {
+            "type": "boolean"
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "swap",
+                "transfer",
+                "withdraw",
+                "deposit"
+              ]
+            }
+          },
+          "assets": {
+            "oneOf": [
+              {
+                "const": "any"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          },
+          "limits": {
+            "type": "object",
+            "description": "per_transaction | hourly | daily | monthly -> { asset_id: atomic amount }"
+          },
+          "max_actions_per_hour": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "destinations": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "enum": [
+                  "any",
+                  "allowlist",
+                  "denylist"
+                ]
+              },
+              "list": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "budget": {
+            "type": "object",
+            "description": "USD budget keys (decimal strings, null = off); see the guide"
+          }
+        }
+      },
+      "ErrorDocument": {
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "integer"
+                },
+                "code": {
+                  "type": "string"
+                },
+                "layer": {
+                  "enum": [
+                    "request",
+                    "policy",
+                    "wallet",
+                    "api",
+                    "execution"
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "detail": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "pointer": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "meta": {
+                  "type": "object",
+                  "properties": {
+                    "retryable": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "request_id": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

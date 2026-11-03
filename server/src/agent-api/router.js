@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 // HTTP routes for /v1: the Agent API (compatible with @near-intents-agent-api/sdk) on NEAR testnet.
 import crypto from 'node:crypto';
 import { sql } from './db.js';
@@ -21,7 +22,7 @@ const UNSUPPORTED = /^\/(agents\/[^/]+\/(shield|unshield|recover|native|approval
 const INDEX = (origin) => ({
   name: 'Tidepool Agent API (NEAR testnet)', version: 'v1', compatible_with: '@near-intents-agent-api/sdk', network: 'testnet',
   get_a_key: { method: 'POST', url: `${origin}/v1/keys`, body: { name: 'my-agent' }, note: 'Free, instant, no sign-up. Returns an naa_ key.' },
-  docs: { quickstart: `${origin}/guides/agent-api`, llms: `${origin}/llms.txt`, openapi: `${origin}/v1/openapi.json` },
+  docs: { quickstart: `${origin}/docs/guides/agent-api`, llms: `${origin}/llms.txt`, openapi: `${origin}/v1/openapi.json` },
   sdk: { baseUrl: origin },
 });
 
@@ -31,11 +32,12 @@ export async function handleV1(req, res, url, { origin, ip, openapi }) {
   try {
     if (M === 'OPTIONS') { res.writeHead(204, { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type, authorization, x-api-key, x-grant-token, idempotency-key', 'access-control-allow-methods': 'GET, POST, OPTIONS', 'access-control-max-age': '86400' }); return res.end(); }
     if (path === '/' && M === 'GET') return send(res, 200, INDEX(origin));
+    if (path === '/e2e.js' && M === 'GET') { res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8', 'access-control-allow-origin': '*' }); return res.end(fs.readFileSync(new URL('../../../site/public/agent-api-e2e.js', import.meta.url))); }
     if (path === '/openapi.json' && M === 'GET') return send(res, 200, openapi());
     if (path === '/keys' && M === 'POST') {
       const body = await readJson(req);
       const k = issueKey(body, ip);
-      return send(res, 201, { ...k, usage: { base_url: origin, header: 'Authorization: Bearer ' + k.api_key, next: `${origin}/guides/agent-api` } });
+      return send(res, 201, { ...k, usage: { base_url: origin, header: 'Authorization: Bearer ' + k.api_key, next: `${origin}/docs/guides/agent-api` } });
     }
     if (path === '/keys' && M === 'GET') return send(res, 200, INDEX(origin).get_a_key);
     const auth = authenticate(req), tenant = auth.tenantId;

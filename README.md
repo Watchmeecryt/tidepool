@@ -141,6 +141,50 @@ to quote.depositAddress -> POST /v0/deposit/submit -> poll GET /v0/status until 
 REFUNDED or FAILED. Amounts are strings in base units. Testnet only.
 ```
 
+## AI Agent API (`/v1`)
+
+Besides the 1Click-compatible `/v0` sandbox, Tidepool serves a free **NEAR testnet Agent API** under `/v1` on the same host. An owner creates a policy-bound agent wallet and issues the agent a revocable grant; the agent then swaps, transfers, withdraws and deposits inside that policy. It is shaped like the official NEAR Intents Agent API, so the official `@near-intents-agent-api/sdk` works against Tidepool by changing only `baseUrl`. Testnet only; owners are NEAR testnet accounts; confidential mode, passkey/EVM owners, shielding, approvals and scheduled executions are not supported (HTTP 501).
+
+**Free key, no sign-up (an agent can do this itself):**
+
+```bash
+curl -s -X POST https://www.usetidepool.tech/v1/keys -H 'content-type: application/json' -d '{"name":"my-agent"}'
+# -> { "api_key": "naa_...", ... }   shown once; 600 requests/min, 25 agents, 5 keys per IP per day
+export TP=https://www.usetidepool.tech/v1 KEY=naa_...
+curl -s $TP/whoami -H "authorization: Bearer $KEY"
+curl -s $TP/tokens -H "authorization: Bearer $KEY"
+```
+
+**Run the whole flow in one command** (key, agent, grant, faucet funding, dry and real swap, transfer, withdraw, history, policy violations; Node 20+, no dependencies, PASS/FAIL per step):
+
+```bash
+curl -s https://www.usetidepool.tech/v1/e2e.js -o agent-api-e2e.mjs && node agent-api-e2e.mjs https://www.usetidepool.tech
+# or from this repo: node examples/agent-api-e2e.js [baseUrl]
+```
+
+**Endpoints**
+
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /v1/keys` | Free self-serve `naa_` key |
+| `GET /v1/whoami`, `/quotas`, `/network`, `/tokens` | Identity, limits, network, assets |
+| `POST /v1/generate-intent`, `POST /v1/submit-intent` | Owner intents (NEP-413 signed): `agent_create`, `grant_issue`, `grant_revoke`, `policy_update`, `agent_freeze`, `agent_unfreeze` |
+| `GET /v1/status?correlation_id=...&wait_ms=30000` | Long-poll any intent or action |
+| `GET /v1/agents`, `/agents/ID`, `/wallet`, `/balances`, `/policy`, `/policy/history`, `/grants`, `/history` | Read agents |
+| `POST /v1/agents/ID/swap` (`dry: true` for a quote), `/transfer`, `/withdraw`, `/deposit` | Agent actions: need `x-grant-token` and `Idempotency-Key` |
+| `GET /v1/openapi.json` | OpenAPI spec |
+
+**Official SDK**
+
+```ts
+import { createAgentApi } from '@near-intents-agent-api/sdk'; // Node 24+
+const api = createAgentApi({ baseUrl: 'https://www.usetidepool.tech', apiKey: process.env.KEY }); // the SDK appends /v1
+```
+
+**Policy model.** Enforced by the API before each action; changes apply immediately and are versioned (`expected_revision`). A policy sets the allowed `actions` and `assets`, per-asset `limits` (`per_transaction`, `hourly`, `daily`, `monthly`), `max_actions_per_hour`, `destinations` (any, allowlist or denylist) and a USD `budget` (`daily_usd`, `weekly_usd`, `monthly_usd`). Owners can freeze and unfreeze an agent and revoke grants. Violations return HTTP 403 with `layer: "policy"` (for example `policy_transaction_limit_exceeded`). Errors are JSON:API; actions are idempotent per `Idempotency-Key`. Withdrawals support the `near` chain and NEAR-native tokens only.
+
+Docs: [/docs/guides/agent-api](https://www.usetidepool.tech/docs/guides/agent-api) · Agents: start at [/llms.txt](https://www.usetidepool.tech/llms.txt)
+
 ## How NEAR fits
 
 - Every swap settles on NEAR testnet through one `execute_intents` call on NEAR's unmodified verifier with two `token_diff` intents, so it is atomic: both legs apply or neither does. Each deposit, settlement and refund is a public testnet transaction listed in `/v0/status`.
