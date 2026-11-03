@@ -3,7 +3,8 @@
 import crypto from 'node:crypto';
 import { internals, feeBps, makerBalance, withSigner } from '../engine.mjs';
 import { signIntents, keyStore, NETWORK, view, call, parseNear, viewAccount } from '../near.mjs';
-import { TOKENS, VERIFIER, MAKER, ROOT, BRIDGE_ACCOUNT, EVM_CHAINS, fromUnits, isEvmAddress } from '../config.mjs';
+import { TOKENS, VERIFIER, MAKER, ROOT, BRIDGE_ACCOUNT, EVM_CHAINS, fromUnits, isEvmAddress, isSolAddress, isStellarAddress, isSuiAddress, normSuiAddress, isXrpAddress, isBtcAddress, isZecAddress, chainOf,
+  SOL_PAYOUT_CAP_LAMPORTS, SOL_RENT_MIN_LAMPORTS, XLM_CAP_STROOPS, SUI_CAP_MIST, XRP_CAP_DROPS, BTC_CAP_SATS, BTC_MIN_SATS, ZEC_CAP_ZAT, ZEC_MIN_ZAT } from '../config.mjs';
 import * as evm from '../evm.mjs';
 import { prices } from '../prices.mjs';
 import { drip } from '../faucet.mjs';
@@ -52,6 +53,15 @@ async function recipientOf(r) {
   return r;
 }
 
+// Non-EVM payout chains Tidepool's /v0 already supports (testnets only): address check, native symbol, per-payout cap and minimum (same limits as /v0).
+const OTHER = {
+  sol: { ok: isSolAddress, native: 'SOL', cap: SOL_PAYOUT_CAP_LAMPORTS, min: SOL_RENT_MIN_LAMPORTS },
+  stellar: { ok: isStellarAddress, native: 'XLM', cap: XLM_CAP_STROOPS },
+  sui: { ok: isSuiAddress, native: 'SUI', cap: SUI_CAP_MIST },
+  xrp: { ok: isXrpAddress, native: 'XRP', cap: XRP_CAP_DROPS },
+  btc: { ok: isBtcAddress, native: 'BTC', cap: BTC_CAP_SATS, min: BTC_MIN_SATS },
+  zec: { ok: isZecAddress, native: 'ZEC', cap: ZEC_CAP_ZAT, min: ZEC_MIN_ZAT },
+};
 async function normalize(kind, body, agent) {
   if (!body || typeof body !== 'object') throw bad('body must be a JSON object');
   if (body.confidential) throw fail(400, 'unsupported_feature', 'request', 'Confidential mode is not available on Tidepool testnet', { pointer: '/confidential' });
@@ -82,7 +92,17 @@ async function normalize(kind, body, agent) {
         if (!isEvmAddress(body.recipient)) throw fail(400, 'invalid_address', 'request', `${body.recipient} is not a valid 0x EVM address`, { pointer: '/recipient' });
         recipient = body.recipient;
         if (body.memo) throw bad('memo is not supported for EVM withdrawals', '/memo');
-      } else throw fail(400, 'route_unavailable', 'request', `Tidepool testnet withdraws to NEAR testnet accounts (chain "near") and to EVM testnets with a bridge (${EVM_CHAINS.filter((c) => c.deployed).map((c) => '"' + c.key + '"').join(', ')}). Other chains are not available.`, { pointer: '/chain' });
+      } else if (OTHER[chain] && chainOf(chain)?.deployed) {
+        const o = OTHER[chain];
+        if (t.chain !== chain) throw fail(400, 'route_unavailable', 'request', `${t.symbol} (${t.blockchain}) cannot be withdrawn to ${chainOf(chain).name}; use a token whose blockchain is "${chain}" (see GET /v1/tokens)`, { pointer: '/asset' });
+        if (!o.ok(body.recipient)) throw fail(400, 'invalid_address', 'request', `${body.recipient} is not a valid ${chainOf(chain).name} address`, { pointer: '/recipient' });
+        recipient = chain === 'sui' ? normSuiAddress(body.recipient) : body.recipient;
+        if (body.memo) throw bad(`memo is not supported for ${chainOf(chain).name} withdrawals`, '/memo');
+        if (t.symbol === o.native) {
+          if (amount > o.cap) throw fail(400, 'route_unavailable', 'request', `${o.native} on ${chainOf(chain).name} is capped at ${fromUnits(o.cap, t.decimals)} ${o.native} per payout (same limit as /v0)`, { pointer: '/amount' });
+          if (o.min && amount < o.min) throw fail(400, 'route_unavailable', 'request', `The minimum ${o.native} payout on ${chainOf(chain).name} is ${fromUnits(o.min, t.decimals)} ${o.native} (same limit as /v0)`, { pointer: '/amount' });
+        }
+      } else throw fail(400, 'route_unavailable', 'request', `Tidepool testnet withdraws to NEAR testnet accounts (chain "near") and to the testnets /v0 can pay out on (${[...EVM_CHAINS.filter((c) => c.deployed).map((c) => c.key), ...Object.keys(OTHER).filter((k) => chainOf(k)?.deployed)].map((c) => '"' + c + '"').join(', ')}). Other chains are not available.`, { pointer: '/chain' });
     } else recipient = await recipientOf(body.recipient);
     return { kind, asset: t.assetId, amount, token: t, prices: p.prices, usd: usdValue(t, amount, p.prices), destination: { chain, address: recipient, memo }, recipient,
       request: { origin_asset: null, destination_asset: null, asset: t.assetId, amount: amount.toString(), min_amount_out: null, chain, recipient, memo, confidential: false } };
@@ -192,14 +212,17 @@ async function settle(id, agent, n, ip) {
     const hashes = internals.hashesFrom(r.logs || []);
     if (!r.ok) return finish(id, 'FAILED', { tx_hash: r.txHash ?? null }, { code: 'execution_failed', detail: `NEAR testnet rejected the intents: ${(r.failures || []).join('; ').slice(0, 300)}` });
     if (n.kind === 'withdraw' && n.token.chain) {
-      const rid = evm.releaseId(`agent-api:${id}`);
       let dest;
       try {
-        if (!(await evm.isReleased(n.token.chain, rid))) dest = await evm.release(n.token.chain, rid, n.token.evmAddress, n.recipient, n.amount);
+        if (n.token.kind === 'evm') {
+          const rid = evm.releaseId(`agent-api:${id}`);
+          if (!(await evm.isReleased(n.token.chain, rid))) dest = await evm.release(n.token.chain, rid, n.token.evmAddress, n.recipient, n.amount);
+        } else dest = (await internals.payoutBridged(id, n.token, n.recipient, n.amount))[0];
       } catch (e) {
-        return finish(id, 'NEEDS_REVIEW', { tx_hash: r.txHash ?? null }, { code: 'release_failed', detail: `The NEAR side settled but the ${n.token.chain} release failed: ${String(e.message || e).slice(0, 200)}` });
+        return finish(id, 'NEEDS_REVIEW', { tx_hash: r.txHash ?? null }, { code: 'release_failed', detail: `The NEAR side settled but the ${n.token.chain} payout failed: ${String(e.message || e).slice(0, 200)}` });
       }
-      return finish(id, 'SUCCESS', { tx_hash: r.txHash, intent_hash: hashes[hashes.length - 1] ?? null, destination_chain: n.token.chain, ...(dest ? { destination_tx_hash: dest, destination_tx_url: evm.evmTxUrl(n.token.chain, dest) } : {}) });
+      const url = n.token.kind === 'evm' && dest ? evm.evmTxUrl(n.token.chain, dest) : null;
+      return finish(id, 'SUCCESS', { tx_hash: r.txHash, intent_hash: hashes[hashes.length - 1] ?? null, destination_chain: n.token.chain, ...(dest ? { destination_tx_hash: dest, destination_tx_url: url } : {}) });
     }
     finish(id, 'SUCCESS', { tx_hash: r.txHash, intent_hash: hashes[hashes.length - 1] ?? null, ...(n.kind === 'swap' ? { amount_out: n.out.toString() } : {}) });
   } catch (e) {

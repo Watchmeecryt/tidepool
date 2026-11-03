@@ -99,8 +99,18 @@ await step('9b. bridged withdraw: swap to Base Sepolia USDC, withdraw to an EVM 
   expect(st.details.destination_tx_hash && st.details.destination_chain === 'base', `no destination tx: ${JSON.stringify(st.details).slice(0, 200)}`);
   return `base tx ${st.details.destination_tx_hash}`;
 });
-await step('9c. withdraw to an unsupported chain is rejected (route_unavailable)', async () => {
-  const r = await api('POST', `/agents/${agent}/withdraw`, { body: { asset: usdc.asset_id, amount: '1000', chain: 'sol', recipient: owner.account_id }, grant: grantToken, idem: idem() });
+await step('9e. withdraw to a non-EVM testnet (Sui or Solana, whichever Tidepool lists)', async () => {
+  const B58A = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz', rnd32 = crypto.randomBytes(32);
+  const tryChain = [['sui', () => '0x' + rnd32.toString('hex')], ['sol', () => b58(rnd32)]].find(([c]) => tokens.some((t) => t.blockchain === c && t.symbol === 'USDC'));
+  if (!tryChain) return 'skipped: no Sui or Solana bridge listed';
+  const [chain, addr] = tryChain, tok = tokens.find((t) => t.blockchain === chain && t.symbol === 'USDC');
+  const sw = await action('swap', { origin_asset: usdc.asset_id, destination_asset: tok.asset_id, amount: '5000000' });
+  const st = await action('withdraw', { asset: tok.asset_id, amount: (BigInt(sw.details.amount_out) / 2n).toString(), chain, recipient: addr() });
+  expect(st.details.destination_chain === chain && st.details.destination_tx_hash, `no destination tx: ${JSON.stringify(st.details).slice(0, 200)}`);
+  return `${chain} tx ${st.details.destination_tx_hash}`;
+});
+await step('9c. withdraw to an unknown chain is rejected (route_unavailable)', async () => {
+  const r = await api('POST', `/agents/${agent}/withdraw`, { body: { asset: usdc.asset_id, amount: '1000', chain: 'dogecoin', recipient: owner.account_id }, grant: grantToken, idem: idem() });
   expect(r.status === 400 && r.json.errors[0].code === 'route_unavailable', `expected route_unavailable, got ${r.status} ${JSON.stringify(r.json).slice(0, 200)}`);
 });
 await step('9d. GET /v1/releases/latest', async () => {

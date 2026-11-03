@@ -4,6 +4,10 @@ description: What changed in Tidepool and when.
 icon: ClockCounterClockwise
 ---
 
+## 2026-11-03 · Agent API: withdrawals to every /v0 payout chain
+
+- **Withdraw to Solana, Stellar, Sui, XRP Ledger, Bitcoin testnet4 and Zcash testnets** (whichever `GET /v1/tokens` lists), reusing the `/v0` payout paths, address checks and caps. No memo on those chains.
+
 ## 2026-11-03 · Agent API: bridged withdrawals and releases
 
 - **Withdraw to EVM testnets:** `POST /v1/agents/{id}/withdraw` now accepts `chain` `base`, `arb` or `eth` with the bridged USDC/USDT of that chain and a 0x recipient. Status returns `destination_tx_hash`.

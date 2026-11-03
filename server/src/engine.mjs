@@ -906,7 +906,15 @@ export function anyInputWithdrawals(depositAddress, depositMemo, { timestampFrom
 
 // internals shared with orders.mjs / intents.mjs
 export const hooks = { tickOrder: async () => {} };
-export const internals = { convert, invert, grossUp, settle: (...a) => settle(...a), refund: (...a) => refund(...a), intentsBal, deriveDepositKey: (id) => deriveDepositKey(MASTER, id), execute, hashesFrom, byAsset, isAccount, set, MASTER: () => MASTER, feeBps, usd };
+// Pays out a bridged token on its own chain after the verifier ft_withdraw (used by the Agent API). Returns the destination tx hashes.
+async function payoutBridged(opId, t, to, amount) {
+  const s = { quoteResponse: { correlationId: opId }, txs: [], destTxs: [], releases: [] };
+  queueRelease(s, 'agent-api', t, to, amount);
+  for (let i = 0; i < 90 && s.releases.some((r) => !r.done); i++) { await processReleases(s); if (s.releases.some((r) => !r.done)) await new Promise((r) => setTimeout(r, 2000)); }
+  if (s.releases.some((r) => !r.done)) throw new Error(`payout on ${chainOf(t.chain).name} is still confirming`);
+  return s.destTxs;
+}
+export const internals = { payoutBridged, convert, invert, grossUp, settle: (...a) => settle(...a), refund: (...a) => refund(...a), intentsBal, deriveDepositKey: (id) => deriveDepositKey(MASTER, id), execute, hashesFrom, byAsset, isAccount, set, MASTER: () => MASTER, feeBps, usd };
 
 const ACTIVE = ['PENDING_DEPOSIT', 'KNOWN_DEPOSIT_TX', 'INCOMPLETE_DEPOSIT', 'PROCESSING'];
 export function startWorker() {
