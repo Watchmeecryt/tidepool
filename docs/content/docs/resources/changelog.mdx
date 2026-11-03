@@ -4,12 +4,18 @@ description: What changed in Tidepool and when.
 icon: ClockCounterClockwise
 ---
 
+## 2026-11-03 · Agent API: bridged withdrawals and releases
+
+- **Withdraw to EVM testnets:** `POST /v1/agents/{id}/withdraw` now accepts `chain` `base`, `arb` or `eth` with the bridged USDC/USDT of that chain and a 0x recipient. Status returns `destination_tx_hash`.
+- **Releases:** `GET /v1/releases`, `/v1/releases/latest` and `/v1/releases/{version}` work, so the official SDK's `getLatestRelease` succeeds.
+- **SDK check:** `examples/agent-api-sdk-e2e.js` runs the official SDK against any Tidepool origin.
+
 ## 2026-11-03 · New: Agent API (/v1) with free self-serve keys
 
 - **What:** a NEAR testnet implementation of the NEAR Intents Agent API on the same host as `/v0`. Policy-bound agent wallets that swap, transfer, withdraw and deposit, with owner-signed grants and policies. Works with the official `@near-intents-agent-api/sdk` by setting `baseUrl` to the Tidepool origin.
 - **Free key, no human:** `POST /v1/keys` returns an `naa_` key instantly (600 requests per minute, 25 agents per key, 5 keys per IP per day).
 - **Policy:** allowed actions and assets, per-asset limits (per transaction, hourly, daily, monthly), destinations, a USD budget, freeze and unfreeze, versioned updates. Idempotency keys, correlation-id status and JSON:API errors.
-- **Not on testnet:** confidential mode, passkey and EVM owners, shielding, approvals, scheduled executions. Withdrawals support NEAR and NEAR-native tokens only.
+- **Not on testnet:** confidential mode, passkey and EVM owners, shielding, approvals, scheduled executions. 
 - **Try it:** [Agent API guide](/docs/guides/agent-api), or run `curl -s https://www.usetidepool.tech/v1/e2e.js -o e2e.mjs && node e2e.mjs`.
 
 ## 2026-10-31 · Verifier: upgraded to NEAR Intents v0.4.5

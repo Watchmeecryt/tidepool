@@ -7,7 +7,7 @@ import { authenticate, issueKey, MAX_AGENTS_PER_KEY, REQUESTS_PER_MIN } from './
 import { agentView, getAgent, policyView, walletView } from './agents.js';
 import { generateIntent, getOwnerIntent, grantView, submitIntent } from './owner-intents.js';
 import { balances, dryRun, history, KINDS, operationStatus, requireGrant, runAction, tokenList } from './executions.js';
-import { VERIFIER } from '../config.mjs';
+import { VERIFIER, VERIFIER_RELEASE, VERIFIER_WASM_SHA256 } from '../config.mjs';
 
 const send = (res, code, body, extra = {}) => { res.writeHead(code, { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'cache-control': 'no-store', ...extra }); res.end(JSON.stringify(body)); };
 const readJson = (req) => new Promise((ok, no) => {
@@ -17,8 +17,16 @@ const readJson = (req) => new Promise((ok, no) => {
 });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const TERMINAL = new Set(['SUCCESS', 'FAILED', 'REFUNDED', 'UNCERTAIN', 'NEEDS_REVIEW']);
-const UNSUPPORTED = /^\/(agents\/[^/]+\/(shield|unshield|recover|native|approvals|containment|scheduled-executions|releases|proof)|proof|approvals|containment|scheduled-executions|releases|native)(\/|$)/;
+const UNSUPPORTED = /^\/(agents\/[^/]+\/(shield|unshield|recover|native|approvals|containment|scheduled-executions|releases|proof)|proof|approvals|containment|scheduled-executions|native)(\/|$)/;
 
+const RELEASE = () => ({
+  version: VERIFIER_RELEASE.split('/').pop(), status: 'active', type: 'standard',
+  announced_at: '2026-10-31T14:41:26.000Z', effective_at: '2026-10-31T14:41:26.000Z', notice_hours: 0,
+  changes: ['Tidepool testnet: NEAR Intents defuse verifier ' + VERIFIER_RELEASE.split('/').pop() + ' at ' + VERIFIER, 'Agent API v1: policy-bound agent wallets on NEAR testnet (no TEE)'],
+  breaking_changes: false, action_required: false,
+  compose_hash: VERIFIER_WASM_SHA256, manifest_digest: VERIFIER_WASM_SHA256, revision: 'tidepool-agent-api-v1',
+  images: { server: 'tidepool-testnet (no TEE)', backup: 'none', attestation: 'none', edge: 'none' }, expedite: null,
+});
 const INDEX = (origin) => ({
   name: 'Tidepool Agent API (NEAR testnet)', version: 'v1', compatible_with: '@near-intents-agent-api/sdk', network: 'testnet',
   get_a_key: { method: 'POST', url: `${origin}/v1/keys`, body: { name: 'my-agent' }, note: 'Free, instant, no sign-up. Returns an naa_ key.' },
@@ -50,6 +58,12 @@ export async function handleV1(req, res, url, { origin, ip, openapi }) {
         usage: { agents_last_24_hours: n, api_keys: 1, requests_this_minute: auth.requestsThisMinute ?? 0 }, observed_at: new Date().toISOString() });
     }
     if (path === '/network' && M === 'GET') return send(res, 200, { network: 'near-testnet', contract_id: VERIFIER, supported_owner_types: ['near'], status: { overall: 'operational', checked_at: new Date().toISOString(), components: [{ name: 'near-testnet', status: 'operational' }, { name: 'tidepool-maker', status: 'operational' }] } });
+    if (M === 'GET' && (path === '/releases' || path === '/releases/latest' || path.startsWith('/releases/'))) {
+      const rel = RELEASE(), v = path.slice('/releases/'.length);
+      if (path === '/releases') return send(res, 200, { data: [rel], next_cursor: null });
+      if (path === '/releases/latest' || v === rel.version) return send(res, 200, rel);
+      throw fail(404, 'not_found', 'request', `Unknown release ${v}`);
+    }
     if (path === '/tokens' && M === 'GET') return send(res, 200, { data: await tokenList() });
     if (path === '/generate-intent' && M === 'POST') return send(res, 201, await generateIntent(tenant, await readJson(req), req.headers['idempotency-key']));
     if (path === '/submit-intent' && M === 'POST') return send(res, 202, submitIntent(tenant, await readJson(req)));

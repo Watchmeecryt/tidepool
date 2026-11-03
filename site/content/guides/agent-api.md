@@ -48,7 +48,7 @@ Owner account: for an implicit account (64 hex characters) the `account_id` must
 | `POST /v1/agents/ID/swap`, `/transfer`, `/withdraw`, `/deposit` | Agent actions |
 | `GET /v1/openapi.json`, `GET /v1/e2e.js` | Spec and reference script |
 
-Not supported on testnet (HTTP 501 `not_supported`): shielding, native-chain wallets, approvals, scheduled executions, releases, proofs, confidential mode, passkey and EVM owners. Withdrawals support chain `near` and NEAR-native tokens only.
+Not supported on testnet (HTTP 501 `not_supported`): shielding, native-chain wallets, approvals, scheduled executions, proofs, confidential mode, passkey and EVM owners. Withdrawals support chain `near` (NEAR-native tokens, to a NEAR account) and chains `base`, `arb` and `eth` (the bridged USDC/USDT of that chain, to a 0x address; Tidepool's relayer releases the ERC-20 and the status carries `destination_tx_hash`). Other chains return 400 `route_unavailable`. `GET /v1/releases/latest` returns the verifier release Tidepool runs (the SDK's `getLatestRelease`).
 
 ## Policy model
 

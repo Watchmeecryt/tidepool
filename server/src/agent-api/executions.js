@@ -3,7 +3,8 @@
 import crypto from 'node:crypto';
 import { internals, feeBps, makerBalance, withSigner } from '../engine.mjs';
 import { signIntents, keyStore, NETWORK, view, call, parseNear, viewAccount } from '../near.mjs';
-import { TOKENS, VERIFIER, MAKER, ROOT, fromUnits } from '../config.mjs';
+import { TOKENS, VERIFIER, MAKER, ROOT, BRIDGE_ACCOUNT, EVM_CHAINS, fromUnits, isEvmAddress } from '../config.mjs';
+import * as evm from '../evm.mjs';
 import { prices } from '../prices.mjs';
 import { drip } from '../faucet.mjs';
 import { sql } from './db.js';
@@ -68,14 +69,21 @@ async function normalize(kind, body, agent) {
   }
   if (kind === 'transfer' || kind === 'withdraw') {
     const t = asset(body.asset, 'asset'), amount = amountOf(body.amount);
-    const recipient = await recipientOf(body.recipient);
-    let chain = 'near', memo = null;
+    let chain = 'near', memo = null, recipient;
     if (kind === 'withdraw') {
       chain = String(body.chain ?? '').toLowerCase();
-      if (chain !== 'near') throw fail(400, 'route_unavailable', 'request', 'Tidepool testnet withdraws to NEAR testnet accounts only (chain: "near"). Cross-chain payouts are available through /v0/quote.', { pointer: '/chain' });
-      if (t.chain) throw fail(400, 'route_unavailable', 'request', `${t.symbol} (${t.blockchain}) is a bridged asset; withdraw a NEAR-native test token instead`, { pointer: '/asset' });
-      if (body.memo !== undefined && body.memo !== null) { if (typeof body.memo !== 'string' || body.memo.length > 128) throw bad('memo must be a string of at most 128 characters', '/memo'); memo = body.memo; }
-    }
+      const evmChain = EVM_CHAINS.find((c) => c.key === chain && c.deployed);
+      if (chain === 'near') {
+        if (t.chain) throw fail(400, 'route_unavailable', 'request', `${t.symbol} (${t.blockchain}) is a bridged asset; ${t.kind === 'evm' ? `withdraw it with chain "${t.chain}" to an EVM address, or ` : ''}withdraw a NEAR-native test token with chain "near"`, { pointer: '/asset' });
+        recipient = await recipientOf(body.recipient);
+        if (body.memo !== undefined && body.memo !== null) { if (typeof body.memo !== 'string' || body.memo.length > 128) throw bad('memo must be a string of at most 128 characters', '/memo'); memo = body.memo; }
+      } else if (evmChain) {
+        if (t.chain !== chain) throw fail(400, 'route_unavailable', 'request', `${t.symbol} (${t.blockchain}) cannot be withdrawn to ${evmChain.name}; use the bridged token whose blockchain is "${chain}" (see GET /v1/tokens)`, { pointer: '/asset' });
+        if (!isEvmAddress(body.recipient)) throw fail(400, 'invalid_address', 'request', `${body.recipient} is not a valid 0x EVM address`, { pointer: '/recipient' });
+        recipient = body.recipient;
+        if (body.memo) throw bad('memo is not supported for EVM withdrawals', '/memo');
+      } else throw fail(400, 'route_unavailable', 'request', `Tidepool testnet withdraws to NEAR testnet accounts (chain "near") and to EVM testnets with a bridge (${EVM_CHAINS.filter((c) => c.deployed).map((c) => '"' + c.key + '"').join(', ')}). Other chains are not available.`, { pointer: '/chain' });
+    } else recipient = await recipientOf(body.recipient);
     return { kind, asset: t.assetId, amount, token: t, prices: p.prices, usd: usdValue(t, amount, p.prices), destination: { chain, address: recipient, memo }, recipient,
       request: { origin_asset: null, destination_asset: null, asset: t.assetId, amount: amount.toString(), min_amount_out: null, chain, recipient, memo, confidential: false } };
   }
@@ -169,7 +177,11 @@ async function settle(id, agent, n, ip) {
     let intents;
     if (n.kind === 'swap') intents = [{ intent: 'token_diff', diff: { [n.asset]: (-n.amount).toString(), [n.outT.assetId]: n.out.toString() } }];
     else if (n.kind === 'transfer') intents = [{ intent: 'transfer', receiver_id: n.recipient, tokens: { [n.asset]: n.amount.toString() } }];
-    else {
+    else if (n.token.chain) { // bridged token: burn it from the verifier to the bridge account; the relayer then releases the ERC-20 on the EVM chain
+      if (!(await view(n.token.nearContract, 'storage_balance_of', { account_id: BRIDGE_ACCOUNT })))
+        await withSigner(ROOT, () => call(ROOT, n.token.nearContract, 'storage_deposit', { account_id: BRIDGE_ACCOUNT, registration_only: true }, { deposit: parseNear(0.00125) }));
+      intents = [{ intent: 'ft_withdraw', token: n.token.nearContract, receiver_id: BRIDGE_ACCOUNT, amount: n.amount.toString(), memo: `WITHDRAW_TO:${n.recipient}` }];
+    } else {
       if (!(await view(n.token.nearContract, 'storage_balance_of', { account_id: n.recipient })))
         await withSigner(ROOT, () => call(ROOT, n.token.nearContract, 'storage_deposit', { account_id: n.recipient, registration_only: true }, { deposit: parseNear(0.00125) }));
       intents = [{ intent: 'ft_withdraw', token: n.token.nearContract, receiver_id: n.recipient, amount: n.amount.toString(), ...(n.destination.memo ? { memo: n.destination.memo } : {}) }];
@@ -179,6 +191,16 @@ async function settle(id, agent, n, ip) {
     const r = await internals.execute(signed);
     const hashes = internals.hashesFrom(r.logs || []);
     if (!r.ok) return finish(id, 'FAILED', { tx_hash: r.txHash ?? null }, { code: 'execution_failed', detail: `NEAR testnet rejected the intents: ${(r.failures || []).join('; ').slice(0, 300)}` });
+    if (n.kind === 'withdraw' && n.token.chain) {
+      const rid = evm.releaseId(`agent-api:${id}`);
+      let dest;
+      try {
+        if (!(await evm.isReleased(n.token.chain, rid))) dest = await evm.release(n.token.chain, rid, n.token.evmAddress, n.recipient, n.amount);
+      } catch (e) {
+        return finish(id, 'NEEDS_REVIEW', { tx_hash: r.txHash ?? null }, { code: 'release_failed', detail: `The NEAR side settled but the ${n.token.chain} release failed: ${String(e.message || e).slice(0, 200)}` });
+      }
+      return finish(id, 'SUCCESS', { tx_hash: r.txHash, intent_hash: hashes[hashes.length - 1] ?? null, destination_chain: n.token.chain, ...(dest ? { destination_tx_hash: dest, destination_tx_url: evm.evmTxUrl(n.token.chain, dest) } : {}) });
+    }
     finish(id, 'SUCCESS', { tx_hash: r.txHash, intent_hash: hashes[hashes.length - 1] ?? null, ...(n.kind === 'swap' ? { amount_out: n.out.toString() } : {}) });
   } catch (e) {
     const rate = e.code === 429;

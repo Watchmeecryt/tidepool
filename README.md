@@ -143,7 +143,7 @@ REFUNDED or FAILED. Amounts are strings in base units. Testnet only.
 
 ## AI Agent API (`/v1`)
 
-Besides the 1Click-compatible `/v0` sandbox, Tidepool serves a free **NEAR testnet Agent API** under `/v1` on the same host. An owner creates a policy-bound agent wallet and issues the agent a revocable grant; the agent then swaps, transfers, withdraws and deposits inside that policy. It is shaped like the official NEAR Intents Agent API, so the official `@near-intents-agent-api/sdk` works against Tidepool by changing only `baseUrl`. Testnet only; owners are NEAR testnet accounts; confidential mode, passkey/EVM owners, shielding, approvals and scheduled executions are not supported (HTTP 501).
+Besides the 1Click-compatible `/v0` sandbox, Tidepool serves a free **NEAR testnet Agent API** under `/v1` on the same host. An owner creates a policy-bound agent wallet and issues the agent a revocable grant; the agent then swaps, transfers, withdraws and deposits inside that policy. It is shaped like the official NEAR Intents Agent API, so the official `@near-intents-agent-api/sdk` works against Tidepool by changing only `baseUrl`. Withdrawals go to NEAR accounts or, for bridged USDC/USDT, to Base, Arbitrum and Ethereum Sepolia addresses (`chain` `base`, `arb`, `eth`), and `GET /v1/releases/latest` returns the verifier release. Testnet only; owners are NEAR testnet accounts; confidential mode, passkey/EVM owners, shielding, approvals and scheduled executions are not supported (HTTP 501).
 
 **Free key, no sign-up (an agent can do this itself):**
 
@@ -155,7 +155,9 @@ curl -s $TP/whoami -H "authorization: Bearer $KEY"
 curl -s $TP/tokens -H "authorization: Bearer $KEY"
 ```
 
-**Run the whole flow in one command** (key, agent, grant, faucet funding, dry and real swap, transfer, withdraw, history, policy violations; Node 20+, no dependencies, PASS/FAIL per step):
+**Run the whole flow in one command** (key, agent, grant, faucet funding, dry and real swap, transfer, withdraw, bridged withdraw to Base Sepolia, releases, history, policy violations; Node 20+, no dependencies, PASS/FAIL per step):
+
+To run the official SDK against Tidepool (Node 24+): `npm i @near-intents-agent-api/sdk && node examples/agent-api-sdk-e2e.js https://www.usetidepool.tech`.
 
 ```bash
 curl -s https://www.usetidepool.tech/v1/e2e.js -o agent-api-e2e.mjs && node agent-api-e2e.mjs https://www.usetidepool.tech

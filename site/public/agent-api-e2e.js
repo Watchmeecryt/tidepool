@@ -89,6 +89,24 @@ let swapOut;
 await step('7. swap (real)', async () => { const st = await action('swap', { origin_asset: usdc.asset_id, destination_asset: near.asset_id, amount: '10000000' }); swapOut = st.details.amount_out; expect(st.details.tx_hash, 'no tx hash'); return `tx ${st.details.tx_hash}`; });
 await step('8. transfer (to the owner account)', async () => { const st = await action('transfer', { asset: usdc.asset_id, amount: '1000000', recipient: owner.account_id }); return `tx ${st.details.tx_hash}`; });
 await step('9. withdraw (to a NEAR testnet account)', async () => { const st = await action('withdraw', { asset: usdc.asset_id, amount: '1000000', chain: 'near', recipient: owner.account_id }); return `tx ${st.details.tx_hash}`; });
+await step('9b. bridged withdraw: swap to Base Sepolia USDC, withdraw to an EVM address', async () => {
+  const baseUsdc = tokens.find((t) => t.blockchain === 'base' && t.symbol === 'USDC');
+  expect(baseUsdc, 'no Base Sepolia USDC bridge listed');
+  const sw = await action('swap', { origin_asset: usdc.asset_id, destination_asset: baseUsdc.asset_id, amount: '10000000' });
+  const to = '0x' + crypto.randomBytes(20).toString('hex'), amt = (BigInt(sw.details.amount_out) / 2n).toString();
+  const d = await api('POST', `/agents/${agent}/withdraw`, { body: { asset: baseUsdc.asset_id, amount: amt, chain: 'base', recipient: to, dry: true } }); need(d, 200, 'dry withdraw');
+  const st = await action('withdraw', { asset: baseUsdc.asset_id, amount: amt, chain: 'base', recipient: to });
+  expect(st.details.destination_tx_hash && st.details.destination_chain === 'base', `no destination tx: ${JSON.stringify(st.details).slice(0, 200)}`);
+  return `base tx ${st.details.destination_tx_hash}`;
+});
+await step('9c. withdraw to an unsupported chain is rejected (route_unavailable)', async () => {
+  const r = await api('POST', `/agents/${agent}/withdraw`, { body: { asset: usdc.asset_id, amount: '1000', chain: 'sol', recipient: owner.account_id }, grant: grantToken, idem: idem() });
+  expect(r.status === 400 && r.json.errors[0].code === 'route_unavailable', `expected route_unavailable, got ${r.status} ${JSON.stringify(r.json).slice(0, 200)}`);
+});
+await step('9d. GET /v1/releases/latest', async () => {
+  const r = await api('GET', '/releases/latest'); need(r, 200, 'releases/latest');
+  expect(r.json.version && r.json.compose_hash && r.json.status === 'active', 'unexpected release shape'); return r.json.version;
+});
 await step('10. history + idempotent replay', async () => {
   const h = await api('GET', `/agents/${agent}/history`); need(h, 200, 'history');
   expect(h.json.data.filter((x) => x.status === 'SUCCESS').length >= 4, `expected 4+ successful operations, got ${h.json.data.length}`);

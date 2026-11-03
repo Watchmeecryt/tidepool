@@ -1061,8 +1061,8 @@
     },
     "/v1/agents/{agent_id}/withdraw": {
       "post": {
-        "summary": "Withdraw to a NEAR testnet account",
-        "description": "chain must be near; NEAR-native tokens only (other routes return route_unavailable). dry:true supported.",
+        "summary": "Withdraw to a NEAR account or an EVM testnet address",
+        "description": "chain near: NEAR-native tokens to a NEAR account. chain base, arb or eth: the bridged token of that chain to a 0x address (status returns destination_tx_hash). Other routes return route_unavailable. dry:true supported.",
         "security": [
           {
             "bearerAuth": []
@@ -1117,7 +1117,10 @@
                   },
                   "chain": {
                     "enum": [
-                      "near"
+                      "near",
+                      "base",
+                      "arb",
+                      "eth"
                     ]
                   },
                   "recipient": {
@@ -1258,6 +1261,76 @@
             }
           }
         }
+      }
+    },
+    "/v1/releases": {
+      "get": {
+        "summary": "List releases",
+        "tags": [
+          "Releases"
+        ],
+        "responses": {
+          "200": {
+            "description": "Release",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/releases/latest": {
+      "get": {
+        "summary": "Latest release (SDK getLatestRelease)",
+        "tags": [
+          "Releases"
+        ],
+        "responses": {
+          "200": {
+            "description": "Release",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/releases/{version}": {
+      "get": {
+        "summary": "One release",
+        "tags": [
+          "Releases"
+        ],
+        "responses": {
+          "200": {
+            "description": "Release",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       }
     }
   },
