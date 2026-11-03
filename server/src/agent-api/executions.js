@@ -101,7 +101,7 @@ function opDoc(r, agent) {
   const g = r.grant_id ? sql.prepare('SELECT id, label FROM grants WHERE id = ?').get(r.grant_id) : null;
   return {
     correlation_id: r.id, agent_id: r.agent_id, status: r.status, failure_code: r.failure_code, created_at: r.created_at, updated_at: r.updated_at, dispatch_committed_at: r.dispatch_committed_at, grant: g, type: r.type,
-    details: { action: r.type, request: req, near_account_id: agent.wallet_account, provider_status: d.provider_status ?? null, intent_hash: d.intent_hash ?? null, tx_hash: d.tx_hash ?? null, destination_tx_hash: d.tx_hash ?? null,
+    details: { action: r.type, request: req, near_account_id: agent.wallet_account, provider_status: d.provider_status ?? null, intent_hash: d.intent_hash ?? null, tx_hash: d.tx_hash ?? null, destination_tx_hash: d.destination_tx_hash ?? d.tx_hash ?? null, ...(d.destination_chain ? { destination_chain: d.destination_chain, destination_tx_url: d.destination_tx_url ?? null } : {}),
       amount_out: d.amount_out ?? null, expected_amount_out: d.expected_amount_out ?? null, deposit_address: d.deposit_address ?? null, memo: null, min_amount: null, expires_at: d.expires_at ?? null, refund_to: null, failure_reason: r.failure_detail ?? null,
       ...(d.instructions ? { instructions: d.instructions } : {}) },
   };
