@@ -24,6 +24,7 @@ import { record } from './analytics.mjs';
 import { admin } from './admin.mjs';
 import { runDemo, demoInfo, DemoRefused } from './demo.mjs';
 import { renderPage, docs, llmsTxt, llmsFull, agentsMd } from './site.mjs';
+import { handleV1 } from './agent-api/router.js';
 
 await loadKeys({ env: process.env.TIDEPOOL_KEYS, dir: process.env.TIDEPOOL_KEYS ? null : new URL('../../.secrets', import.meta.url).pathname });
 await initEngine();
@@ -121,6 +122,8 @@ const server = http.createServer(async (req, res) => {
   try {
     if (await admin(req, res, p, url)) return;
     if (req.method === 'OPTIONS') { res.writeHead(204, { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type, authorization, x-api-key', 'access-control-allow-methods': 'GET, POST, OPTIONS' }); return res.end(); }
+    // ---- Agent API (/v1, SDK-compatible, testnet) ----
+    if (p === '/v1' || p.startsWith('/v1/')) return handleV1(req, res, url, { origin: origin(req), ip: ip(req), openapi: () => JSON.parse(fs.readFileSync(PUBLIC + 'agent-api.openapi.json', 'utf8')) });
     // ---- API (1Click-compatible) ----
     if (p === '/v0/tokens' && req.method === 'GET') return json(res, 200, await tokens());
     if (p === '/v0/quote' && req.method === 'POST') return json(res, 200, await quote(await readBody(req), { authed: authed(req) }));
