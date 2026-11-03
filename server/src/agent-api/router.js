@@ -100,7 +100,7 @@ export async function handleV1(req, res, url, { origin, ip, openapi }) {
       if (M === 'POST' && KINDS.includes(sub)) {
         const body = await readJson(req);
         if (sub !== 'deposit' && body?.dry === true) return send(res, 200, await dryRun(a, sub, body));
-        const grant = requireGrant(a, req.headers['x-grant-token']);
+        const grant = sub === 'deposit' && !req.headers['x-grant-token'] ? { id: 'api-key' } : requireGrant(a, req.headers['x-grant-token']); // deposits need no grant, like the official API
         return send(res, 202, await runAction(a, grant, sub, body, req.headers['idempotency-key'], ip));
       }
     }

@@ -31,7 +31,7 @@ curl -s {{ORIGIN}}/v1/e2e.js -o agent-api-e2e.mjs && node agent-api-e2e.mjs {{OR
 ## 3. The model
 
 1. **Owner intents** (signed with the owner key, NEP-413 / ed25519): `agent_create`, `grant_issue`, `grant_revoke`, `policy_update`, `agent_freeze`, `agent_unfreeze`. Call `POST /v1/generate-intent`, sign `intent.payload` with the owner key, send it to `POST /v1/submit-intent`, then poll `GET /v1/status?correlation_id=...`.
-2. **Agent actions** (no owner signature): `swap`, `transfer`, `withdraw`, `deposit`. They need the API key, an `x-grant-token` (an `ngt_` token whose sha256 hex the owner registered with `grant_issue`) and an `Idempotency-Key`. They return 202 with a `correlation_id`; poll `GET /v1/status`.
+2. **Agent actions** (no owner signature): `swap`, `transfer`, `withdraw`, `deposit` (deposit needs no grant token). They need the API key, an `x-grant-token` (an `ngt_` token whose sha256 hex the owner registered with `grant_issue`) and an `Idempotency-Key`. They return 202 with a `correlation_id`; poll `GET /v1/status`.
 3. **Dry runs**: `POST /v1/agents/ID/swap` or `/withdraw` with `"dry": true` needs only the API key. It returns a quote and `warnings` and never refuses for policy or balance reasons.
 
 Owner account: for an implicit account (64 hex characters) the `account_id` must equal the hex of the ed25519 public key; for a named account the key must be a full-access key of that account.
