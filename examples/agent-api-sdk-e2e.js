@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Runs the OFFICIAL @near-intents-agent-api/sdk against Tidepool (needs Node 24+).
+// Runs the OFFICIAL @near-intents-agent-api/sdk against Tidepool (Node 24+). ES module: run it in a folder whose package.json has "type": "module" (or copy it to a .mjs file).
 //   npm i @near-intents-agent-api/sdk && node examples/agent-api-sdk-e2e.js [baseUrl]
 // The owner is a throwaway local ed25519 implicit account (no on-chain wallet is created).
 import crypto from 'node:crypto';
