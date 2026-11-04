@@ -10,7 +10,7 @@ Testnet only. Tokens have no value. Owners are NEAR testnet accounts (an implici
 curl -s -X POST {{ORIGIN}}/v1/keys -H 'content-type: application/json' -d '{"name":"my-agent"}'
 ```
 
-The response contains `api_key` (`naa_...`, shown once). Send it as `Authorization: Bearer <key>` or `x-api-key`. Limits: 600 requests per minute per key, 25 agents per key, 5 new keys per IP per 24 hours. Keys do not expire, so reuse yours.
+The response contains `api_key` (`naa_...`, shown once). Send it as `Authorization: Bearer <key>` or `x-api-key`. Limits: 600 requests per minute per key, 25 agents per key (`GET /v1/quotas` reports it as `daily_agents`; Tidepool agents are never deleted, so in practice a key holds at most 25 agents in total and the 26th `agent_create` fails with 429 `quota_exceeded`: get another free key), 5 new keys per IP per 24 hours. Keys do not expire, so reuse yours.
 
 ```bash
 export TP={{ORIGIN}}/v1
@@ -68,7 +68,13 @@ A policy is stored per agent and enforced by the API before any action runs. Cha
 }
 ```
 
+`destinations.mode` is `any`, `only` (send only to the listed destinations) or `except` (send anywhere but them); `allowlist` and `denylist` are rejected with 400 `validation_failed`. List entries are objects, not strings: `{ "action": "transfer", "address": "shop.testnet", "confidential": false }` or `{ "action": "withdraw", "chain": "near", "address": "alice.testnet", "memo": null }`.
+
 Violations return HTTP 403 with `layer: "policy"` and a code such as `policy_action_denied`, `policy_asset_denied`, `policy_destination_denied`, `policy_transaction_limit_exceeded`, `policy_budget_exceeded` or `policy_action_limit_exceeded`. A frozen agent returns 409 `wallet_frozen`; a revoked grant returns 403 `grant_revoked`.
+
+## Faucet deposits
+
+`POST /v1/agents/{id}/deposit` with `{"origin_asset": "...", "testnet_faucet": true}` drips the default test tokens into the agent wallet. It allows one drip per agent wallet per hour and a few per IP per hour. When it is rate-limited the call answers **429 `rate_limited`** right away (with `Retry-After`) and no execution is created, so check the HTTP status, not just for a `correlation_id`. A 202 means the drip was accepted: poll `GET /v1/status` until `SUCCESS` before spending.
 
 ## Idempotency and errors
 

@@ -1177,7 +1177,7 @@
     "/v1/agents/{agent_id}/deposit": {
       "post": {
         "summary": "Fund the agent wallet",
-        "description": "testnet_faucet:true drips test tokens into the agent wallet. Otherwise returns a deposit address and waits (PENDING_DEPOSIT) until the balance rises. No grant token is needed; an Idempotency-Key is still required.",
+        "description": "testnet_faucet:true drips test tokens into the agent wallet. Otherwise returns a deposit address and waits (PENDING_DEPOSIT) until the balance rises. No grant token is needed; an Idempotency-Key is still required. The faucet allows one drip per agent wallet per hour (and a few per IP per hour): when it is rate-limited the request answers 429 rate_limited synchronously (with Retry-After) and no execution is created. A 202 means the drip was accepted; still poll GET /v1/status until SUCCESS before relying on the balance (it can end FAILED if the testnet call fails).",
         "security": [
           {
             "bearerAuth": []
@@ -1258,6 +1258,16 @@
           },
           "4XX": {
             "description": "JSON:API error document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited: the testnet faucet was used for this wallet within the last hour, or this IP hit its hourly faucet limit. Retry-After gives the wait in seconds.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1450,20 +1460,82 @@
           },
           "destinations": {
             "type": "object",
+            "required": [
+              "mode",
+              "list"
+            ],
+            "description": "mode \"only\" allows just the listed destinations, \"except\" blocks them, \"any\" ignores the list. (\"allowlist\"/\"denylist\" are not accepted: 400 validation_failed.)",
             "properties": {
               "mode": {
                 "enum": [
                   "any",
-                  "allowlist",
-                  "denylist"
+                  "only",
+                  "except"
                 ]
               },
               "list": {
                 "type": "array",
                 "items": {
-                  "type": "string"
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "required": [
+                        "action",
+                        "address"
+                      ],
+                      "properties": {
+                        "action": {
+                          "const": "transfer"
+                        },
+                        "address": {
+                          "type": "string",
+                          "description": "NEAR testnet account id"
+                        },
+                        "confidential": {
+                          "type": "boolean",
+                          "default": false
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "action",
+                        "chain",
+                        "address"
+                      ],
+                      "properties": {
+                        "action": {
+                          "const": "withdraw"
+                        },
+                        "chain": {
+                          "type": "string",
+                          "description": "near, base, arb, eth, sol, stellar, sui, xrp, btc, zec"
+                        },
+                        "address": {
+                          "type": "string"
+                        },
+                        "memo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
+                    }
+                  ]
                 }
               }
+            },
+            "example": {
+              "mode": "only",
+              "list": [
+                {
+                  "action": "transfer",
+                  "address": "shop.testnet",
+                  "confidential": false
+                }
+              ]
             }
           },
           "budget": {
