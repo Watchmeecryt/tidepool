@@ -165,7 +165,7 @@ export async function runAction(agent, grant, kind, body, idemKey, ip) {
       }
     }
     if (kind === 'deposit' && n.faucet) {
-      try { nearDripCheck(agentWallet(agent.id).accountId, ip); } catch (e) { throw fail(429, 'rate_limited', 'provider', e.message, { retry_after_seconds: e.extra?.available_at ? Math.max(1, Math.ceil((Date.parse(e.extra.available_at) - Date.now()) / 1000)) : 3600 }); }
+      try { nearDripCheck(agentWallet(agent.id).accountId, ip); } catch (e) { sql.prepare('INSERT INTO faucet_rejects (agent_id, wallet_account, reason, created_at) VALUES (?,?,?,?)').run(agent.id, agent.wallet_account, String(e.message).slice(0, 200), new Date().toISOString()); throw fail(429, 'rate_limited', 'provider', e.message, { retry_after_seconds: e.extra?.available_at ? Math.max(1, Math.ceil((Date.parse(e.extra.available_at) - Date.now()) / 1000)) : 3600 }); }
     }
     const id = nid(), now = new Date().toISOString();
     const baseline = kind === 'deposit' && !n.faucet ? (await balanceOf(agent, n.outT.assetId)).toString() : null;

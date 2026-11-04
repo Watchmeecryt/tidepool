@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import { db } from './store.mjs';
 import { TOKENS, fromUnits } from './config.mjs';
 import { log, isOurs, ourList, ourCount } from './analytics.mjs';
+import { sql } from './agent-api/db.js';
 
 const PW = process.env.ADMIN_PASSWORD || '';
 const KEY = crypto.createHash('sha256').update('tidepool-admin-session:' + PW).digest();
@@ -58,6 +59,17 @@ function walletStats() {
   const since = Date.parse(log.since);
   for (const [k, t] of Object.entries(db.faucet)) { const w = k.slice(0, k.lastIndexOf(':')); const r = get(w); r.first = Math.min(r.first, t); r.last = Math.max(r.last, t); if (t < since) r.faucet++; }
   for (const [w, l] of Object.entries(log.wallets)) { const r = get(w); r.first = Math.min(r.first, l.first); r.last = Math.max(r.last, l.last); r.dryQuotes += l.dryQuotes; r.faucet += l.faucet; r.requests += l.requests; r.uas = l.uas; }
+  // Agent API (/v1) activity, from the SQLite store; kept apart from the 1Click columns. Faucet deposits are operations whose instructions start with testnet_faucet.
+  const fmtVol = (v) => Object.entries(v).map(([a, x]) => bySym[a] ? `${fromUnits(x, bySym[a].decimals)} ${bySym[a].symbol}` : `${x} ${a}`).join(', ');
+  for (const a of sql.prepare('SELECT id, tenant_id, wallet_account, created_at FROM agents').all()) { const r = get(a.wallet_account); const t = Date.parse(a.created_at); r.first = Math.min(r.first, t); r.last = Math.max(r.last, t); r.agent = a.id; }
+  for (const o of sql.prepare("SELECT o.type, o.status, o.asset, o.amount, o.details_json, o.updated_at, a.wallet_account w FROM operations o JOIN agents a ON a.id = o.agent_id").all()) {
+    const r = get(o.w); r.last = Math.max(r.last, Date.parse(o.updated_at)); r.agentVolume ||= {};
+    if (o.type === 'transfer') { r.agentTransfers = (r.agentTransfers || 0) + 1; if (o.status === 'SUCCESS') { r.agentTransfersOk = (r.agentTransfersOk || 0) + 1; r.agentVolume[o.asset] = (r.agentVolume[o.asset] || 0n) + BigInt(o.amount || 0); } }
+    else if (o.type === 'deposit' && String(JSON.parse(o.details_json || '{}').instructions || '').startsWith('testnet_faucet')) { if (o.status === 'SUCCESS') r.agentFaucet = (r.agentFaucet || 0) + 1; else if (o.status === 'FAILED') r.agentFaucetFailed = (r.agentFaucetFailed || 0) + 1; }
+    else r.agentOther = (r.agentOther || 0) + 1;
+  }
+  for (const x of sql.prepare('SELECT wallet_account w, COUNT(*) n FROM faucet_rejects GROUP BY wallet_account').all()) { const r = get(x.w); r.agentFaucetFailed = (r.agentFaucetFailed || 0) + x.n; }
+  for (const r of Object.values(W)) r.agentVolumeFmt = r.agentVolume ? fmtVol(r.agentVolume) : '';
   for (const r of Object.values(W)) { r.ours = isOurs(r.wallet); r.volumeFmt = Object.entries(r.volume).map(([sym, v]) => `${fromUnits(v, TOKENS.find(t => t.symbol === sym).decimals)} ${sym}`).join(', '); if (r.first === Infinity) r.first = r.last; }
   return Object.values(W).sort((a, b) => b.last - a.last);
 }
@@ -82,6 +94,14 @@ function bars(rows, series, h = 120) {
 }
 const statusCls = (s) => s === 'SUCCESS' ? 'ok' : s === 'REFUNDED' ? 'warn' : s === 'FAILED' ? 'bad' : 'mute';
 
+function agentSummary() {
+  const keys = sql.prepare('SELECT COUNT(*) n FROM partner_keys').get().n, agents = sql.prepare('SELECT COUNT(*) n FROM agents').get().n;
+  const per = sql.prepare('SELECT k.prefix, k.name, k.created_at, COUNT(a.id) n FROM partner_keys k JOIN agents a ON a.tenant_id = k.id GROUP BY k.id ORDER BY n DESC LIMIT 20').all();
+  const ops = sql.prepare('SELECT type, status, COUNT(*) n FROM operations GROUP BY type, status ORDER BY type, status').all();
+  const rej = sql.prepare('SELECT COUNT(*) n FROM faucet_rejects').get().n;
+  return `<div class="grid"><div class="card"><h2>Agent API (/v1): ${keys} keys, ${agents} agents</h2><table><tr><th>Key</th><th>Name</th><th>Created</th><th>Agents</th></tr>${per.map(k => `<tr><td class="mono">${esc(k.prefix)}…</td><td>${esc(k.name || '')}</td><td>${fmtT(Date.parse(k.created_at))}</td><td>${k.n}</td></tr>`).join('')}</table></div>
+<div class="card"><h2>Agent API operations</h2><table><tr><th>Type</th><th>Status</th><th>Count</th></tr>${ops.map(o => `<tr><td>${esc(o.type)}</td><td class="${statusCls(o.status)}">${esc(o.status)}</td><td>${o.n}</td></tr>`).join('')}<tr><td>faucet 429 (logged since this build)</td><td class="bad">rejected</td><td>${rej}</td></tr></table><p class="mute">Not counted as swaps. Deposits include faucet drips.</p></div></div>`;
+}
 function dashboard(all) {
   const ws = walletStats(); const shown = ws.filter(w => all || !w.ours);
   const swaps = Object.values(db.swaps).filter(s => all || swapWallets(s).some(w => !isOurs(w)));
@@ -101,8 +121,9 @@ function dashboard(all) {
 <div class="card"><h2>Unique wallets / day</h2>${bars(D, [{ k: 'wallets', n: 'wallets', c: '#b8691a' }])}</div>
 <div class="card"><h2>Requests / day</h2>${bars(D, [{ k: 'requests', n: 'requests', c: '#ffd078' }])}</div>
 <div class="card"><h2>Unique IPs / day (all traffic)</h2>${bars(D, [{ k: 'ips', n: 'IPs', c: '#8a8278' }])}</div></div>
-<div class="card"><h2>Wallets (${shown.length})</h2><div class="scroll"><table><tr><th>Wallet</th><th>First seen</th><th>Last seen</th><th>Live quotes</th><th>Dry quotes</th><th>Swaps</th><th>Success</th><th>Refunded</th><th>Failed</th><th>Faucet</th><th>Volume in (success)</th><th></th></tr>
-${shown.map(w => `<tr><td class="mono">${nb(w.wallet)}${w.ours ? ' <span class="pill">ours</span>' : ''}</td><td>${fmtT(w.first)}</td><td>${fmtT(w.last)}</td><td>${w.quotes}</td><td>${w.dryQuotes}</td><td>${w.swaps}</td><td class="ok">${w.success || ''}</td><td class="warn">${w.refunded || ''}</td><td class="bad">${w.failed || ''}</td><td>${w.faucet}</td><td>${esc(w.volumeFmt)}</td><td><a href="/admin/wallet/${encodeURIComponent(w.wallet)}${q}">details →</a></td></tr>`).join('')}</table></div></div>
+${agentSummary()}
+<div class="card"><h2>Wallets (${shown.length})</h2><div class="scroll"><table><tr><th>Wallet</th><th>First seen</th><th>Last seen</th><th>Live quotes</th><th>Dry quotes</th><th>Swaps</th><th>Success</th><th>Refunded</th><th>Failed</th><th>Faucet</th><th>Volume in (success)</th><th>Agent transfers (ok/all)</th><th>Agent volume (ok)</th><th>Agent faucet (ok/failed)</th><th>Agent other ops</th><th></th></tr>
+${shown.map(w => `<tr><td class="mono">${nb(w.wallet)}${w.ours ? ' <span class="pill">ours</span>' : ''}</td><td>${fmtT(w.first)}</td><td>${fmtT(w.last)}</td><td>${w.quotes}</td><td>${w.dryQuotes}</td><td>${w.swaps}</td><td class="ok">${w.success || ''}</td><td class="warn">${w.refunded || ''}</td><td class="bad">${w.failed || ''}</td><td>${w.faucet}</td><td>${esc(w.volumeFmt)}</td><td>${w.agentTransfers ? `${w.agentTransfersOk || 0}/${w.agentTransfers}` : ''}</td><td>${esc(w.agentVolumeFmt || '')}</td><td>${w.agent ? `${w.agentFaucet || 0}/${w.agentFaucetFailed || 0}` : ''}</td><td>${w.agentOther || ''}</td><td><a href="/admin/wallet/${encodeURIComponent(w.wallet)}${q}">details →</a></td></tr>`).join('')}</table></div></div>
 <div class="card"><h2>Top endpoints (all traffic)</h2><table><tr><th>Endpoint</th><th>Requests</th></tr>${Object.entries(ep).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<tr><td class="mono">${esc(k)}</td><td>${v}</td></tr>`).join('')}</table></div>
 <div class="card"><h2>Recent events</h2><div class="scroll" style="max-height:420px">${events(recent)}</div></div>`);
 }

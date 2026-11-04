@@ -24,6 +24,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS owner_intents_idem ON owner_intents (tenant_id
 CREATE TABLE IF NOT EXISTS grants (
   id TEXT PRIMARY KEY, agent_id TEXT NOT NULL, credential TEXT UNIQUE NOT NULL, label TEXT NOT NULL, issued_at TEXT NOT NULL, expires_at TEXT NOT NULL, revoked_at TEXT);
 CREATE INDEX IF NOT EXISTS grants_agent ON grants (agent_id);
+CREATE TABLE IF NOT EXISTS faucet_rejects (
+  agent_id TEXT NOT NULL, wallet_account TEXT NOT NULL, reason TEXT, created_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS operations (
   id TEXT PRIMARY KEY, agent_id TEXT NOT NULL, tenant_id TEXT NOT NULL, grant_id TEXT, type TEXT NOT NULL, status TEXT NOT NULL, failure_code TEXT, failure_detail TEXT,
   idem_key TEXT, req_hash TEXT, request_json TEXT NOT NULL, details_json TEXT, asset TEXT, amount TEXT, usd REAL NOT NULL DEFAULT 0, counted INTEGER NOT NULL DEFAULT 0,
