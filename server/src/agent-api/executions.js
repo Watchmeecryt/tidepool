@@ -7,7 +7,7 @@ import { TOKENS, VERIFIER, MAKER, ROOT, BRIDGE_ACCOUNT, EVM_CHAINS, fromUnits, i
   SOL_PAYOUT_CAP_LAMPORTS, SOL_RENT_MIN_LAMPORTS, XLM_CAP_STROOPS, SUI_CAP_MIST, XRP_CAP_DROPS, BTC_CAP_SATS, BTC_MIN_SATS, ZEC_CAP_ZAT, ZEC_MIN_ZAT } from '../config.mjs';
 import * as evm from '../evm.mjs';
 import { prices } from '../prices.mjs';
-import { drip } from '../faucet.mjs';
+import { drip, nearDripCheck } from '../faucet.mjs';
 import { sql } from './db.js';
 import { fail } from './errors.js';
 import { agentWallet, walletView } from './agents.js';
@@ -163,6 +163,9 @@ export async function runAction(agent, grant, kind, body, idemKey, ip) {
         if (n.minOut !== null && n.out < n.minOut) throw fail(409, 'min_amount_out_not_met', 'provider', `The current quote returns ${n.out}, below min_amount_out ${n.minOut}`);
         if ((await makerBalance(n.outT.assetId)) < n.out) throw fail(503, 'route_unavailable', 'provider', `The testnet market maker has no ${n.outT.symbol} inventory for this size right now`);
       }
+    }
+    if (kind === 'deposit' && n.faucet) {
+      try { nearDripCheck(agentWallet(agent.id).accountId, ip); } catch (e) { throw fail(429, 'rate_limited', 'provider', e.message, { retry_after_seconds: e.extra?.available_at ? Math.max(1, Math.ceil((Date.parse(e.extra.available_at) - Date.now()) / 1000)) : 3600 }); }
     }
     const id = nid(), now = new Date().toISOString();
     const baseline = kind === 'deposit' && !n.faucet ? (await balanceOf(agent, n.outT.assetId)).toString() : null;

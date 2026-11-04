@@ -138,6 +138,13 @@ async function suiDrip({ address, accountId, assets }, ip) {
   return { chain: 'sui', address: addr, mode: 'wallet', drips: list.map(t => ({ assetId: t.assetId, symbol: t.symbol, coinType: t.coinType, amount: t.drip })), transactions: [{ txHash: digest, explorerUrl: sui.txUrl(digest) }], note: `Sui testnet test coins, no value. SUI is not dripped; get gas from ${SUI_CHAIN.faucet}.` };
 }
 
+/** Synchronous pre-check for the Agent API faucet deposit (default NEAR tokens into an intents balance): throws the same 429 drip() would. */
+export function nearDripCheck(accountId, ip) {
+  const last = db.faucet[`${accountId}:intents`] || 0;
+  if (Date.now() - last < ACCOUNT_COOLDOWN_MS) throw new BadRequest(`Rate limited: ${accountId} can use the intents faucet again after ${new Date(last + ACCOUNT_COOLDOWN_MS).toISOString()}`, 429, { available_at: new Date(last + ACCOUNT_COOLDOWN_MS).toISOString() });
+  if ((ipHits.get(ip) || []).filter(t => Date.now() - t < 3600_000).length >= IP_LIMIT) throw new BadRequest('Rate limited: too many faucet requests from this IP, try again within the hour', 429);
+}
+
 async function nearDrip({ accountId, mode = 'wallet', assets }, ip) {
   if (typeof accountId !== 'string' || !/^[a-z0-9._-]{2,64}$/.test(accountId)) throw new BadRequest('accountId must be a NEAR testnet account id');
   if (!['wallet', 'intents'].includes(mode)) throw new BadRequest('mode must be "wallet" or "intents"');
