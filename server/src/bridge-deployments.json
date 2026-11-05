@@ -91,7 +91,41 @@
     "deployBlock": 50460677,
     "vault": "0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2",
     "forwarderInitCodeHash": "0xabeef3d43fe26bb56bcef8e9101184837bf1f6f3ec95c97710a6f90f73033454",
-    "live": true
+    "live": true,
+    "nativeEth": {
+      "txs": [
+        {
+          "label": "fund tp-omft.testnet",
+          "hash": "5kVfCMKV3pteMgKekjuBvaekxsutrRm9bYzj8EpRoYrz"
+        },
+        {
+          "label": "create base.tp-omft.testnet",
+          "hash": "Gs3eCRvNTzQSGAZScj2sHyuEo76874To7U9W9XrYzQfq"
+        },
+        {
+          "label": "deploy base.tp-omft.testnet",
+          "hash": "6GirY3rXmxj8BnkBagwhoaZv4m1MCM29fimWQTeTmSiu"
+        },
+        {
+          "label": "init base.tp-omft.testnet",
+          "hash": "3J1dErzkyCebXLFQcPydxSSGgAmcWC5URUeY2uL5ZdE3"
+        },
+        {
+          "label": "storage verifier.tidepool-sandbox.testnet on ETH",
+          "hash": "9qXysbmCZy4TfsdqDcC1xdKhWSMkQUXPPkUAwBr6RyFX"
+        },
+        {
+          "label": "mint maker inventory ETH",
+          "hash": "5rXDL48LRTCddsrwE6fAudFVmQwqoFXcwUwLHgp4RRPH"
+        },
+        {
+          "label": "deposit maker inventory ETH",
+          "hash": "Bqm1X9RgrSb3jCAQDaZRiuzJjTFbm5wBUW3Jwg7XSYAq"
+        }
+      ],
+      "live": true,
+      "inventory": "0.02"
+    }
   },
   "arb": {
     "name": "Arbitrum Sepolia",
@@ -181,7 +215,41 @@
     "deployBlock": 323009546,
     "vault": "0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2",
     "forwarderInitCodeHash": "0xabeef3d43fe26bb56bcef8e9101184837bf1f6f3ec95c97710a6f90f73033454",
-    "live": true
+    "live": true,
+    "nativeEth": {
+      "txs": [
+        {
+          "label": "fund tp-omft.testnet",
+          "hash": "5bfSGBqQvm5s6yHyZ8cjg8aRmxYrcqghhjUQPhrAFeD5"
+        },
+        {
+          "label": "create arb.tp-omft.testnet",
+          "hash": "FueACM3iLLrb8ofRsDBJTSLm1xJR7wjysHXX5pQcdy6e"
+        },
+        {
+          "label": "deploy arb.tp-omft.testnet",
+          "hash": "RrwXWSWFjsnCj45tPbaifJEyQvec4DpevDHK93v8e1M"
+        },
+        {
+          "label": "init arb.tp-omft.testnet",
+          "hash": "A9AgFr3iPHKBrNLZZiQYxLyTxmYa9Ug36PspzmuoDbQK"
+        },
+        {
+          "label": "storage verifier.tidepool-sandbox.testnet on ETH",
+          "hash": "9eEFMTSCEEF5yUy2bF2gDDL1FxWfDdDbsJ63vS3YoKE5"
+        },
+        {
+          "label": "mint maker inventory ETH",
+          "hash": "F99U8547Awm8dx6voeuukfkZpt5pVsTnyofsx4CdpUG5"
+        },
+        {
+          "label": "deposit maker inventory ETH",
+          "hash": "CXQr8aSjgaT675XbE4ZiVRz8ao3PocNfcurcMbXphGHr"
+        }
+      ],
+      "live": true,
+      "inventory": "0.02"
+    }
   },
   "eth": {
     "name": "Ethereum Sepolia",
@@ -271,7 +339,41 @@
     "deployBlock": 11997772,
     "vault": "0xc387E121e0aF273D83c20B1d286c12F5C3294f38",
     "forwarderInitCodeHash": "0xabeef3d43fe26bb56bcef8e9101184837bf1f6f3ec95c97710a6f90f73033454",
-    "live": true
+    "live": true,
+    "nativeEth": {
+      "txs": [
+        {
+          "label": "fund tp-omft.testnet",
+          "hash": "54YbD8RNoxdBPHeqivYo7Uj12cTuiLTW96ZXgPZtAz32"
+        },
+        {
+          "label": "create eth.tp-omft.testnet",
+          "hash": "3GhkC8aUeAryMNRyyyqisbhzQoB9AiDxhUpuWqDaVpz9"
+        },
+        {
+          "label": "deploy eth.tp-omft.testnet",
+          "hash": "4hDt5TjpDo3c73r8GmqDf824wnRTDF1A1w3Q1pQWzo9N"
+        },
+        {
+          "label": "init eth.tp-omft.testnet",
+          "hash": "HGpjQUHnZDYB5QvbTBsY5seRSwS5q7m8GZp7vVvaUpnH"
+        },
+        {
+          "label": "storage verifier.tidepool-sandbox.testnet on ETH",
+          "hash": "GAydmW45zN7waimETYn9gB5Ri1STcpr6w2eRsdkHQBhC"
+        },
+        {
+          "label": "mint maker inventory ETH",
+          "hash": "55o8Sa4ZSj7FVrhjzDwdDSommHgx9PMfT3k9XtMsBprp"
+        },
+        {
+          "label": "deposit maker inventory ETH",
+          "hash": "4YbcUzK54ccQDMRxgocXkee7y1vQYhDSFr6kZUSK8uAR"
+        }
+      ],
+      "live": true,
+      "inventory": "0.05"
+    }
   },
   "sol": {
     "name": "Solana Devnet",

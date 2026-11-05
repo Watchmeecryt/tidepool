@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import { KeyPair } from 'near-api-js';
 import bs58 from 'bs58';
 import { rpc, call, view, viewAccount, sendNear, signIntents, deriveDepositKey, keyStore, NETWORK, TGAS, parseNear, txUrl } from './near.mjs';
-import { ROOT, VERIFIER, MAKER, TOKENS, fromUnits, chainOf, isEvmAddress, isSolAddress, isStellarAddress, STELLAR_CHAIN, XLM_CAP_STROOPS, isSuiAddress, SUI_CHAIN, SUI_CAP_MIST, BTC_CHAIN, ZEC_CHAIN, XRP_CHAIN, XRP_CAP_DROPS, XRP_DECIMALS, isXrpAddress, isBtcAddress, isZecAddress, BTC_CAP_SATS, BTC_MIN_SATS, ZEC_CAP_ZAT, ZEC_MIN_ZAT, BRIDGE_ACCOUNT, SOL_PAYOUT_CAP_LAMPORTS, SOL_RENT_MIN_LAMPORTS } from './config.mjs';
+import { ROOT, VERIFIER, MAKER, TOKENS, fromUnits, chainOf, isEvmAddress, isSolAddress, isStellarAddress, STELLAR_CHAIN, XLM_CAP_STROOPS, isSuiAddress, SUI_CHAIN, SUI_CAP_MIST, BTC_CHAIN, ZEC_CHAIN, XRP_CHAIN, XRP_CAP_DROPS, XRP_DECIMALS, isXrpAddress, isBtcAddress, isZecAddress, BTC_CAP_SATS, BTC_MIN_SATS, ZEC_CAP_ZAT, ZEC_MIN_ZAT, BRIDGE_ACCOUNT, ETH_CAP_WEI, ETH_RESERVE_WEI, SOL_PAYOUT_CAP_LAMPORTS, SOL_RENT_MIN_LAMPORTS } from './config.mjs';
 import * as evm from './evm.mjs';
 import * as sol from './solana.mjs';
 import * as stellar from './stellar.mjs';
@@ -31,7 +31,7 @@ const MAINNET_MAP = {
   'nep141:a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near': tp('usdc'),
   'nep141:usdt.tether-token.near': tp('usdt'),
   'nep141:dac17f958d2ee523a2206206994597c13d831ec7.factory.bridge.near': tp('usdt'),
-  'nep141:eth.omft.near': tp('eth'), 'nep141:aurora': tp('eth'), 'nep141:eth.bridge.near': tp('eth'),
+  'nep141:eth.omft.near': evmTp('eth', 'ETH') || tp('eth'), 'nep141:base.omft.near': evmTp('base', 'ETH'), 'nep141:arb.omft.near': evmTp('arb', 'ETH'), 'nep141:aurora': tp('eth'), 'nep141:eth.bridge.near': tp('eth'),
   'nep141:btc.omft.near': evmTp('btc', 'BTC') || tp('wbtc'), 'nep141:nbtc.bridge.near': tp('wbtc'), 'nep141:zec.omft.near': evmTp('zec', 'ZEC'),
   'nep141:2260fac5e5542a773aa44fbcfedf7c193bc2c599.factory.bridge.near': tp('wbtc'),
   'nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near': evmTp('base', 'USDC'),
@@ -165,6 +165,21 @@ export function solLimits(req, inT, outT, amountIn, amountOut) {
   }
 }
 
+// Native ETH on the EVM testnets (Ethereum/Base/Arbitrum Sepolia) is DELIVERY ONLY: the treasury is the relayer wallet that also pays gas for the
+// bridges, funded from public faucets. Capped at ETH_CAP_WEI (0.01 ETH) on any swap leg or payout; deposits of native ETH to a chain address are not accepted.
+const CAP_ETH = () => fromUnits(ETH_CAP_WEI, 18);
+export function ethLimits(req, inT, outT, amountIn, amountOut) {
+  const capHint = (why, extra = {}) => hint(`Native ETH on Tidepool's EVM testnets is capped at ${CAP_ETH()} ETH per swap or payout (the treasury is funded from public faucets). ${why}`, req, { capWei: ETH_CAP_WEI.toString(), ...extra });
+  if (outT.native && outT.kind === 'evm') {
+    if (amountOut > ETH_CAP_WEI) throw new BadRequest(`ETH is capped at ${CAP_ETH()} ETH (${ETH_CAP_WEI} wei) per swap on Tidepool's ${chainOf(outT.chain).name} bridge; this quote would pay out ${fromUnits(amountOut, 18)} ETH. Lower the amount.`, 400, capHint('Lower amount (or the EXACT_OUTPUT amount) so the ETH leg is at most the cap.', { field: 'amount' }));
+    if (req.recipientType === 'DESTINATION_CHAIN' && req.swapType === 'ANY_INPUT') throw new BadRequest(`ANY_INPUT quotes cannot pay out ETH on ${chainOf(outT.chain).name} (each deposit would be converted separately and could exceed the ${CAP_ETH()} ETH cap); use EXACT_INPUT, EXACT_OUTPUT or FLEX_INPUT`);
+  }
+  if (inT.native && inT.kind === 'evm') {
+    if (req.depositType === 'ORIGIN_CHAIN') throw new BadRequest(`Native ETH on ${chainOf(inT.chain).name} is delivery-only on Tidepool: it cannot be deposited to a chain address. Use depositType INTENTS, or deposit USDC/USDT on ${chainOf(inT.chain).name} instead.`, 400, capHint('Use a different originAsset, or depositType INTENTS.', { field: 'originAsset' }));
+    if (amountIn > ETH_CAP_WEI) throw new BadRequest(`ETH is capped at ${CAP_ETH()} ETH (${ETH_CAP_WEI} wei) per swap on Tidepool's ${chainOf(inT.chain).name} bridge; this quote would take ${fromUnits(amountIn, 18)} ETH. Lower the amount.`, 400, capHint('Lower amount so the ETH leg is at most the cap.', { field: 'amount' }));
+  }
+}
+
 // Stellar testnet limits. XLM is capped at XLM_CAP_STROOPS (100 XLM) on any swap leg, payout or refund: Friendbot only hands out
 // 10,000 XLM per request, so the treasury stays small. Enforced at quote time so users get a clear error instead of a stuck swap.
 const CAP_XLM = () => fromUnits(XLM_CAP_STROOPS, 7);
@@ -283,6 +298,7 @@ export async function quote(req, { authed, maxDeadlineMs = 24 * 3600_000 } = {})
   }
   if (amountOut <= 0n) throw new BadRequest('amount is too low for this pair');
   solLimits(req, inT, outT, amountIn, amountOut);
+  ethLimits(req, inT, outT, amountIn, amountOut);
   stellarLimits(req, inT, outT, amountIn, amountOut);
   xrpLimits(req, inT, outT, amountIn, amountOut);
   suiLimits(req, inT, outT, amountIn, amountOut);
@@ -313,6 +329,11 @@ export async function quote(req, { authed, maxDeadlineMs = 24 * 3600_000 } = {})
     if ((inT.kind === 'stellar' || outT.kind === 'stellar') && !stellar.relayerConfigured()) throw new BadRequest('Stellar testnet bridge is not configured on this server', 503);
     if ((inT.kind === 'xrp' || outT.kind === 'xrp') && !xrp.relayerConfigured()) throw new BadRequest('XRP Ledger testnet bridge is not configured on this server', 503);
     if ((inT.kind === 'sui' || outT.kind === 'sui') && !sui.relayerConfigured()) throw new BadRequest('Sui testnet bridge is not configured on this server', 503);
+    if (outT.native && outT.kind === 'evm' && req.recipientType === 'DESTINATION_CHAIN') {
+      if (!evm.relayerAddress()) throw new BadRequest(`${chainOf(outT.chain).name} native ETH payouts are not configured on this server`, 503);
+      const have = await evm.nativeShortfall(outT.chain, amountOut).catch(() => 0n);
+      if (have !== null) throw new BadRequest(`The ${chainOf(outT.chain).name} treasury is low on ETH right now (it keeps ${fromUnits(ETH_RESERVE_WEI, 18)} ETH for gas and is funded from public faucets). Try again later or use a smaller amount.`, 503);
+    }
     if (outT.kind === 'sui' && outT.native && req.recipientType === 'DESTINATION_CHAIN') {
       const have = await sui.treasuryBalance(outT).catch(() => 0n);
       if (have < amountOut + 50_000_000n) throw new BadRequest('The Sui testnet treasury is low on SUI right now. Try again later or use a different destination.', 503);
@@ -453,6 +474,7 @@ function outIntent(kind, account, t, amount) {
 function queueRelease(s, tag, t, to, amount) {
   if (!t.chain || amount <= 0n) return;
   const rel = { id: evm.releaseId(`${s.quoteResponse.correlationId}:${tag}`), chain: t.chain, token: t.evmAddress, to, amount: amount.toString(), tag, done: false };
+  if (t.kind === 'evm' && t.native) Object.assign(rel, { id: `evm-eth:${s.quoteResponse.correlationId}:${tag}`, token: undefined, native: true, assetId: t.assetId, tx: {} }); // native ETH: sign-first transfer from the relayer
   if (t.kind === 'sol') Object.assign(rel, { id: `sol:${s.quoteResponse.correlationId}:${tag}`, token: t.mint, assetId: t.assetId, tx: {} });
   if (t.kind === 'sui') Object.assign(rel, { id: `sui:${s.quoteResponse.correlationId}:${tag}`, token: undefined, assetId: t.assetId, tx: {} });
   if (UTXO[t.kind]) Object.assign(rel, { id: `${t.kind}:${s.quoteResponse.correlationId}:${tag}`, token: undefined, assetId: t.assetId, tx: {} });
@@ -504,6 +526,13 @@ async function processReleasesOnce(s) {
       const build = async () => stellar.prepare(stellar.payoutOps(t, r.to, BigInt(r.amount), t.native ? Boolean(await stellar.account(r.to)) : true));
       if ((await stellar.drive(r.tx ||= {}, build, save)) !== 'confirmed') continue;
       const h = tagEvm(s, 'stellar', r.tx.hash);
+      s.txs.push({ label: `${r.tag} payout on ${chainOf(r.chain).name}`, hash: h });
+      s.destTxs.push(h);
+      r.done = true; save(); continue;
+    }
+    if (r.native) { // native ETH: sign-first and idempotent (see evm.driveNative): the signed transfer is persisted before it is broadcast
+      if ((await evm.driveNative(r.chain, r.tx ||= {}, r.to, BigInt(r.amount), save)) !== 'confirmed') continue;
+      const h = tagEvm(s, r.chain, r.tx.hash);
       s.txs.push({ label: `${r.tag} payout on ${chainOf(r.chain).name}`, hash: h });
       s.destTxs.push(h);
       r.done = true; save(); continue;

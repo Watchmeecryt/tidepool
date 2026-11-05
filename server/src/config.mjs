@@ -51,7 +51,19 @@ for (const c of EVM_CHAINS) {
     if (c.deployed) TOKENS.push(t);
     c.tokens = [...(c.tokens || []), t];
   }
+  // Native ETH (DELIVERY ONLY): 1Click lists native ETH as nep141:eth.omft.near / base.omft.near / arb.omft.near (18 decimals, no contractAddress);
+  // Tidepool mirrors them as nep141:<chain>.tp-omft.testnet. Payouts are plain ETH transfers from the same relayer wallet that runs the bridge,
+  // so it is capped per swap (ETH_CAP_WEI) and refused when the relayer would drop below ETH_RESERVE_WEI (kept for gas). Not in c.tokens: no ERC-20.
+  if (d.nativeEth?.live) {
+    const near = `${c.key}.${OMFT}`;
+    const eth = { symbol: 'ETH', decimals: 18, coingeckoId: 'ethereum', fallback: 3500, drip: '0', inventory: d.nativeEth.inventory || '0.02', kind: 'evm', native: true, sub: `${c.key}-eth`, chain: c.key, blockchain: c.blockchain,
+      nearContract: near, assetId: `nep141:${near}`, name: `Tidepool Testnet ETH on ${c.name} (bridged, no value)` };
+    if (c.deployed) TOKENS.push(eth);
+    c.nativeEth = eth;
+  }
 }
+export const ETH_CAP_WEI = BigInt(process.env.ETH_CAP_WEI || 10_000_000_000_000_000); // 0.01 ETH cap on any native ETH swap leg or payout (enforced at quote time)
+export const ETH_RESERVE_WEI = BigInt(process.env.ETH_RESERVE_WEI || 5_000_000_000_000_000); // the relayer keeps >= 0.005 ETH for gas after a native ETH payout
 
 // NOTE: the SOL/XLM `drip` values below apply ONLY to the verifier (intents-mode) test tokens nep141:sol.<OMFT> / nep141:stellar.<OMFT>.
 // Native SOL/XLM are never dripped to wallets (solDrip/stellarDrip skip `native`): gas comes from each chain's own faucet.

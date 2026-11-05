@@ -3,7 +3,7 @@
 import crypto from 'node:crypto';
 import { internals, feeBps, makerBalance, withSigner } from '../engine.mjs';
 import { signIntents, keyStore, NETWORK, view, call, parseNear, viewAccount } from '../near.mjs';
-import { TOKENS, VERIFIER, MAKER, ROOT, BRIDGE_ACCOUNT, EVM_CHAINS, fromUnits, isEvmAddress, isSolAddress, isStellarAddress, isSuiAddress, normSuiAddress, isXrpAddress, isBtcAddress, isZecAddress, chainOf,
+import { TOKENS, VERIFIER, MAKER, ROOT, BRIDGE_ACCOUNT, ETH_CAP_WEI, EVM_CHAINS, fromUnits, isEvmAddress, isSolAddress, isStellarAddress, isSuiAddress, normSuiAddress, isXrpAddress, isBtcAddress, isZecAddress, chainOf,
   SOL_PAYOUT_CAP_LAMPORTS, SOL_RENT_MIN_LAMPORTS, XLM_CAP_STROOPS, SUI_CAP_MIST, XRP_CAP_DROPS, BTC_CAP_SATS, BTC_MIN_SATS, ZEC_CAP_ZAT, ZEC_MIN_ZAT } from '../config.mjs';
 import * as evm from '../evm.mjs';
 import { prices } from '../prices.mjs';
@@ -92,6 +92,10 @@ async function normalize(kind, body, agent) {
         if (!isEvmAddress(body.recipient)) throw fail(400, 'invalid_address', 'request', `${body.recipient} is not a valid 0x EVM address`, { pointer: '/recipient' });
         recipient = body.recipient;
         if (body.memo) throw bad('memo is not supported for EVM withdrawals', '/memo');
+        if (t.native) { // native ETH: same cap and treasury floor as /v0
+          if (amount > ETH_CAP_WEI) throw fail(400, 'route_unavailable', 'request', `ETH on ${evmChain.name} is capped at ${fromUnits(ETH_CAP_WEI, t.decimals)} ETH per payout (same limit as /v0)`, { pointer: '/amount' });
+          if ((await evm.nativeShortfall(chain, amount).catch(() => 0n)) !== null) throw fail(503, 'route_unavailable', 'provider', `The ${evmChain.name} treasury is low on ETH right now; try again later or use a smaller amount`);
+        }
       } else if (OTHER[chain] && chainOf(chain)?.deployed) {
         const o = OTHER[chain];
         if (t.chain !== chain) throw fail(400, 'route_unavailable', 'request', `${t.symbol} (${t.blockchain}) cannot be withdrawn to ${chainOf(chain).name}; use a token whose blockchain is "${chain}" (see GET /v1/tokens)`, { pointer: '/asset' });
@@ -217,7 +221,7 @@ async function settle(id, agent, n, ip) {
     if (n.kind === 'withdraw' && n.token.chain) {
       let dest;
       try {
-        if (n.token.kind === 'evm') {
+        if (n.token.kind === 'evm' && !n.token.native) {
           const rid = evm.releaseId(`agent-api:${id}`);
           if (!(await evm.isReleased(n.token.chain, rid))) dest = await evm.release(n.token.chain, rid, n.token.evmAddress, n.recipient, n.amount);
         } else dest = (await internals.payoutBridged(id, n.token, n.recipient, n.amount))[0];
