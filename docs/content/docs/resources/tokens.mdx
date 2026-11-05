@@ -28,6 +28,16 @@ These are listed in `/v0/tokens` with `blockchain` set to `base`, `arb` or `eth`
 | USDC on Ethereum Sepolia | `nep141:eth-0x2e6ad9e6d59bb4585ea0e6762c3b637dde29dad2.tp-omft.testnet` | [`0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2`](https://sepolia.etherscan.io/address/0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2) | 6 | 100 | 100, `assets: ["eth"]` |
 | USDT on Ethereum Sepolia | `nep141:eth-0x650f12ba31777de8ded47287a8cc86be737646fe.tp-omft.testnet` | [`0x650F12bA31777DE8Ded47287a8CC86bE737646fe`](https://sepolia.etherscan.io/address/0x650F12bA31777DE8Ded47287a8CC86bE737646fe) | 6 | 100 | 100, `assets: ["eth"]` |
 
+### Native ETH (delivery only, capped at 0.01 ETH)
+
+| Token | Asset id | Decimals | Faucet drip |
+| --- | --- | --- | --- |
+| ETH on Ethereum Sepolia | `nep141:eth.tp-omft.testnet` | 18 (capped at 0.01 ETH per swap) | none (bring gas from a [public Sepolia faucet](https://www.alchemy.com/faucets/ethereum-sepolia)) |
+| ETH on Base Sepolia | `nep141:base.tp-omft.testnet` | 18 (capped at 0.01 ETH per swap) | none |
+| ETH on Arbitrum Sepolia | `nep141:arb.tp-omft.testnet` | 18 (capped at 0.01 ETH per swap) | none |
+
+These mirror 1Click's native-ETH ids `nep141:eth.omft.near`, `nep141:base.omft.near` and `nep141:arb.omft.near` (18 decimals, no contract address). Payouts are plain ETH transfers from the relayer wallet, so **any swap, payout or refund above 0.01 ETH is refused with a `400` at quote time**, `/v1` withdrawals have the same cap, and payout quotes answer `503` while the treasury is low (it keeps a gas reserve). Native ETH cannot be deposited to a chain address (`ORIGIN_CHAIN`), `ANY_INPUT` payouts are rejected, and the faucet never drips it. This is the gas you ask for after a swap to a fresh address: a few thousandths of ETH is enough. Maker inventory is small (0.05 ETH on Ethereum, 0.02 on Base and Arbitrum), so a large run may hit `Not enough maker liquidity`.
+
 ## Solana devnet (listed only while the route is live)
 
 | Token | Asset id | Mint | Decimals | Faucet drip (chain) | Faucet drip (verifier) |
