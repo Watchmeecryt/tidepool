@@ -62,11 +62,11 @@ Same split as Solana: the *chain* drip needs trustlines, and native XLM is never
 
 | Token | Asset id | Sui coin type | Decimals | Faucet drip (chain) | Faucet drip (verifier) |
 | --- | --- | --- | --- | --- | --- |
-| SUI | `nep141:sui.tp-omft.testnet` | `0x2::sui::SUI` | 9 (capped at 10 SUI per swap) | none (native coin: [faucet.sui.io](https://faucet.sui.io)) | 0.5 test SUI, `assets: ["sui"]` |
+| SUI | `nep141:sui.tp-omft.testnet` | `0x2::sui::SUI` | 9 (capped at 0.005 SUI per swap) | none (native coin: [faucet.sui.io](https://faucet.sui.io)) | 0.005 test SUI, `assets: ["sui"]` |
 | USDC on Sui testnet | `nep141:sui-f6ecfe107e72d22b7a646dd2cc4f1b2876349c0c.tp-omft.testnet` | `0x71a32ced7702bba9a8d23a122971d5973baa610f1689306176ac4f364d68bb3c::tusdc::TUSDC` | 6 | 100 (`chain: "sui"`) | 100, `assets: ["sui"]` |
 | USDT on Sui testnet | `nep141:sui-add896332c906e599cee03f2154d067937d12a26.tp-omft.testnet` | `0x71a32ced7702bba9a8d23a122971d5973baa610f1689306176ac4f364d68bb3c::tusdt::TUSDT` | 6 | 100 (`chain: "sui"`) | 100, `assets: ["sui"]` |
 
-Same split as Solana and Stellar: the *chain* drip mints the Move coins to your wallet (no trustline or token account is needed), and native SUI is never dripped (the 0.5 SUI is the verifier test token only). See the [Sui testnet bridge](/docs/guides/bridge-sui-testnet) and the [Faucet](/docs/guides/faucet).
+Same split as Solana and Stellar: the *chain* drip mints the Move coins to your wallet (no trustline or token account is needed), and native SUI is never dripped (the 0.005 SUI is the verifier test token only). See the [Sui testnet bridge](/docs/guides/bridge-sui-testnet) and the [Faucet](/docs/guides/faucet).
 
 ## Bitcoin testnet4 (listed only while the route is live)
 

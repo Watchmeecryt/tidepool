@@ -1,10 +1,10 @@
 ---
 title: Sui testnet bridge
-description: "Swap between Sui testnet and NEAR testnet through Tidepool's testnet relayer, with per-quote deposit addresses, status and refunds. Native SUI (capped at 10 SUI) plus Tidepool test USDC and USDT."
+description: "Swap between Sui testnet and NEAR testnet through Tidepool's testnet relayer, with per-quote deposit addresses, status and refunds. Native SUI (capped at 0.005 SUI) plus Tidepool test USDC and USDT."
 icon: Waves
 ---
 
-<Callout type="warn">**Testnet only, custodial, trusted relayer.** This route is run by Tidepool as its own testnet service. It is not a NEAR, Omni Bridge or 1Click bridge, and the tokens have no value. SUI is **capped at 10 SUI per swap, payout or refund** because the treasury is funded by the public Sui testnet faucet. Read [Test bridges](/docs/guides/bridges) for what you are trusting.</Callout>
+<Callout type="warn">**Testnet only, custodial, trusted relayer.** This route is run by Tidepool as its own testnet service. It is not a NEAR, Omni Bridge or 1Click bridge, and the tokens have no value. SUI is **capped at 0.005 SUI per swap, payout or refund** because the treasury is funded by the public Sui testnet faucet. Read [Test bridges](/docs/guides/bridges) for what you are trusting.</Callout>
 
 <Callout>**Availability.** The Sui route appears in [`GET /v0/tokens`](/docs/api-reference/get-tokens) (`blockchain: "sui"`) and in `/v0/health` under `bridges.chains.sui` only while it is live. If the tokens are not listed, the route is not active on that deployment yet.</Callout>
 
@@ -31,9 +31,9 @@ Sui needs no memo, and 1Click itself gives Sui quotes a plain deposit address. T
 - `POST /v0/deposit/submit` with `txHash` (the Sui transaction digest) and `depositAddress` is optional: the relayer watches the address and detects the deposit anyway.
 - After the deposit is seen, the relayer **sweeps** the deposit address into the treasury with a sponsored transaction (the sender is the deposit address, the treasury pays the gas, both sign), then mints the NEP-141 on NEAR and credits it to the verifier. The sweep appears in the swap's `tidepool.explorer` list.
 
-## The SUI cap (10 SUI)
+## The SUI cap (0.005 SUI)
 
-Any swap with a SUI leg is rejected at **quote time** with a `400` if the SUI amount (input or output) exceeds `10 SUI` (10,000,000,000 MIST). It covers swaps, payouts and refunds. Why: the treasury is funded by the public Sui testnet faucet, which gives a few SUI per request, so a small cap keeps one user from draining it. Also:
+Any swap with a SUI leg is rejected at **quote time** with a `400` if the SUI amount (input or output) exceeds `0.005 SUI` (5,000,000 MIST). It covers swaps, payouts and refunds. Why: the treasury is funded by the public Sui testnet faucet, which gives only a little SUI per request, so a small cap keeps one user from draining it. Also:
 
 - A payout of SUI is paid from the treasury, so quotes answer `503` if the treasury cannot cover the payout plus gas.
 - `ANY_INPUT` quotes that pay out SUI to a Sui address are rejected.
@@ -56,7 +56,7 @@ const quote = await OneClickService.getQuote({
   dry: false, swapType: 'EXACT_INPUT', slippageTolerance: 100,
   originAsset: 'nep141:sui.tp-omft.testnet',
   destinationAsset: 'nep141:usdc.tidepool-sandbox.testnet',
-  amount: '500000000',                      // 0.5 SUI in MIST
+  amount: '5000000',                        // 0.005 SUI in MIST
   depositType: 'ORIGIN_CHAIN',
   refundTo: '0xYourSuiAddress', refundType: 'ORIGIN_CHAIN',
   recipient: 'you.testnet', recipientType: 'DESTINATION_CHAIN',
@@ -145,7 +145,7 @@ Same reasons as every route (`DEADLINE_PASSED`, `PARTIAL_DEPOSIT`, …). A refun
 
 ## Mapping to mainnet 1Click
 
-Same request and response fields, `blockchain: "sui"`, a plain `depositAddress` and no memo. Mainnet lists Sui assets as `nep141:sui….omft.near` ids with the same keccak256 rule. Take the Sui asset ids from `GET /v0/tokens` of the environment you are calling. Mainnet has no 10 SUI cap and uses real Sui addresses. 1Click lists no Sui USDT on mainnet; the Tidepool USDT exists so testnet has the same pair as the other chains.
+Same request and response fields, `blockchain: "sui"`, a plain `depositAddress` and no memo. Mainnet lists Sui assets as `nep141:sui….omft.near` ids with the same keccak256 rule. Take the Sui asset ids from `GET /v0/tokens` of the environment you are calling. Mainnet has no 0.005 SUI cap and uses real Sui addresses. 1Click lists no Sui USDT on mainnet; the Tidepool USDT exists so testnet has the same pair as the other chains.
 
 ## Verified flows
 

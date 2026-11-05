@@ -35,12 +35,12 @@ const USDC = { kind: 'sui', symbol: 'USDC', decimals: 6 };
 const NEAR_USDC = { symbol: 'USDC', decimals: 6 };
 const req = (o = {}) => ({ swapType: 'EXACT_INPUT', depositType: 'ORIGIN_CHAIN', refundType: 'ORIGIN_CHAIN', recipientType: 'DESTINATION_CHAIN', ...o });
 
-test('SUI cap is 10 SUI, enforced on every SUI leg; Sui coins are not capped', () => {
-  assert.equal(SUI_CAP_MIST, 10_000_000_000n);
-  assert.doesNotThrow(() => suiLimits(req(), SUI, NEAR_USDC, 10_000_000_000n, 1n));
-  assert.throws(() => suiLimits(req(), SUI, NEAR_USDC, 10_000_000_001n, 1n), (e) => e instanceof BadRequest && /capped at 10 SUI/.test(e.message));
-  assert.throws(() => suiLimits(req({ depositType: 'INTENTS' }), NEAR_USDC, SUI, 1n, 10_000_000_001n), (e) => e instanceof BadRequest && /capped at 10 SUI/.test(e.message));
-  assert.doesNotThrow(() => suiLimits(req({ depositType: 'INTENTS' }), NEAR_USDC, SUI, 1n, 10_000_000_000n));
+test('SUI cap is 0.005 SUI, enforced on every SUI leg; Sui coins are not capped', () => {
+  assert.equal(SUI_CAP_MIST, 5_000_000n);
+  assert.doesNotThrow(() => suiLimits(req(), SUI, NEAR_USDC, 5_000_000n, 1n));
+  assert.throws(() => suiLimits(req(), SUI, NEAR_USDC, 5_000_001n, 1n), (e) => e instanceof BadRequest && /capped at 0.005 SUI/.test(e.message));
+  assert.throws(() => suiLimits(req({ depositType: 'INTENTS' }), NEAR_USDC, SUI, 1n, 5_000_001n), (e) => e instanceof BadRequest && /capped at 0.005 SUI/.test(e.message));
+  assert.doesNotThrow(() => suiLimits(req({ depositType: 'INTENTS' }), NEAR_USDC, SUI, 1n, 5_000_000n));
   assert.doesNotThrow(() => suiLimits(req(), USDC, NEAR_USDC, 10n ** 15n, 1n));
 });
 

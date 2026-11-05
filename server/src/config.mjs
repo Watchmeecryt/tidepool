@@ -122,7 +122,7 @@ if (XD?.treasury) {
 export const SUI_DECIMALS = 9;
 export const SUI_COIN_TYPE = '0x2::sui::SUI';
 export const suiOmftSub = (coinType) => 'sui-' + keccak256(Buffer.from(coinType, 'utf8')).slice(-40);
-export const SUI_CAP_MIST = BigInt(process.env.SUI_CAP_MIST || 10_000_000_000); // 10 SUI cap on any SUI swap leg, payout or refund (enforced at quote time)
+export const SUI_CAP_MIST = BigInt(process.env.SUI_CAP_MIST || 5_000_000); // 0.005 SUI cap on any SUI swap leg, payout or refund (enforced at quote time)
 export const SUI_CHAIN = { key: 'sui', blockchain: 'sui', kind: 'sui', name: 'Sui Testnet', network: 'testnet', explorer: 'https://suiscan.xyz/testnet', faucet: 'https://faucet.sui.io' };
 export const isSuiAddress = (s) => typeof s === 'string' && /^0x[0-9a-fA-F]{64}$/.test(s);
 export const normSuiAddress = (s) => s.toLowerCase();
@@ -132,7 +132,7 @@ if (UD?.treasury) {
   SUI_CHAIN.treasury = UD.treasury; SUI_CHAIN.package = UD.package;
   SUI_CHAIN.tokens = [];
   const common = { chain: 'sui', kind: 'sui', blockchain: 'sui' };
-  const sui = { ...common, sub: 'sui', symbol: 'SUI', decimals: SUI_DECIMALS, coingeckoId: 'sui', fallback: 3, drip: '0.5', inventory: UD.inventory?.SUI || '1', native: true, coinType: SUI_COIN_TYPE,
+  const sui = { ...common, sub: 'sui', symbol: 'SUI', decimals: SUI_DECIMALS, coingeckoId: 'sui', fallback: 3, drip: '0.005', inventory: UD.inventory?.SUI || '1', native: true, coinType: SUI_COIN_TYPE,
     nearContract: `sui.${OMFT}`, assetId: `nep141:sui.${OMFT}`, name: 'Tidepool Testnet SUI on Sui Testnet (bridged, no value)' };
   const coins = BRIDGED.filter(b => UD.tokens?.[b.symbol]).map(b => { const { coinType, treasuryCap } = UD.tokens[b.symbol], sub = suiOmftSub(coinType);
     return { ...b, ...common, inventory: UD.inventory?.[b.symbol] || b.inventory, sub: `sui-${b.symbol.toLowerCase()}`, coinType, treasuryCap, contractAddress: coinType, nearContract: `${sub}.${OMFT}`, assetId: `nep141:${sub}.${OMFT}`, name: `Tidepool Testnet ${b.symbol} on Sui Testnet (bridged, no value)` }; });

@@ -116,7 +116,7 @@ With `mode: "intents"`, `assets` accepts asset ids, NEAR symbols (`"USDC"` means
 | `base`, `arb`, `eth` | 100 USDC + 100 USDT |
 | `sol` | 100 USDC + 100 USDT + **0.05 test SOL** (`nep141:sol.tp-omft.testnet`) |
 | `stellar` | 100 USDC + 100 USDT + **5 test XLM** (`nep141:stellar.tp-omft.testnet`) |
-| `sui` | 100 USDC + 100 USDT + **0.5 test SUI** (`nep141:sui.tp-omft.testnet`) |
+| `sui` | 100 USDC + 100 USDT + **0.005 test SUI** (`nep141:sui.tp-omft.testnet`) |
 | `bridged` | All of the above |
 
 The test SOL, XLM and SUI exist **only inside the verifier**: they are not native coins and are never sent to a wallet. Bridged drips use their own hourly limit, so taking them does not use up your default intents drip. Bridged tokens cannot be requested in `wallet` mode (`400`).
@@ -160,6 +160,6 @@ See [POST /v0/faucet](/docs/api-reference/tidepool-faucet) for the full response
 - **Stellar testnet:** 7 decimals. See the [Stellar testnet bridge](/docs/guides/bridge-stellar-testnet). Get XLM from [Friendbot](https://friendbot.stellar.org) (10,000 test XLM).
 - **Bitcoin testnet4:** native coins only, no faucet drip. See the [Bitcoin testnet4 bridge](/docs/guides/bridge-bitcoin-testnet).
 - **XRP Ledger testnet:** native XRP only (6 decimals), no faucet drip. See the [XRP Ledger testnet bridge](/docs/guides/bridge-xrp-testnet).
-- **Sui testnet:** USDC and USDT have 6 decimals. See the [Sui testnet bridge](/docs/guides/bridge-sui-testnet). SUI swaps are capped at 10 SUI. Get SUI from [faucet.sui.io](https://faucet.sui.io).
+- **Sui testnet:** USDC and USDT have 6 decimals. See the [Sui testnet bridge](/docs/guides/bridge-sui-testnet). SUI swaps are capped at 0.005 SUI. Get SUI from [faucet.sui.io](https://faucet.sui.io).
 
 <Callout type="warn">Test tokens have **no value**. The bridged test tokens are bridged only by Tidepool's own testnet relayer, not by any NEAR or 1Click bridge. Do not list or trade them anywhere.</Callout>

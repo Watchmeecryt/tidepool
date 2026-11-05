@@ -4,6 +4,11 @@ description: What changed in Tidepool and when.
 icon: ClockCounterClockwise
 ---
 
+## 2026-11-05 · SUI cap lowered to 0.005 SUI
+
+- **The cap:** native SUI on the Sui testnet bridge is now capped at **0.005 SUI (5000000 MIST) per swap, payout or refund** (was 10 SUI), enforced at quote time with a `400`. `GET /v0/health` reports `swapCapSui: 0.005`.
+- **Faucet:** the intents `sui` drip now credits 0.005 test SUI (was 0.5) so it fits under the cap.
+
 ## 2026-11-05 · Native ETH delivery on Ethereum, Base and Arbitrum Sepolia, capped at 0.01 ETH
 
 - **New assets:** `nep141:eth.tp-omft.testnet`, `nep141:base.tp-omft.testnet` and `nep141:arb.tp-omft.testnet` (18 decimals, no contract address), mirroring 1Click's `nep141:eth.omft.near`, `nep141:base.omft.near` and `nep141:arb.omft.near`. They appear in `GET /v0/tokens` and `GET /v1/tokens`, and `suggestAsset` hints map the 1Click ids to them.

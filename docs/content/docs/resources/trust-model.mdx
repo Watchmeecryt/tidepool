@@ -23,7 +23,7 @@ icon: ShieldCheck
 
 ## Limitations (v1)
 
-- Testnets only: NEAR testnet, plus Base, Arbitrum and Ethereum Sepolia (native ETH delivery capped at 0.01 ETH per swap), Solana devnet (SOL capped at 0.005 SOL per swap), Stellar testnet (XLM capped at 100 XLM per swap) Sui testnet (SUI capped at 10 SUI per swap), Bitcoin testnet4 (0.005 BTC), XRP Ledger testnet (XRP capped at 100 XRP per swap) through the custodial test bridges.
+- Testnets only: NEAR testnet, plus Base, Arbitrum and Ethereum Sepolia (native ETH delivery capped at 0.01 ETH per swap), Solana devnet (SOL capped at 0.005 SOL per swap), Stellar testnet (XLM capped at 100 XLM per swap) Sui testnet (SUI capped at 0.005 SUI per swap), Bitcoin testnet4 (0.005 BTC), XRP Ledger testnet (XRP capped at 100 XRP per swap) through the custodial test bridges.
 - No confidential settlement: `CONFIDENTIAL_INTENTS` types return 400 and `confidentiality` is ignored, because it runs on NEAR's private infrastructure, which isn't exposed to outside builders ([NEAR's Oct 27, 2026 update](https://docs.near-intents.org/changelog/entries/2026-10-27-1click-confidential.md)). See the [Roadmap](/docs/resources/roadmap).
 - Single maker with finite inventory. Large quotes fail with `Not enough maker liquidity`.
 - Faucet: one drip per account per mode per hour, one per address per chain per hour, six per IP per hour.

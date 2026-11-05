@@ -212,7 +212,7 @@ export function xrpLimits(req, inT, outT, amountIn, amountOut) {
   }
 }
 
-// Sui testnet limits. SUI is capped at SUI_CAP_MIST (10 SUI) on any swap leg, payout or refund: the treasury is funded from the
+// Sui testnet limits. SUI is capped at SUI_CAP_MIST (0.005 SUI) on any swap leg, payout or refund: the treasury is funded from the
 // Sui testnet faucet, which hands out small amounts. Enforced at quote time so users get a clear error instead of a stuck swap.
 const CAP_SUI = () => fromUnits(SUI_CAP_MIST, 9);
 export function suiLimits(req, inT, outT, amountIn, amountOut) {
