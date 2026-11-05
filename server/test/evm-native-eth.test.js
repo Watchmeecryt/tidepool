@@ -43,14 +43,14 @@ const req = (o = {}) => ({ swapType: 'EXACT_OUTPUT', recipientType: 'DESTINATION
 const usdt = TOKENS.find((t) => t.chain === 'eth' && t.symbol === 'USDT');
 const cap = ETH_CAP_WEI;
 
-test('cap: 0.01 ETH by default, clear 400 over it, exactly the cap is fine', () => {
-  assert.equal(cap, 10_000_000_000_000_000n);
+test('cap: 0.006 ETH by default, clear 400 over it, exactly the cap is fine', () => {
+  assert.equal(cap, 6_000_000_000_000_000n);
   assert.ok(ETH_RESERVE_WEI > 0n && ETH_RESERVE_WEI < cap);
   for (const c of CHAINS) {
     const eth = native(c);
     ethLimits(req(), usdt, eth, 1n, cap); // at the cap
-    assert.throws(() => ethLimits(req(), usdt, eth, 1n, cap + 1n), (e) => e instanceof BadRequest && e.code === 400 && /capped at 0\.01 ETH/.test(e.message) && e.extra?.capWei === cap.toString());
-    assert.throws(() => ethLimits(req({ swapType: 'EXACT_INPUT' }), eth, usdt, cap + 1n, 1n), /capped at 0\.01 ETH/, 'ETH as the input leg is capped too');
+    assert.throws(() => ethLimits(req(), usdt, eth, 1n, cap + 1n), (e) => e instanceof BadRequest && e.code === 400 && /capped at 0\.006 ETH/.test(e.message) && e.extra?.capWei === cap.toString());
+    assert.throws(() => ethLimits(req({ swapType: 'EXACT_INPUT' }), eth, usdt, cap + 1n, 1n), /capped at 0\.006 ETH/, 'ETH as the input leg is capped too');
   }
 });
 

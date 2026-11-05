@@ -62,7 +62,7 @@ for (const c of EVM_CHAINS) {
     c.nativeEth = eth;
   }
 }
-export const ETH_CAP_WEI = BigInt(process.env.ETH_CAP_WEI || 10_000_000_000_000_000); // 0.01 ETH cap on any native ETH swap leg or payout (enforced at quote time)
+export const ETH_CAP_WEI = BigInt(process.env.ETH_CAP_WEI || 6_000_000_000_000_000); // 0.006 ETH cap on any native ETH swap leg or payout (enforced at quote time)
 export const ETH_RESERVE_WEI = BigInt(process.env.ETH_RESERVE_WEI || 5_000_000_000_000_000); // the relayer keeps >= 0.005 ETH for gas after a native ETH payout
 
 // NOTE: the SOL/XLM `drip` values below apply ONLY to the verifier (intents-mode) test tokens nep141:sol.<OMFT> / nep141:stellar.<OMFT>.

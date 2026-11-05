@@ -32,7 +32,7 @@ curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: applicatio
 
 This mints 100 test USDC and 100 test USDT on Base Sepolia. It is also in the dropdown on the [Faucet](/docs/guides/faucet) page. To get the bridged USDC and USDT into your NEAR intents balance instead, use `{"accountId":"alice.testnet","mode":"intents","assets":["base"]}`. You can also call `faucet()` on either token contract yourself (once per hour per address). Gas is **not** included: get Base Sepolia ETH from a [public faucet](https://docs.base.org/get-started/get-funds).
 
-**Native ETH (delivery only).** `nep141:base.tp-omft.testnet` (18 decimals, like 1Click's `nep141:base.omft.near`) pays out real Base Sepolia ETH from the relayer to any `0x` address, so a fresh wallet can get a little gas along with USDC or USDT. It is **capped at 0.01 ETH per swap, payout or refund** (400 at quote time; 503 while the treasury is low), cannot be an `ORIGIN_CHAIN` deposit, and is not dripped by the faucet.
+**Native ETH (delivery only).** `nep141:base.tp-omft.testnet` (18 decimals, like 1Click's `nep141:base.omft.near`) pays out real Base Sepolia ETH from the relayer to any `0x` address, so a fresh wallet can get a little gas along with USDC or USDT. It is **capped at 0.006 ETH per swap, payout or refund** (400 at quote time; 503 while the treasury is low), cannot be an `ORIGIN_CHAIN` deposit, and is not dripped by the faucet.
 
 ## 2. Base Sepolia → NEAR
 

@@ -166,7 +166,7 @@ export function solLimits(req, inT, outT, amountIn, amountOut) {
 }
 
 // Native ETH on the EVM testnets (Ethereum/Base/Arbitrum Sepolia) is DELIVERY ONLY: the treasury is the relayer wallet that also pays gas for the
-// bridges, funded from public faucets. Capped at ETH_CAP_WEI (0.01 ETH) on any swap leg or payout; deposits of native ETH to a chain address are not accepted.
+// bridges, funded from public faucets. Capped at ETH_CAP_WEI (0.006 ETH) on any swap leg or payout; deposits of native ETH to a chain address are not accepted.
 const CAP_ETH = () => fromUnits(ETH_CAP_WEI, 18);
 export function ethLimits(req, inT, outT, amountIn, amountOut) {
   const capHint = (why, extra = {}) => hint(`Native ETH on Tidepool's EVM testnets is capped at ${CAP_ETH()} ETH per swap or payout (the treasury is funded from public faucets). ${why}`, req, { capWei: ETH_CAP_WEI.toString(), ...extra });

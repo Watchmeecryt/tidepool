@@ -1062,7 +1062,7 @@
     "/v1/agents/{agent_id}/withdraw": {
       "post": {
         "summary": "Withdraw to NEAR or a bridged chain",
-        "description": "chain near: NEAR-native tokens to a NEAR account. Otherwise chain is the token blockchain (base, arb, eth, sol, stellar, sui, xrp, btc, zec: exactly the testnets /v0 pays out on, as listed by GET /v1/tokens) and recipient an address on that chain. Same per-payout caps as /v0. No memo off NEAR. dry:true supported. Native ETH (nep141:eth.tp-omft.testnet, base.tp-omft.testnet, arb.tp-omft.testnet) can be withdrawn to an 0x address on Ethereum, Base or Arbitrum Sepolia but is capped at 0.01 ETH (10000000000000000 wei) per withdrawal, the same limit as /v0: more answers 400 route_unavailable at /amount, and 503 while the treasury is low.",
+        "description": "chain near: NEAR-native tokens to a NEAR account. Otherwise chain is the token blockchain (base, arb, eth, sol, stellar, sui, xrp, btc, zec: exactly the testnets /v0 pays out on, as listed by GET /v1/tokens) and recipient an address on that chain. Same per-payout caps as /v0. No memo off NEAR. dry:true supported. Native ETH (nep141:eth.tp-omft.testnet, base.tp-omft.testnet, arb.tp-omft.testnet) can be withdrawn to an 0x address on Ethereum, Base or Arbitrum Sepolia but is capped at 0.006 ETH (6000000000000000 wei) per withdrawal, the same limit as /v0: more answers 400 route_unavailable at /amount, and 503 while the treasury is low.",
         "security": [
           {
             "bearerAuth": []

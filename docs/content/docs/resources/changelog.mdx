@@ -9,11 +9,11 @@ icon: ClockCounterClockwise
 - **The cap:** native SUI on the Sui testnet bridge is now capped at **0.005 SUI (5000000 MIST) per swap, payout or refund** (was 10 SUI), enforced at quote time with a `400`. `GET /v0/health` reports `swapCapSui: 0.005`.
 - **Faucet:** the intents `sui` drip now credits 0.005 test SUI (was 0.5) so it fits under the cap.
 
-## 2026-11-05 · Native ETH delivery on Ethereum, Base and Arbitrum Sepolia, capped at 0.01 ETH
+## 2026-11-05 · Native ETH delivery on Ethereum, Base and Arbitrum Sepolia, capped at 0.006 ETH
 
 - **New assets:** `nep141:eth.tp-omft.testnet`, `nep141:base.tp-omft.testnet` and `nep141:arb.tp-omft.testnet` (18 decimals, no contract address), mirroring 1Click's `nep141:eth.omft.near`, `nep141:base.omft.near` and `nep141:arb.omft.near`. They appear in `GET /v0/tokens` and `GET /v1/tokens`, and `suggestAsset` hints map the 1Click ids to them.
 - **Delivery only:** payouts are ETH transfers from the same relayer wallet the bridges use (sign-first and idempotent, so a retry never pays twice). Native ETH cannot be an `ORIGIN_CHAIN` deposit, `ANY_INPUT` payouts are rejected, and the faucet never drips it.
-- **The cap:** **0.01 ETH (10000000000000000 wei) per swap, payout or refund**, enforced at quote time with a `400` and for `/v1` withdrawals with `400 route_unavailable`. Payout quotes answer `503` while the relayer would drop below its 0.005 ETH gas reserve. Why: the treasury is funded from public faucets. Maker inventory is 0.05 ETH on Ethereum and 0.02 ETH on Base and Arbitrum.
+- **The cap:** **0.006 ETH (6000000000000000 wei) per swap, payout or refund**, enforced at quote time with a `400` and for `/v1` withdrawals with `400 route_unavailable`. Payout quotes answer `503` while the relayer would drop below its 0.005 ETH gas reserve. Why: the treasury is funded from public faucets. Maker inventory is 0.05 ETH on Ethereum and 0.02 ETH on Base and Arbitrum.
 
 ## 2026-11-03 · Agent API: withdrawals to every /v0 payout chain
 

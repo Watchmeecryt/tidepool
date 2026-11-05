@@ -29,7 +29,7 @@ Checked against the official 1Click OpenAPI (`https://1click.chaindefuser.com/do
 | Verifier | `intents.near` | Official `defuse` v0.4.5 contract (built unmodified from the upstream tag) at `verifier.tidepool-sandbox.testnet` |
 | Cross-chain | Production bridges | Tidepool-run trusted relayer bridges to Base / Arbitrum / Ethereum Sepolia, Solana devnet, Stellar testnet, Sui testnet, Bitcoin testnet4, XRP Ledger testnet |
 | `blockchain` values | 38 chains, listed in the spec enum | `near`, `eth`, `base`, `arb`, `sol`, `stellar`, `sui`, `btc`, `xrp` |
-| Native ETH asset ids | `nep141:eth.omft.near`, `nep141:base.omft.near`, `nep141:arb.omft.near`, 18 decimals | `nep141:eth.tp-omft.testnet`, `nep141:base.tp-omft.testnet`, `nep141:arb.tp-omft.testnet`, 18 decimals, delivery only, capped at 0.01 ETH; read ids from `/v0/tokens` |
+| Native ETH asset ids | `nep141:eth.omft.near`, `nep141:base.omft.near`, `nep141:arb.omft.near`, 18 decimals | `nep141:eth.tp-omft.testnet`, `nep141:base.tp-omft.testnet`, `nep141:arb.tp-omft.testnet`, 18 decimals, delivery only, capped at 0.006 ETH; read ids from `/v0/tokens` |
 | XRP asset id | `nep141:xrp.omft.near`, 6 decimals, MEMO deposits (destination tag) | `nep141:xrp.tp-omft.testnet`, 6 decimals, MEMO deposits (destination tag), capped at 100 XRP; read ids from `/v0/tokens` |
 | Stellar asset ids | `nep245:` ids from the HOT bridge, 7 decimals | `nep141:` OMFT-style ids; always read ids from `/v0/tokens` |
 | Tokens | Real assets | Six NEAR test tokens, plus bridged USDC and USDT and native SOL, XLM, SUI, BTC and XRP; test USDC and USDT come from a public faucet; no value |
