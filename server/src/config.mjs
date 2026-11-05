@@ -51,9 +51,9 @@ for (const c of EVM_CHAINS) {
     if (c.deployed) TOKENS.push(t);
     c.tokens = [...(c.tokens || []), t];
   }
-  // Native ETH (DELIVERY ONLY): 1Click lists native ETH as nep141:eth.omft.near / base.omft.near / arb.omft.near (18 decimals, no contractAddress);
-  // Tidepool mirrors them as nep141:<chain>.tp-omft.testnet. Payouts are plain ETH transfers from the same relayer wallet that runs the bridge,
-  // so it is capped per swap (ETH_CAP_WEI) and refused when the relayer would drop below ETH_RESERVE_WEI (kept for gas). Not in c.tokens: no ERC-20.
+  // Native ETH: 1Click lists native ETH as nep141:eth.omft.near / base.omft.near / arb.omft.near (18 decimals, no contractAddress);
+  // Tidepool mirrors them as nep141:<chain>.tp-omft.testnet. ORIGIN_CHAIN deposits use a per-quote derived EOA swept into the relayer;
+  // payouts are plain ETH transfers from the same relayer. Capped per swap (ETH_CAP_WEI); payouts refused below ETH_RESERVE_WEI. Not in c.tokens: no ERC-20.
   if (d.nativeEth?.live) {
     const near = `${c.key}.${OMFT}`;
     const eth = { symbol: 'ETH', decimals: 18, coingeckoId: 'ethereum', fallback: 3500, drip: '0', inventory: d.nativeEth.inventory || '0.02', kind: 'evm', native: true, sub: `${c.key}-eth`, chain: c.key, blockchain: c.blockchain,

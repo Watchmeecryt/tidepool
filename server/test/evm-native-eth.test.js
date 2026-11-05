@@ -1,4 +1,4 @@
-// Native ETH (delivery only) on the EVM testnets: token catalog, assetIds, per-swap cap and /v0 + /v1 consistency. No network is touched.
+// Native ETH on the EVM testnets: token catalog, assetIds, per-swap cap, ORIGIN_CHAIN deposits and /v0 + /v1 consistency. No network is touched.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -7,6 +7,7 @@ process.env.DATA_DIR = fs.mkdtempSync(os.tmpdir() + '/tp-eth-');
 const { TOKENS, ETH_CAP_WEI, ETH_RESERVE_WEI, EVM_CHAINS } = await import('../src/config.mjs');
 const { ethLimits, BadRequest, suggestAsset } = await import('../src/engine.mjs');
 const { resolveIntentAssets } = await import('../src/faucet-assets.mjs');
+const evm = await import('../src/evm.mjs');
 
 const native = (chain) => TOKENS.find((t) => t.native && t.kind === 'evm' && t.chain === chain);
 const CHAINS = ['eth', 'base', 'arb'];
@@ -54,10 +55,26 @@ test('cap: 0.006 ETH by default, clear 400 over it, exactly the cap is fine', ()
   }
 });
 
-test('delivery only: no ORIGIN_CHAIN deposits of native ETH, no ANY_INPUT payouts', () => {
+test('ORIGIN_CHAIN native ETH deposits allowed under the cap; no ANY_INPUT for ETH origin or destination payouts', () => {
   const eth = native('eth');
-  assert.throws(() => ethLimits(req({ depositType: 'ORIGIN_CHAIN' }), eth, usdt, 1n, 1n), /delivery-only/);
+  ethLimits(req({ depositType: 'ORIGIN_CHAIN' }), eth, usdt, 1n, 1n);
+  ethLimits(req({ depositType: 'ORIGIN_CHAIN' }), eth, usdt, cap, 1n);
+  assert.throws(() => ethLimits(req({ depositType: 'ORIGIN_CHAIN' }), eth, usdt, cap + 1n, 1n), /capped at 0\.006 ETH/);
+  assert.throws(() => ethLimits(req({ depositType: 'ORIGIN_CHAIN', swapType: 'ANY_INPUT' }), eth, usdt, 1n, 1n), /ANY_INPUT/);
   assert.throws(() => ethLimits(req({ swapType: 'ANY_INPUT' }), usdt, eth, 1n, 1n), /ANY_INPUT/);
   ethLimits(req({ swapType: 'ANY_INPUT', recipientType: 'INTENTS' }), usdt, eth, 1n, 1n); // INTENTS recipients stay inside the verifier
-  ethLimits(req({ depositType: 'ORIGIN_CHAIN' }), usdt, usdt, 1n, 1n); // other tokens unaffected
+  ethLimits(req({ depositType: 'ORIGIN_CHAIN' }), usdt, usdt, 1n, 1n); // ERC-20 unaffected
+});
+
+test('native ETH deposit addresses are derived EOAs (not CREATE2 vault addresses), stable per correlationId', () => {
+  const master = 'ab'.repeat(32);
+  const a = evm.nativeDepositAddressFor(master, 'corr-1');
+  const b = evm.nativeDepositAddressFor(master, 'corr-1');
+  const c = evm.nativeDepositAddressFor(master, 'corr-2');
+  assert.equal(a, b);
+  assert.notEqual(a, c);
+  assert.match(a, /^0x[0-9a-fA-F]{40}$/);
+  // CREATE2 vault path stays for ERC-20 and differs from the native EOA for the same id when a vault is configured
+  const eth = EVM_CHAINS.find((x) => x.key === 'eth' && x.vault);
+  if (eth) assert.notEqual(a.toLowerCase(), evm.depositAddressFor('eth', 'corr-1').toLowerCase());
 });

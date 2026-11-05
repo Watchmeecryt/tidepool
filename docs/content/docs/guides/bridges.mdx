@@ -14,7 +14,7 @@ Tidepool can swap between NEAR testnet and three EVM testnets (below), plus Sola
 | Arbitrum Sepolia | `arb` | 421614 | [Arbitrum Sepolia bridge](/docs/guides/bridge-arbitrum-sepolia) |
 | Ethereum Sepolia | `eth` | 11155111 | [Ethereum Sepolia bridge](/docs/guides/bridge-ethereum-sepolia) |
 
-Native ETH is also deliverable on all three chains (`nep141:eth.tp-omft.testnet`, `nep141:base.tp-omft.testnet`, `nep141:arb.tp-omft.testnet`), capped at 0.006 ETH per swap (delivery only, no ETH deposits). See [Tokens](/docs/resources/tokens).
+Native ETH is also supported on all three chains (`nep141:eth.tp-omft.testnet`, `nep141:base.tp-omft.testnet`, `nep141:arb.tp-omft.testnet`), capped at 0.006 ETH per swap — as origin (ORIGIN_CHAIN derived EOA deposit) or destination. See [Tokens](/docs/resources/tokens).
 
 Solana devnet is also available as a separate, same-style bridge (SOL capped at 0.005 SOL): [Solana devnet bridge](/docs/guides/bridge-solana-devnet). It is devnet only and custodial, and is listed in `/v0/tokens` only while it is live.
 
@@ -29,7 +29,7 @@ XRP Ledger testnet (native XRP capped at 100 XRP, deposits use `depositMode: "ME
 ## What matches 1Click (EVM chains)
 
 - **Asset ids.** Bridged tokens look like 1Click's omft ids: `nep141:<chain>-<erc20 address>.tp-omft.testnet`. `/v0/tokens` lists them with `blockchain` and `contractAddress`.
-- **Deposit addresses.** A live quote with an EVM `originAsset` and `depositType: "ORIGIN_CHAIN"` returns a unique `0x` deposit address. You send the ERC-20 with a plain `transfer`.
+- **Deposit addresses.** A live quote with an EVM `originAsset` and `depositType: "ORIGIN_CHAIN"` returns a unique `0x` deposit address. ERC-20: send with a plain `transfer` to a CREATE2 vault address. Native ETH: send value to a derived EOA (different address space than the vault).
 - **Addresses.** `refundTo` and `recipient` must be `0x` addresses for EVM legs, and NEAR accounts for NEAR legs.
 - **Status and refunds.** The same lifecycle and refund reasons. EVM transactions are listed in `originChainTxHashes` / `destinationChainTxHashes` with explorer links.
 

@@ -165,8 +165,8 @@ export function solLimits(req, inT, outT, amountIn, amountOut) {
   }
 }
 
-// Native ETH on the EVM testnets (Ethereum/Base/Arbitrum Sepolia) is DELIVERY ONLY: the treasury is the relayer wallet that also pays gas for the
-// bridges, funded from public faucets. Capped at ETH_CAP_WEI (0.006 ETH) on any swap leg or payout; deposits of native ETH to a chain address are not accepted.
+// Native ETH on the EVM testnets (Ethereum/Base/Arbitrum Sepolia): treasury is the relayer wallet that also pays gas for the
+// bridges, funded from public faucets. Capped at ETH_CAP_WEI (0.006 ETH) on any swap leg, payout or refund. ORIGIN_CHAIN deposits use a per-quote derived EOA swept into the relayer.
 const CAP_ETH = () => fromUnits(ETH_CAP_WEI, 18);
 export function ethLimits(req, inT, outT, amountIn, amountOut) {
   const capHint = (why, extra = {}) => hint(`Native ETH on Tidepool's EVM testnets is capped at ${CAP_ETH()} ETH per swap or payout (the treasury is funded from public faucets). ${why}`, req, { capWei: ETH_CAP_WEI.toString(), ...extra });
@@ -175,8 +175,8 @@ export function ethLimits(req, inT, outT, amountIn, amountOut) {
     if (req.recipientType === 'DESTINATION_CHAIN' && req.swapType === 'ANY_INPUT') throw new BadRequest(`ANY_INPUT quotes cannot pay out ETH on ${chainOf(outT.chain).name} (each deposit would be converted separately and could exceed the ${CAP_ETH()} ETH cap); use EXACT_INPUT, EXACT_OUTPUT or FLEX_INPUT`);
   }
   if (inT.native && inT.kind === 'evm') {
-    if (req.depositType === 'ORIGIN_CHAIN') throw new BadRequest(`Native ETH on ${chainOf(inT.chain).name} is delivery-only on Tidepool: it cannot be deposited to a chain address. Use depositType INTENTS, or deposit USDC/USDT on ${chainOf(inT.chain).name} instead.`, 400, capHint('Use a different originAsset, or depositType INTENTS.', { field: 'originAsset' }));
     if (amountIn > ETH_CAP_WEI) throw new BadRequest(`ETH is capped at ${CAP_ETH()} ETH (${ETH_CAP_WEI} wei) per swap on Tidepool's ${chainOf(inT.chain).name} bridge; this quote would take ${fromUnits(amountIn, 18)} ETH. Lower the amount.`, 400, capHint('Lower amount so the ETH leg is at most the cap.', { field: 'amount' }));
+    if (req.depositType === 'ORIGIN_CHAIN' && req.swapType === 'ANY_INPUT') throw new BadRequest(`ANY_INPUT quotes cannot take native ETH deposits on ${chainOf(inT.chain).name} (each deposit would be converted separately and could exceed the ${CAP_ETH()} ETH cap); use EXACT_INPUT, EXACT_OUTPUT or FLEX_INPUT`);
   }
 }
 
@@ -350,7 +350,8 @@ export async function quote(req, { authed, maxDeadlineMs = 24 * 3600_000 } = {})
       if (have !== null && have < amountOut + 2_000_000n) throw new BadRequest('The XRP Ledger testnet treasury is low on XRP right now (it refills from the official faucet automatically). Try again in a few minutes.', 503);
     }
     if (outT.kind === 'stellar' && req.recipientType === 'DESTINATION_CHAIN' && await stellar.treasuryLow()) throw new BadRequest('The Stellar testnet treasury is low on XLM right now (it refills from Friendbot automatically). Try again in a few minutes.', 503);
-    let depositAddress = inT.chain && req.depositType === 'ORIGIN_CHAIN' ? (inT.kind === 'sol' ? sol.depositAddressFor(MASTER, correlationId) : inT.kind === 'stellar' ? STELLAR_CHAIN.treasury : inT.kind === 'xrp' ? XRP_CHAIN.treasury : inT.kind === 'sui' ? sui.depositAddressFor(MASTER, correlationId) : UTXO[inT.kind] ? UTXO[inT.kind].depositAddressFor(MASTER, correlationId) : evm.depositAddressFor(inT.chain, correlationId)) : accountId;
+    if (inT.native && inT.kind === 'evm' && req.depositType === 'ORIGIN_CHAIN' && !evm.relayerAddress()) throw new BadRequest(`${chainOf(inT.chain).name} native ETH deposits are not configured on this server`, 503);
+    let depositAddress = inT.chain && req.depositType === 'ORIGIN_CHAIN' ? (inT.kind === 'sol' ? sol.depositAddressFor(MASTER, correlationId) : inT.kind === 'stellar' ? STELLAR_CHAIN.treasury : inT.kind === 'xrp' ? XRP_CHAIN.treasury : inT.kind === 'sui' ? sui.depositAddressFor(MASTER, correlationId) : UTXO[inT.kind] ? UTXO[inT.kind].depositAddressFor(MASTER, correlationId) : inT.native ? evm.nativeDepositAddressFor(MASTER, correlationId) : evm.depositAddressFor(inT.chain, correlationId)) : accountId;
     if (memoMode) {
       depositAddress = inT.kind === 'stellar' ? STELLAR_CHAIN.treasury : inT.kind === 'xrp' ? XRP_CHAIN.treasury : await memoAccount(inT); q.depositAddress = depositAddress;
       if (inT.kind === 'xrp') { do q.depositMemo = xrp.newTag(); while (db.swaps[keyOf(depositAddress, q.depositMemo)]); } // a destination tag is a uint32: re-roll on the (rare) collision
@@ -559,7 +560,7 @@ async function execute(signed) {
 
 // ORIGIN_CHAIN: the user sent NEP-141 tokens to the deposit address itself. Move them into the verifier.
 async function sweepOrigin(addr, s, inT) {
-  if (inT.chain) return inT.kind === 'sol' ? bridgeInSol(addr, s, inT) : inT.kind === 'sui' ? bridgeInSui(addr, s, inT) : UTXO[inT.kind] ? bridgeInUtxo(addr, s, inT) : bridgeIn(addr, s, inT);
+  if (inT.chain) return inT.kind === 'sol' ? bridgeInSol(addr, s, inT) : inT.kind === 'sui' ? bridgeInSui(addr, s, inT) : UTXO[inT.kind] ? bridgeInUtxo(addr, s, inT) : inT.native ? bridgeInEvmNative(addr, s, inT) : bridgeIn(addr, s, inT);
   const bal = BigInt(await view(inT.nearContract, 'ft_balance_of', { account_id: addr }));
   if (bal === 0n) return;
   const acct = await viewAccount(addr);
@@ -587,6 +588,27 @@ async function bridgeIn(addr, s, inT) {
   tagEvm(s, c, sw.hash);
   s.txs.push({ label: `sweep deposit address into vault (${chainOf(c).name})`, hash: sw.hash });
   s.bridgeIn.push({ sweepTx: sw.hash, amount: sw.amount.toString(), stage: 'swept' }); save();
+  return creditBridgeIn(addr, s, inT);
+}
+
+// Native ETH origin: sweep the per-quote derived EOA into the relayer (gas topped up by the relayer), then mint + credit like ERC-20.
+// Sign-first/recorded ('sweeping') so a crash or timeout can never lose or double a credit. Vault CREATE2 addresses stay ERC-20-only.
+async function bridgeInEvmNative(addr, s, inT) {
+  await creditBridgeIn(addr, s, inT);
+  let sw = s.bridgeIn.find(b => b.stage === 'sweeping');
+  if (!sw) {
+    const bal = await evm.ethBalance(inT.chain, addr);
+    if (bal === 0n) return;
+    if (!s.originTxs.some(h => s.evmTxs?.[h])) for (const h of await evm.findNativeDepositTxs(inT.chain, addr)) { if (!s.originTxs.includes(h)) s.originTxs.push(h); tagEvm(s, inT.chain, h); }
+    if (s.status === 'PENDING_DEPOSIT') set(s, 'KNOWN_DEPOSIT_TX');
+    sw = { amount: bal.toString(), stage: 'sweeping', tx: {} };
+    s.bridgeIn.push(sw); save();
+  }
+  const st = await evm.driveNativeSweep(inT.chain, MASTER, s.quoteResponse.correlationId, sw.tx, BigInt(sw.amount), save);
+  if (st !== 'confirmed') return;
+  const h = tagEvm(s, inT.chain, sw.tx.hash);
+  s.txs.push({ label: `sweep deposit address into treasury (${chainOf(inT.chain).name})`, hash: h });
+  sw.sweepTx = h; sw.stage = 'swept'; delete sw.tx; save();
   return creditBridgeIn(addr, s, inT);
 }
 

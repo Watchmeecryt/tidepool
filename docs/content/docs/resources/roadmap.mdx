@@ -21,7 +21,7 @@ Nothing is in progress. If you need something, say so. Demand decides the order.
 | `/v0/auth/*` and `/v0/account/*` | 2026-10-27 | Free JWTs. See [Authenticate](/docs/api-reference/authenticate). |
 | `depositMode: MEMO` | 2026-10-27 | NEAR-native `ORIGIN_CHAIN`, and required for Stellar since 2026-10-29 and XRP Ledger since 2026-10-29. See [Deposits](/docs/concepts/deposits). |
 | Test bridges for Base Sepolia, Arbitrum Sepolia and Ethereum Sepolia | 2026-10-26 | A trusted relayer run by Tidepool, testnet only. See [Test bridges](/docs/guides/bridges). |
-| Native ETH delivery on Ethereum, Base and Arbitrum Sepolia | 2026-11-05 | Capped at 0.006 ETH per swap. See [Tokens](/docs/resources/tokens). |
+| Native ETH on Ethereum, Base and Arbitrum Sepolia (ORIGIN_CHAIN deposits + DESTINATION_CHAIN payouts) | 2026-11-05 | Capped at 0.006 ETH per swap. See [Tokens](/docs/resources/tokens). |
 | Solana devnet bridge (SOL, USDC, USDT) | 2026-10-28 | SOL capped at 0.005 SOL per swap. See [Solana devnet bridge](/docs/guides/bridge-solana-devnet). |
 | `simulate` (stuck or failed swaps) | 2026-10-28 | Tidepool-only quote field. See [Testing failure cases](/docs/guides/failure-cases). |
 | Stellar testnet bridge (XLM, USDC, USDT) | 2026-10-29 | XLM capped at 100 XLM per swap, deposits use `depositMode: MEMO`. See [Stellar testnet bridge](/docs/guides/bridge-stellar-testnet). |

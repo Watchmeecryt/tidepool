@@ -1,6 +1,6 @@
-// Native ETH (delivery only) bootstrap for the EVM testnet bridges. Idempotent: every step checks what already exists. Testnet only.
+// Native ETH bootstrap for the EVM testnet bridges (ORIGIN_CHAIN deposits + DESTINATION_CHAIN payouts). Idempotent: every step checks what already exists. Testnet only.
 //  NEAR side per chain: nep141:<chain>.tp-omft.testnet (18 decimals, like 1Click's nep141:eth.omft.near / base.omft.near / arb.omft.near),
-//  owned by the Tidepool root, verifier registered, maker inventory deposited. The EVM side needs NO new wallet or contract: payouts are plain
+//  owned by the Tidepool root, verifier registered, maker inventory deposited. Payouts are plain
 //  ETH transfers from the existing relayer (TIDEPOOL_EVM_RELAYER_KEY), so keep the relayer funded from the public faucets.
 //  Records the txs in server/src/bridge-deployments.json (`<chain>.nativeEth`), setting live=true last.
 // Usage: node scripts/bridge-native-eth-bootstrap.js eth|base|arb [inventoryEth]   (keys are read from ../.secrets and never printed)
