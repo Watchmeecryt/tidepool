@@ -192,6 +192,7 @@ const server = http.createServer(async (req, res) => {
     const code = e.code && Number.isInteger(e.code) ? e.code : 500;
     if (code >= 500) console.error(p, e);
     res._err = e.message;
+    if (e.extra?.retryAfterSeconds) res.setHeader('retry-after', String(e.extra.retryAfterSeconds));
     json(res, code, { message: e.message, ...(code < 500 && e.extra ? e.extra : {}) });
   }
 });

@@ -10,10 +10,59 @@ import { db, save } from './store.mjs';
 import { withSigner, BadRequest } from './engine.mjs';
 import { resolveIntentAssets, isBridgedToken, CHAIN_ALIASES } from './faucet-assets.mjs';
 
-const ACCOUNT_COOLDOWN_MS = 60 * 60_000; // one drip per account per hour
+const ACCOUNT_COOLDOWN_MS = 24 * 60 * 60_000; // one claim per address across all faucet variants per 24h
 const INTENTS_CHUNK = 6;
 const IP_LIMIT = 6; // drips per IP per hour
 const ipHits = new Map();
+
+/** Normalize an address/account so EVM/Sui 0x… compare case-insensitively; NEAR/Sol/Stellar stay as given. */
+function normAddr(a) {
+  if (typeof a !== 'string') return a;
+  if (/^0x[0-9a-fA-F]+$/.test(a)) return a.toLowerCase();
+  return a;
+}
+
+/** Most recent claim timestamp for this address across every faucet variant (persisted in db.faucet). */
+function lastClaimFor(addr) {
+  const id = normAddr(addr);
+  let last = 0;
+  for (const [k, t] of Object.entries(db.faucet || {})) {
+    const i = k.lastIndexOf(':');
+    const w = i >= 0 ? k.slice(0, i) : k;
+    if (w === id || (id.startsWith('0x') && w.toLowerCase() === id)) last = Math.max(last, Number(t) || 0);
+  }
+  return last;
+}
+
+/** Throw 429 if this address claimed within 24h (any variant) or the IP hit its hourly cap. Returns { id, hits, key }. */
+function assertClaimAllowed(addr, variant, ip) {
+  const id = normAddr(addr);
+  const last = lastClaimFor(id);
+  if (Date.now() - last < ACCOUNT_COOLDOWN_MS) {
+    const available_at = new Date(last + ACCOUNT_COOLDOWN_MS).toISOString();
+    const retryAfterSeconds = Math.max(1, Math.ceil((last + ACCOUNT_COOLDOWN_MS - Date.now()) / 1000));
+    throw new BadRequest(
+      `Rate limited: ${addr} can use the faucet again after ${available_at} (one claim per address every 24 hours).`,
+      429,
+      { available_at, retryAfter: available_at, retryAfterSeconds },
+    );
+  }
+  const hits = (ipHits.get(ip) || []).filter(t => Date.now() - t < 3600_000);
+  if (hits.length >= IP_LIMIT) throw new BadRequest('Rate limited: too many faucet requests from this IP, try again within the hour', 429);
+  return { id, hits, key: `${id}:${variant}` };
+}
+
+function markClaim(key, ip, hits) {
+  db.faucet[key] = Date.now();
+  hits.push(Date.now());
+  ipHits.set(ip, hits);
+  save();
+}
+
+function clearClaim(key) {
+  delete db.faucet[key];
+  save();
+}
 
 // Direct-chain cooldown keys are `<address>:<chain>` (like the intents-mode keys `<account>:<mode>`), so the admin wallets list shows the
 // recipient. Older builds stored `<chain>:<address>`: rename those once at startup so existing cooldowns keep working.
@@ -45,16 +94,12 @@ async function evmDrip({ chain = 'base', address, accountId, assets }, ip) {
   if (!isEvmAddress(to)) throw new BadRequest(`address must be a ${c.name} address (0x...)`);
   const list = assets?.length ? c.tokens.filter(t => assets.includes(t.assetId) || assets.includes(t.symbol)) : c.tokens;
   if (!list.length) throw new BadRequest('no matching assets');
-  const key = `${to.toLowerCase()}:${c.key}`;
-  const last = db.faucet[key] || 0;
-  if (Date.now() - last < ACCOUNT_COOLDOWN_MS) throw new BadRequest(`Rate limited: ${to} can use the ${c.name} faucet again after ${new Date(last + ACCOUNT_COOLDOWN_MS).toISOString()}`, 429);
-  const hits = (ipHits.get(ip) || []).filter(t => Date.now() - t < 3600_000);
-  if (hits.length >= IP_LIMIT) throw new BadRequest('Rate limited: too many faucet requests from this IP, try again within the hour', 429);
-  db.faucet[key] = Date.now(); hits.push(Date.now()); ipHits.set(ip, hits); save();
+  const { hits, key } = assertClaimAllowed(to, c.key, ip);
+  markClaim(key, ip, hits);
   const out = [];
   try {
     for (const t of list) out.push({ assetId: t.assetId, symbol: t.symbol, token: t.evmAddress, amount: t.drip, txHash: await mintErc20(c.key, t.evmAddress, to, toUnits(t.drip, t.decimals)) });
-  } catch (e) { delete db.faucet[key]; save(); throw new Error('faucet transfer failed: ' + String(e.message).slice(0, 200)); }
+  } catch (e) { clearClaim(key); throw new Error('faucet transfer failed: ' + String(e.message).slice(0, 200)); }
   return { chain: c.key, address: to, mode: 'wallet', drips: list.map(t => ({ assetId: t.assetId, symbol: t.symbol, token: t.evmAddress, amount: t.drip })), transactions: out.map(o => ({ ...o, explorerUrl: evmTxUrl(c.key, o.txHash) })), note: `Gas is not included: get ${c.name} ETH from a public faucet.` };
 }
 
@@ -70,17 +115,13 @@ async function solDrip({ address, accountId, assets }, ip) {
   const pool = SOL_CHAIN.tokens.filter(t => !t.native);
   const list = assets?.length ? pool.filter(t => assets.includes(t.assetId) || assets.includes(t.symbol)) : pool;
   if (!list.length) throw new BadRequest('no matching assets (Solana faucet drips USDC and USDT only, not SOL)');
-  const key = `${to}:sol`;
-  const last = db.faucet[key] || 0;
-  if (Date.now() - last < ACCOUNT_COOLDOWN_MS) throw new BadRequest(`Rate limited: ${to} can use the ${SOL_CHAIN.name} faucet again after ${new Date(last + ACCOUNT_COOLDOWN_MS).toISOString()}`, 429);
-  const hits = (ipHits.get(ip) || []).filter(t => Date.now() - t < 3600_000);
-  if (hits.length >= IP_LIMIT) throw new BadRequest('Rate limited: too many faucet requests from this IP, try again within the hour', 429);
+  const { hits, key } = assertClaimAllowed(to, 'sol', ip);
   while (solDrips.length && Date.now() - solDrips[0] > 86_400_000) solDrips.shift();
   if (solDrips.length >= SOL_FAUCET_DAILY_MAX) throw new BadRequest('The Solana devnet faucet hit its daily limit (it spends treasury SOL on token accounts). Try again tomorrow.', 429);
-  db.faucet[key] = Date.now(); hits.push(Date.now()); ipHits.set(ip, hits); solDrips.push(Date.now()); save();
+  markClaim(key, ip, hits); solDrips.push(Date.now());
   let sig;
   try { sig = await faucetMint(to, list.map(t => ({ ...t, dripUnits: toUnits(t.drip, t.decimals) }))); }
-  catch (e) { delete db.faucet[key]; solDrips.pop(); save(); throw new Error('faucet transfer failed: ' + String(e.message).slice(0, 200)); }
+  catch (e) { clearClaim(key); solDrips.pop(); throw new Error('faucet transfer failed: ' + String(e.message).slice(0, 200)); }
   return { chain: 'sol', address: to, mode: 'wallet', drips: list.map(t => ({ assetId: t.assetId, symbol: t.symbol, mint: t.mint, amount: t.drip })), transactions: [{ txHash: sig, explorerUrl: solTxUrl(sig) }], note: 'Solana devnet test tokens, no value. SOL is not dripped; request a devnet airdrop for transaction fees.' };
 }
 
@@ -97,17 +138,13 @@ async function stellarDrip({ address, accountId, assets }, ip) {
   const acc = await stellar.account(to).catch(() => undefined);
   if (acc === null) throw new BadRequest(`${to} does not exist on ${STELLAR_CHAIN.name} yet. Fund it with Friendbot first: ${STELLAR_CHAIN.friendbot}/?addr=${to} (10,000 test XLM), then add trustlines and retry.`);
   if (acc) { const miss = list.filter(t => !stellar.hasTrustline(acc, t)); if (miss.length) throw new BadRequest(`${to} has no trustline for ${miss.map(t => `${t.symbol} (${t.code}:${t.issuer})`).join(', ')}. Add a changeTrust operation for each, then retry.`); }
-  const key = `${to}:stellar`;
-  const last = db.faucet[key] || 0;
-  if (Date.now() - last < ACCOUNT_COOLDOWN_MS) throw new BadRequest(`Rate limited: ${to} can use the ${STELLAR_CHAIN.name} faucet again after ${new Date(last + ACCOUNT_COOLDOWN_MS).toISOString()}`, 429);
-  const hits = (ipHits.get(ip) || []).filter(t => Date.now() - t < 3600_000);
-  if (hits.length >= IP_LIMIT) throw new BadRequest('Rate limited: too many faucet requests from this IP, try again within the hour', 429);
+  const { hits, key } = assertClaimAllowed(to, 'stellar', ip);
   while (stellarDrips.length && Date.now() - stellarDrips[0] > 86_400_000) stellarDrips.shift();
   if (stellarDrips.length >= XLM_FAUCET_DAILY_MAX) throw new BadRequest('The Stellar testnet faucet hit its daily limit. Try again tomorrow.', 429);
-  db.faucet[key] = Date.now(); hits.push(Date.now()); ipHits.set(ip, hits); stellarDrips.push(Date.now()); save();
+  markClaim(key, ip, hits); stellarDrips.push(Date.now());
   let hash;
   try { hash = await stellar.faucetPay(to, list.map(t => ({ ...t, dripUnits: toUnits(t.drip, t.decimals) }))); }
-  catch (e) { delete db.faucet[key]; stellarDrips.pop(); save(); throw new Error('faucet transfer failed: ' + String(e.message).slice(0, 200)); }
+  catch (e) { clearClaim(key); stellarDrips.pop(); throw new Error('faucet transfer failed: ' + String(e.message).slice(0, 200)); }
   return { chain: 'stellar', address: to, mode: 'wallet', drips: list.map(t => ({ assetId: t.assetId, symbol: t.symbol, asset: `${t.code}:${t.issuer}`, amount: t.drip })), transactions: [{ txHash: hash, explorerUrl: stellar.txUrl(hash) }], note: 'Stellar testnet issued test assets, no value. XLM is not dripped; use Friendbot for XLM.' };
 }
 
@@ -124,25 +161,19 @@ async function suiDrip({ address, accountId, assets }, ip) {
   const pool = SUI_CHAIN.tokens.filter(t => !t.native);
   const list = assets?.length ? pool.filter(t => assets.includes(t.assetId) || assets.includes(t.symbol)) : pool;
   if (!list.length) throw new BadRequest('no matching assets (the Sui faucet drips USDC and USDT only, not SUI; get SUI from https://faucet.sui.io)');
-  const key = `${addr}:sui`;
-  const last = db.faucet[key] || 0;
-  if (Date.now() - last < ACCOUNT_COOLDOWN_MS) throw new BadRequest(`Rate limited: ${to} can use the ${SUI_CHAIN.name} faucet again after ${new Date(last + ACCOUNT_COOLDOWN_MS).toISOString()}`, 429);
-  const hits = (ipHits.get(ip) || []).filter(t => Date.now() - t < 3600_000);
-  if (hits.length >= IP_LIMIT) throw new BadRequest('Rate limited: too many faucet requests from this IP, try again within the hour', 429);
+  const { hits, key } = assertClaimAllowed(addr, 'sui', ip);
   while (suiDrips.length && Date.now() - suiDrips[0] > 86_400_000) suiDrips.shift();
   if (suiDrips.length >= SUI_FAUCET_DAILY_MAX) throw new BadRequest('The Sui testnet faucet hit its daily limit (it spends treasury SUI on gas). Try again tomorrow.', 429);
-  db.faucet[key] = Date.now(); hits.push(Date.now()); ipHits.set(ip, hits); suiDrips.push(Date.now()); save();
+  markClaim(key, ip, hits); suiDrips.push(Date.now());
   let digest;
   try { digest = await sui.faucetMint(addr, list.map(t => ({ ...t, dripUnits: toUnits(t.drip, t.decimals) }))); }
-  catch (e) { delete db.faucet[key]; suiDrips.pop(); save(); throw new Error('faucet transfer failed: ' + String(e.message).slice(0, 200)); }
+  catch (e) { clearClaim(key); suiDrips.pop(); throw new Error('faucet transfer failed: ' + String(e.message).slice(0, 200)); }
   return { chain: 'sui', address: addr, mode: 'wallet', drips: list.map(t => ({ assetId: t.assetId, symbol: t.symbol, coinType: t.coinType, amount: t.drip })), transactions: [{ txHash: digest, explorerUrl: sui.txUrl(digest) }], note: `Sui testnet test coins, no value. SUI is not dripped; get gas from ${SUI_CHAIN.faucet}.` };
 }
 
 /** Synchronous pre-check for the Agent API faucet deposit (default NEAR tokens into an intents balance): throws the same 429 drip() would. */
 export function nearDripCheck(accountId, ip) {
-  const last = db.faucet[`${accountId}:intents`] || 0;
-  if (Date.now() - last < ACCOUNT_COOLDOWN_MS) throw new BadRequest(`Rate limited: ${accountId} can use the intents faucet again after ${new Date(last + ACCOUNT_COOLDOWN_MS).toISOString()}`, 429, { available_at: new Date(last + ACCOUNT_COOLDOWN_MS).toISOString() });
-  if ((ipHits.get(ip) || []).filter(t => Date.now() - t < 3600_000).length >= IP_LIMIT) throw new BadRequest('Rate limited: too many faucet requests from this IP, try again within the hour', 429);
+  assertClaimAllowed(accountId, 'intents', ip);
 }
 
 async function nearDrip({ accountId, mode = 'wallet', assets }, ip) {
@@ -154,17 +185,11 @@ async function nearDrip({ accountId, mode = 'wallet', assets }, ip) {
   const list = assets?.length ? resolveIntentAssets(assets, mode === 'intents' ? TOKENS : NEAR_TOKENS) : NEAR_TOKENS.filter(t => Number(t.drip) > 0);
   if (!list.length && assets?.length && assets.every(a => ['btc', 'xrp', 'ripple', ...(ZEC_CHAIN.deployed ? ['zec'] : [])].includes(String(a).toLowerCase()) || (ZEC_CHAIN.deployed ? /^nep141:(btc|xrp|zec)\.tp-omft/ : /^nep141:(btc|xrp)\.tp-omft/).test(String(a)))) throw new BadRequest(UTXO_FAUCETS[/xrp|ripple/i.test(String(assets[0])) ? 'xrp' : /zec/i.test(String(assets[0])) ? 'zec' : 'btc']);
   if (!list.length) throw new BadRequest(`no matching assets${mode === 'intents' ? ` (use asset ids, NEAR symbols, or chain aliases: ${CHAIN_ALIASES.join(', ')})` : ''}`);
-  // Native and bridged drips have separate hourly limits, so taking bridged tokens does not use up the native drip.
-  const keys = [...new Set(list.map(t => isBridgedToken(t) ? `${accountId}:intents-bridged` : `${accountId}:${mode}`))];
-  for (const key of keys) {
-    const last = db.faucet[key] || 0;
-    if (Date.now() - last < ACCOUNT_COOLDOWN_MS) throw new BadRequest(`Rate limited: ${accountId} can use the ${key.endsWith('intents-bridged') ? 'bridged intents' : mode} faucet again after ${new Date(last + ACCOUNT_COOLDOWN_MS).toISOString()}`, 429);
-  }
-  const hits = (ipHits.get(ip) || []).filter(t => Date.now() - t < 3600_000);
-  if (hits.length >= IP_LIMIT) throw new BadRequest('Rate limited: too many faucet requests from this IP, try again within the hour', 429);
+  // One claim per account every 24h across wallet, intents and bridged drips.
+  const variant = list.some(isBridgedToken) ? 'intents-bridged' : mode;
+  const { hits, key } = assertClaimAllowed(accountId, variant, ip);
   if (mode === 'wallet' && !(await viewAccount(accountId))) throw new BadRequest(`${accountId} does not exist on testnet. Create it first (wallet or https://helper.nearprotocol.com) or use mode "intents"`);
-  for (const key of keys) db.faucet[key] = Date.now();
-  hits.push(Date.now()); ipHits.set(ip, hits); save();
+  markClaim(key, ip, hits);
 
   const out = [];
   try {
@@ -183,6 +208,6 @@ async function nearDrip({ accountId, mode = 'wallet', assets }, ip) {
         out.push({ assetId: t.assetId, amount: t.drip, txHash: r.txHash });
       }
     }
-  } catch (e) { if (!out.length) { for (const key of keys) delete db.faucet[key]; save(); } throw new Error('faucet transfer failed: ' + String(e.message).slice(0, 200)); }
+  } catch (e) { if (!out.length) clearClaim(key); throw new Error('faucet transfer failed: ' + String(e.message).slice(0, 200)); }
   return { accountId, mode, drips: list.map(t => ({ assetId: t.assetId, symbol: t.symbol, amount: t.drip })), transactions: out.map(o => ({ ...o, explorerUrl: `https://testnet.nearblocks.io/txns/${o.txHash}` })) };
 }

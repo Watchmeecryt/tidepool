@@ -59,7 +59,7 @@ What it does:
 - Always get a dry quote first and check `amountOut` and `minAmountOut` before going live.
 - Deposit exactly `quote.amountIn`. Under `minAmountIn` waits for more until the deadline, then refunds.
 - Poll `/v0/status` every 2 to 5 seconds. Stop on `SUCCESS`, `REFUNDED` or `FAILED`.
-- Faucet: one drip per account and mode per hour. Do not loop on it.
+- Faucet: one claim per address every 24 hours. Do not loop on it.
 - Native ETH on Ethereum, Base and Arbitrum Sepolia (`nep141:eth.tp-omft.testnet`, `nep141:base.tp-omft.testnet`, `nep141:arb.tp-omft.testnet`) is **capped at 0.006 ETH per swap, payout or refund** (400 at quote time, same cap on `/v1` withdraw; 503 while the treasury is low). ORIGIN_CHAIN deposits and DESTINATION_CHAIN payouts are supported; `ANY_INPUT` ETH origin/destination payouts are rejected. Ask for a small amount, for example gas for a fresh address.
 - Never send real assets. Tidepool is testnet only.
 

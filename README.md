@@ -102,7 +102,7 @@ ME=<your-account>.testnet   # your own NEAR testnet account
    curl -s -X POST $API/v0/faucet -H 'content-type: application/json' \
      -d "{\"accountId\":\"$ME\",\"mode\":\"intents\"}"
    ```
-   See a JSON result with `drips` (the six test tokens) and NearBlocks transaction links (one claim per account and mode per hour). Use `"mode":"wallet"` for NEP-141 balances in your wallet instead. Other chains: `{"chain":"base","address":"<your 0x address>"}` (also `eth`, `arb`, `sol`, `stellar`, `sui`); see [Faucet](https://www.usetidepool.tech/docs/guides/faucet).
+   See a JSON result with `drips` (the six test tokens) and NearBlocks transaction links (one claim per address every 24 hours). Use `"mode":"wallet"` for NEP-141 balances in your wallet instead. Other chains: `{"chain":"base","address":"<your 0x address>"}` (also `eth`, `arb`, `sol`, `stellar`, `sui`); see [Faucet](https://www.usetidepool.tech/docs/guides/faucet).
 4. **Price a swap with a dry quote:**
    ```bash
    curl -s -X POST $API/v0/quote -H 'content-type: application/json' -d "{
@@ -130,7 +130,7 @@ ME=<your-account>.testnet   # your own NEAR testnet account
 2. `npm run first-swap` creates its own throwaway NEAR testnet account (the key stays in a local gitignored file and is never printed), calls `POST /v0/faucet` with `mode: "intents"`, gets a dry quote and then a live quote (`dry: false`, `depositType: "INTENTS"`), deposits with a signed NEP-413 `transfer` intent submitted through `execute_intents`, calls `POST /v0/deposit/submit`, and polls `GET /v0/status` until `SUCCESS`. You should see `SUCCESS` and NearBlocks testnet transaction links.
 3. `npm run failure-cases partial` deposits too little and ends in `REFUNDED`.
 4. The same flow inside this repo: `cd examples && npm ci && TIDEPOOL_URL=https://www.usetidepool.tech node swap.mjs` (it makes a throwaway account if `NEAR_ACCOUNT_ID` and `NEAR_PRIVATE_KEY` are unset).
-5. Rules: get a dry quote first; deposit exactly `quote.amountIn`; poll `/v0/status` every 2 to 5 seconds; the faucet gives one drip per account and mode per hour; testnet only.
+5. Rules: get a dry quote first; deposit exactly `quote.amountIn`; poll `/v0/status` every 2 to 5 seconds; the faucet gives one claim per address every 24 hours; testnet only.
 6. More: https://www.usetidepool.tech/docs/guides/agents, https://www.usetidepool.tech/AGENTS.md and https://www.usetidepool.tech/llms-full.txt. The agent prompt snippet lives in [`docs/content/docs/guides/agents.mdx`](docs/content/docs/guides/agents.mdx):
 
 ```text
