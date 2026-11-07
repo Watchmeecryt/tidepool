@@ -67,3 +67,15 @@ test('faucet: 429 payload includes retryAfter and available_at', async () => {
   }
   wipe(NEAR);
 });
+
+test('faucet: concurrent claims for one address cannot both pass the 24h check (regression)', async () => {
+  const A = '0x' + 'cd'.repeat(20);
+  wipe(A);
+  setFaucetCheckers({ nearExists: async () => true, nearCreatedAt: async () => 0, evmActive: () => new Promise((_, rej) => setTimeout(() => rej(new BadRequest('not eligible', 403)), 50)) });
+  const first = drip({ chain: 'eth', address: A }, '203.0.113.30');
+  await assert.rejects(() => drip({ chain: 'base', address: A.toUpperCase().replace('0X', '0x') }, '203.0.113.31'), (e) => e.code === 429);
+  await assert.rejects(first, (e) => e.code === 403);
+  assert.equal(Object.keys(db.faucet).some(k => k.startsWith(A)), false, 'rejected claim releases its slot');
+  setFaucetCheckers({ nearExists: async () => true, nearCreatedAt: async () => 0, evmActive: async () => true });
+  wipe(A);
+});

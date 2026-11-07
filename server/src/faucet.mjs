@@ -61,6 +61,12 @@ function markClaim(key, ip, hits) {
   save();
 }
 
+/** Undo markClaim only if the slot still holds this request's reservation (never wipe a newer or older successful claim). */
+function unmarkClaim(key, ip, hits) {
+  const t = db.faucet[key]; const i = hits.lastIndexOf(t); if (i >= 0) hits.splice(i, 1);
+  delete db.faucet[key]; save();
+}
+
 function clearClaim(key) {
   delete db.faucet[key];
   save();
@@ -98,12 +104,12 @@ async function evmDrip({ chain = 'base', address, accountId, assets }, ip) {
   const list = assets?.length ? c.tokens.filter(t => assets.includes(t.assetId) || assets.includes(t.symbol)) : c.tokens;
   if (!list.length) throw new BadRequest('no matching assets');
   const { hits, key } = assertClaimAllowed(to, c.key, ip);
-  await assertEvmEligible(c.key, to);
-  markClaim(key, ip, hits);
+  markClaim(key, ip, hits); // reserve the slot before any await so concurrent requests for the same address get 429
+  try { await assertEvmEligible(c.key, to); } catch (e) { unmarkClaim(key, ip, hits); throw e; }
   const out = [];
   try {
     for (const t of list) out.push({ assetId: t.assetId, symbol: t.symbol, token: t.evmAddress, amount: t.drip, txHash: await mintErc20(c.key, t.evmAddress, to, toUnits(t.drip, t.decimals)) });
-  } catch (e) { clearClaim(key); throw new Error('faucet transfer failed: ' + String(e.message).slice(0, 200)); }
+  } catch (e) { if (!out.length) clearClaim(key); throw new Error('faucet transfer failed: ' + String(e.message).slice(0, 200)); }
   return { chain: c.key, address: to, mode: 'wallet', drips: list.map(t => ({ assetId: t.assetId, symbol: t.symbol, token: t.evmAddress, amount: t.drip })), transactions: out.map(o => ({ ...o, explorerUrl: evmTxUrl(c.key, o.txHash) })), note: `Gas is not included: get ${c.name} ETH from a public faucet.` };
 }
 
@@ -192,8 +198,8 @@ async function nearDrip({ accountId, mode = 'wallet', assets }, ip, { trusted = 
   // One claim per account every 24h across wallet, intents and bridged drips.
   const variant = list.some(isBridgedToken) ? 'intents-bridged' : mode;
   const { hits, key } = assertClaimAllowed(accountId, variant, ip);
-  if (!trusted) await assertNearEligible(accountId);
-  markClaim(key, ip, hits);
+  markClaim(key, ip, hits); // reserve before any await (see evmDrip)
+  if (!trusted) { try { await assertNearEligible(accountId); } catch (e) { unmarkClaim(key, ip, hits); throw e; } }
 
   const out = [];
   try {
