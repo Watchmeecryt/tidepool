@@ -74,16 +74,16 @@ function walletStats() {
   return Object.values(W).sort((a, b) => b.last - a.last);
 }
 const days = (n) => { const out = []; const d = new Date(); d.setUTCHours(0, 0, 0, 0); for (let i = n - 1; i >= 0; i--) out.push(new Date(d - i * 86400_000).toISOString().slice(0, 10)); return out; };
-function daily(all) {
+function daily(all, hide = new Set()) {
   const D = days(30); const row = Object.fromEntries(D.map(d => [d, { quotes: 0, dryQuotes: 0, faucet: 0, requests: 0, wallets: new Set(), SUCCESS: 0, REFUNDED: 0, FAILED: 0, PENDING: 0, ips: 0 }]));
   const keep = (ws) => all || ws.some(w => !isOurs(w));
   for (const s of Object.values(db.swaps)) {
     const ws = swapWallets(s); if (!keep(ws)) continue; const r = row[s.quoteResponse.timestamp.slice(0, 10)]; if (!r) continue;
-    r.quotes++; r[['SUCCESS', 'REFUNDED', 'FAILED'].includes(s.status) ? s.status : 'PENDING']++; ws.forEach(w => (all || !isOurs(w)) && r.wallets.add(w));
+    r.quotes++; r[['SUCCESS', 'REFUNDED', 'FAILED'].includes(s.status) ? s.status : 'PENDING']++; ws.forEach(w => (all || !isOurs(w)) && !hide.has(w) && r.wallets.add(w));
   }
   const since = Date.parse(log.since);
-  for (const [k, t] of Object.entries(db.faucet)) { const w = k.slice(0, k.lastIndexOf(':')); if (t >= since || !(all || !isOurs(w))) continue; const r = row[new Date(t).toISOString().slice(0, 10)]; if (r) { r.faucet++; r.wallets.add(w); } }
-  for (const d of D) { const l = log.daily[d]; if (!l) continue; const c = all ? l.all : l.ext; const r = row[d]; r.dryQuotes += c.dryQuotes || 0; r.faucet += c.faucet || 0; r.requests += c.requests || 0; r.ips = l.ips.length; l.wallets.forEach(w => (all || !isOurs(w)) && r.wallets.add(w)); }
+  for (const [k, t] of Object.entries(db.faucet)) { const w = k.slice(0, k.lastIndexOf(':')); if (!(all || !isOurs(w))) continue; const r = row[new Date(t).toISOString().slice(0, 10)]; if (!r) continue; if (t >= since) { if (hide.has(w)) r.faucet--; continue; } if (hide.has(w)) continue; r.faucet++; r.wallets.add(w); }
+  for (const d of D) { const l = log.daily[d]; if (!l) continue; const c = all ? l.all : l.ext; const r = row[d]; r.dryQuotes += c.dryQuotes || 0; r.faucet += c.faucet || 0; r.requests += c.requests || 0; r.ips = l.ips.length; l.wallets.forEach(w => (all || !isOurs(w)) && !hide.has(w) && r.wallets.add(w)); r.faucet = Math.max(0, r.faucet); }
   return D.map(d => ({ day: d, ...row[d], wallets: row[d].wallets.size }));
 }
 function bars(rows, series, h = 120) {
@@ -102,21 +102,26 @@ function agentSummary() {
   return `<div class="grid"><div class="card"><h2>Agent API (/v1): ${keys} keys, ${agents} agents</h2><table><tr><th>Key</th><th>Name</th><th>Created</th><th>Agents</th></tr>${per.map(k => `<tr><td class="mono">${esc(k.prefix)}…</td><td>${esc(k.name || '')}</td><td>${fmtT(Date.parse(k.created_at))}</td><td>${k.n}</td></tr>`).join('')}</table></div>
 <div class="card"><h2>Agent API operations</h2><table><tr><th>Type</th><th>Status</th><th>Count</th></tr>${ops.map(o => `<tr><td>${esc(o.type)}</td><td class="${statusCls(o.status)}">${esc(o.status)}</td><td>${o.n}</td></tr>`).join('')}<tr><td>faucet 429 (logged since this build)</td><td class="bad">rejected</td><td>${rej}</td></tr></table><p class="mute">Not counted as swaps. Deposits include faucet drips.</p></div></div>`;
 }
-function dashboard(all) {
-  const ws = walletStats(); const shown = ws.filter(w => all || !w.ours);
+function dashboard(all, fo = false) {
+  const ws = walletStats();
+  // Faucet-only: claimed from the faucet but never quoted (live or dry), swapped, or used the agent API beyond faucet drips.
+  const faucetOnly = (w) => (w.faucet || w.agentFaucet || w.agentFaucetFailed) && !w.quotes && !w.dryQuotes && !w.swaps && !w.agentTransfers && !w.agentOther;
+  const base = ws.filter(w => all || !w.ours); const hidden = fo ? [] : base.filter(faucetOnly); const hide = new Set(hidden.map(w => w.wallet));
+  const shown = base.filter(w => !hide.has(w.wallet));
   const swaps = Object.values(db.swaps).filter(s => all || swapWallets(s).some(w => !isOurs(w)));
   const cnt = (st) => swaps.filter(s => s.status === st).length;
-  const D = daily(all);
+  const D = daily(all, hide);
   const ep = {}; for (const l of Object.values(log.daily)) for (const [k, v] of Object.entries(l.endpoints)) ep[k] = (ep[k] || 0) + v;
   const reqTotal = Object.values(log.daily).reduce((a, l) => a + ((all ? l.all : l.ext).requests || 0), 0);
   const recent = log.raw.filter(e => all || !e.w || e.w.some(w => !isOurs(w))).slice(-150).reverse();
-  const q = all ? '?all=1' : '';
+  const qs = (a, f) => { const x = [a && 'all=1', f && 'fo=1'].filter(Boolean).join('&'); return x ? '?' + x : ''; }; const q = qs(all, fo);
   const stat = (n, l) => `<div class="stat"><b>${n}</b><small>${l}</small></div>`;
-  return page('Usage', `<header><h1>Tide<span>pool</span> usage</h1><div style="display:flex;gap:8px;align-items:center"><a class="btn ghost" href="/admin${all ? '' : '?all=1'}">${all ? 'Hide' : 'Show'} our wallets</a><form method="post" action="/admin/logout" style="margin:0"><button class="btn ghost" type="submit">Sign out</button></form></div></header>
-<p class="mute" style="margin-top:-8px">${all ? 'Showing <b>all</b> wallets, including ours.' : `Hiding our own wallets (${ourList().slice(0, 2 + 3 + 1).map(esc).join(', ')}, and ${ourCount()} listed treasury, relayer, example and test addresses).`} Request log since ${fmtT(Date.parse(log.since))}; swaps and faucet backfilled from the db.</p>
-<div class="stats">${stat(shown.length, 'wallets')}${stat(swaps.length, 'live quotes')}${stat(swaps.filter(s => s.status !== 'PENDING_DEPOSIT').length, 'swaps (deposit seen)')}${stat(`<span class="ok">${cnt('SUCCESS')}</span>`, 'success')}${stat(`<span class="warn">${cnt('REFUNDED')}</span>`, 'refunded')}${stat(`<span class="bad">${cnt('FAILED')}</span>`, 'failed')}${stat(shown.reduce((a, w) => a + w.faucet, 0), 'faucet claims')}${stat(reqTotal, 'logged requests')}</div>
+  return page('Usage', `<header><h1>Tide<span>pool</span> usage</h1><div style="display:flex;gap:8px;align-items:center"><a class="btn ghost" href="/admin${qs(!all, fo)}">${all ? 'Hide' : 'Show'} our wallets</a><a class="btn ghost" href="/admin${qs(all, !fo)}">${fo ? 'Hide' : 'Show'} faucet-only wallets</a><form method="post" action="/admin/logout" style="margin:0"><button class="btn ghost" type="submit">Sign out</button></form></div></header>
+<p class="mute" style="margin-top:-8px">${all ? 'Showing <b>all</b> wallets, including ours.' : `Hiding our own wallets (${ourList().slice(0, 2 + 3 + 1).map(esc).join(', ')}, and ${ourCount()} listed treasury, relayer, example and test addresses).`} Request log since ${fmtT(Date.parse(log.since))}; swaps and faucet backfilled from the db. ${fo ? 'Showing faucet-only wallets.' : `Hiding ${hidden.length} faucet-only wallets (faucet claims but no quotes, dry quotes or swaps).`}</p>
+<div class="stats">${stat(shown.length, 'wallets')}${stat(swaps.length, 'live quotes')}${stat(D.reduce((a, r) => a + r.dryQuotes, 0), 'dry quotes (30d)')}${stat(swaps.filter(s => s.status !== 'PENDING_DEPOSIT').length, 'swaps (deposit seen)')}${stat(`<span class="ok">${cnt('SUCCESS')}</span>`, 'success')}${stat(`<span class="warn">${cnt('REFUNDED')}</span>`, 'refunded')}${stat(`<span class="bad">${cnt('FAILED')}</span>`, 'failed')}${stat(shown.reduce((a, w) => a + w.faucet, 0), 'faucet claims')}${stat(reqTotal, 'logged requests')}</div>
 <div class="grid"><div class="card"><h2>Swaps by status (by quote day)</h2>${bars(D, [{ k: 'SUCCESS', n: 'success', c: '#2f9e6a' }, { k: 'REFUNDED', n: 'refunded', c: '#ffad24' }, { k: 'FAILED', n: 'failed', c: '#d9534f' }, { k: 'PENDING', n: 'pending/expired', c: '#8a8278' }])}</div>
-<div class="card"><h2>Quotes</h2>${bars(D, [{ k: 'quotes', n: 'live', c: '#a65f0c' }, { k: 'dryQuotes', n: 'dry (logged)', c: '#ffd078' }])}</div>
+<div class="card"><h2>Quotes</h2>${bars(D, [{ k: 'quotes', n: 'live', c: '#a65f0c' }])}</div>
+<div class="card"><h2>Dry quotes (logged)</h2>${bars(D, [{ k: 'dryQuotes', n: 'dry', c: '#ffd078' }])}</div>
 <div class="card"><h2>Faucet claims</h2>${bars(D, [{ k: 'faucet', n: 'claims', c: '#ffad24' }])}</div>
 <div class="card"><h2>Unique wallets / day</h2>${bars(D, [{ k: 'wallets', n: 'wallets', c: '#b8691a' }])}</div>
 <div class="card"><h2>Requests / day</h2>${bars(D, [{ k: 'requests', n: 'requests', c: '#ffd078' }])}</div>
@@ -161,7 +166,7 @@ export async function admin(req, res, p, url) {
   if (p === '/admin/logout') { res.writeHead(303, { ...H, location: '/admin', 'set-cookie': 'tp_admin=; Path=/admin; HttpOnly; Secure; SameSite=Strict; Max-Age=0' }); res.end(); return true; }
   if (!session(req)) { res.writeHead(p === '/admin' ? 200 : 303, p === '/admin' ? H : { ...H, location: '/admin' }); res.end(p === '/admin' ? loginPage() : ''); return true; }
   const all = url.searchParams.get('all') === '1';
-  if (p === '/admin' || p === '/admin/') { res.writeHead(200, H); res.end(dashboard(all)); return true; }
+  if (p === '/admin' || p === '/admin/') { res.writeHead(200, H); res.end(dashboard(all, url.searchParams.get('fo') === '1')); return true; }
   const m = p.match(/^\/admin\/wallet\/(.+)$/);
   if (m) { res.writeHead(200, H); res.end(walletPage(decodeURIComponent(m[1]))); return true; }
   res.writeHead(404, H); res.end('Not found'); return true;
