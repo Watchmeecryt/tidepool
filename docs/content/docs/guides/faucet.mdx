@@ -148,6 +148,7 @@ See [POST /v0/faucet](/docs/api-reference/tidepool-faucet) for the full response
 ## Limits
 
 - **One claim per address every 24 hours**, across every faucet variant (NEAR wallet, NEAR intents, bridged intents, and every other chain). Claiming on Base blocks the same `0x` on Ethereum Sepolia, and a NEAR `wallet` drip blocks `intents` for that account until the window ends.
+- **Wallet age and IP cap:** NEAR accounts must exist and be at least 24 hours old, and EVM addresses must have sent a transaction or hold ETH on Ethereum Sepolia; otherwise you get `403` with a `reason`. Each IP can claim twice every 24 hours. If captcha is enabled, send `turnstileToken` (from the faucet page) or an `Authorization: Bearer naa_...` key.
 - **Six drips per IP per hour**, across everything. Over the limit returns **HTTP 429** with `available_at` / `retryAfter` (and a `Retry-After` header). If a transfer fails, the limit is not consumed.
 - Global daily caps protect the treasuries: Solana (it pays for token accounts), Stellar and Sui (it pays gas). Over the cap returns `429`.
 - Do not loop the faucet; every drip is a fixed amount.

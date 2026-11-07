@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import { db } from '../src/store.mjs';
 import { drip, nearDripCheck } from '../src/faucet.mjs';
 import { BadRequest } from '../src/engine.mjs';
+import { setFaucetCheckers } from '../src/faucet-guard.js';
+
+setFaucetCheckers({ nearExists: async () => true, nearCreatedAt: async () => 0, evmActive: async () => true });
 
 const DAY = 24 * 60 * 60_000;
 const ADDR = '0x' + 'ab'.repeat(20);

@@ -3,6 +3,13 @@ title: Changelog
 description: What changed in Tidepool and when.
 icon: ClockCounterClockwise
 ---
+## 2026-11-07 · Faucet: wallet-age check, 2 claims per IP per day
+
+- **Eligibility:** NEAR accounts must exist and be at least 24 hours old; EVM addresses must have on-chain activity (nonce > 0 or some ETH) on Ethereum Sepolia. Otherwise `403` with `reason` `account_not_found`, `account_too_new` or `address_inactive`.
+- **IP cap:** 2 claims per IP every 24 hours (was 6 per hour), `429` with `retryAfterSeconds`.
+- **Optional captcha:** when enabled, `POST /v0/faucet` needs `turnstileToken` (Cloudflare Turnstile) or an `naa_` API key; otherwise `403 captcha_required`.
+- **Fixes:** Sepolia faucet sends no longer clash on the relayer nonce; NEAR RPC fallback warnings are logged at most once a minute.
+
 ## 2026-11-06 · Faucet: one claim per address every 24 hours
 
 - **Faucet rate limit:** each address or NEAR account can claim at most once per 24 hours across every faucet variant (NEAR wallet/intents/bridged and eth/base/arb/sol/stellar/sui). A repeat claim returns **HTTP 429** with `available_at`, `retryAfter`, `retryAfterSeconds`, and a `Retry-After` header. The six-per-IP-per-hour cap is unchanged. Claim timestamps stay in the persisted store across restarts.

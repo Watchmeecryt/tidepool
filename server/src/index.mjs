@@ -10,6 +10,8 @@ import { authenticate, refresh, balances, history, sessionOf } from './auth.mjs'
 import { createOrder, getOrder, listOrders, cancelOrder, ApiError, errorDoc } from './orders.mjs';
 import crypto from 'node:crypto';
 import { drip } from './faucet.mjs';
+import { assertHuman } from './faucet-guard.js';
+import { authenticate as authenticatePartnerKey } from './agent-api/partner-keys.js';
 import { prices } from './prices.mjs';
 import { evmHealth } from './evm.mjs';
 import { solHealth, startTreasuryWatch } from './solana.mjs';
@@ -144,7 +146,13 @@ const server = http.createServer(async (req, res) => {
         throw e;
       }
     }
-    if (p === '/v0/faucet' && req.method === 'POST') return json(res, 200, await drip(await readBody(req), ip(req)));
+    if (p === '/v0/faucet' && req.method === 'POST') {
+      const body = await readBody(req);
+      let keyOk = false;
+      if (process.env.TURNSTILE_SECRET) { try { authenticatePartnerKey(req); keyOk = true; } catch {} }
+      await assertHuman(body, ip(req), keyOk);
+      return json(res, 200, await drip(body, ip(req)));
+    }
     if (p === '/v0/health') { if (Date.now() - healthCache.at > 10_000) healthCache = { at: Date.now(), body: await health() }; return json(res, 200, healthCache.body); }
     if (p === '/v0/any-input/withdrawals' && req.method === 'GET') { const q = url.searchParams; if (!q.get('depositAddress')) throw new BadRequest('depositAddress is required'); const w = anyInputWithdrawals(q.get('depositAddress'), q.get('depositMemo'), { timestampFrom: q.get('timestampFrom'), page: q.get('page'), limit: q.get('limit'), sortOrder: q.get('sortOrder') || 'desc' }); return w ? json(res, 200, w) : json(res, 404, { message: 'Deposit address not found' }); }
     if (p === '/v0/generate-intent' && req.method === 'POST') return json(res, 200, generateIntent(await readBody(req)));

@@ -1,6 +1,6 @@
 // Faucet: drips every test token to a testnet account, either to the wallet (mint) or straight into
 // the account's balance inside the Tidepool verifier (transfer from maker inventory).
-import { call, viewAccount, TGAS } from './near.mjs';
+import { call, TGAS } from './near.mjs';
 import { ROOT, VERIFIER, MAKER, TOKENS, NEAR_TOKENS, EVM_CHAINS, SOL_CHAIN, STELLAR_CHAIN, SUI_CHAIN, BTC_CHAIN, ZEC_CHAIN, XRP_CHAIN, isXrpAddress, isBtcAddress, isZecAddress, chainOf, isEvmAddress, isSolAddress, isStellarAddress, isSuiAddress, normSuiAddress, toUnits } from './config.mjs';
 import { faucetMint, txUrl as solTxUrl } from './solana.mjs';
 import * as stellar from './stellar.mjs';
@@ -8,11 +8,13 @@ import * as sui from './sui.mjs';
 import { mintErc20, evmTxUrl } from './evm.mjs';
 import { db, save } from './store.mjs';
 import { withSigner, BadRequest } from './engine.mjs';
+import { assertNearEligible, assertEvmEligible } from './faucet-guard.js';
 import { resolveIntentAssets, isBridgedToken, CHAIN_ALIASES } from './faucet-assets.mjs';
 
 const ACCOUNT_COOLDOWN_MS = 24 * 60 * 60_000; // one claim per address across all faucet variants per 24h
 const INTENTS_CHUNK = 6;
-const IP_LIMIT = 6; // drips per IP per hour
+const IP_LIMIT = 2; // drips per IP per 24h
+const IP_WINDOW_MS = 24 * 60 * 60_000;
 const ipHits = new Map();
 
 /** Normalize an address/account so EVM/Sui 0x… compare case-insensitively; NEAR/Sol/Stellar stay as given. */
@@ -34,7 +36,7 @@ function lastClaimFor(addr) {
   return last;
 }
 
-/** Throw 429 if this address claimed within 24h (any variant) or the IP hit its hourly cap. Returns { id, hits, key }. */
+/** Throw 429 if this address claimed within 24h (any variant) or the IP hit its 24h cap. Returns { id, hits, key }. */
 function assertClaimAllowed(addr, variant, ip) {
   const id = normAddr(addr);
   const last = lastClaimFor(id);
@@ -47,8 +49,8 @@ function assertClaimAllowed(addr, variant, ip) {
       { available_at, retryAfter: available_at, retryAfterSeconds },
     );
   }
-  const hits = (ipHits.get(ip) || []).filter(t => Date.now() - t < 3600_000);
-  if (hits.length >= IP_LIMIT) throw new BadRequest('Rate limited: too many faucet requests from this IP, try again within the hour', 429);
+  const hits = (ipHits.get(ip) || []).filter(t => Date.now() - t < IP_WINDOW_MS);
+  if (hits.length >= IP_LIMIT) { const available_at = new Date(hits[0] + IP_WINDOW_MS).toISOString(); throw new BadRequest(`Rate limited: ${IP_LIMIT} faucet claims per IP every 24 hours; try again after ${available_at}.`, 429, { available_at, retryAfter: available_at, retryAfterSeconds: Math.max(1, Math.ceil((hits[0] + IP_WINDOW_MS - Date.now()) / 1000)) }); }
   return { id, hits, key: `${id}:${variant}` };
 }
 
@@ -74,7 +76,8 @@ const UTXO_FAUCETS = {
   xrp: `Tidepool does not drip native testnet XRP (the ${XRP_CHAIN.name} treasury is funded by the official faucet, and so can you). Get free test XRP from ${XRP_CHAIN.faucet} (the official XRPL Testnet faucet, no captcha: POST {"destination": "r..."} or use https://xrpl.org/resources/dev-tools/xrp-faucets), then deposit it to a quote's depositAddress with depositMode MEMO and the quote's depositMemo as the DestinationTag (originAsset nep141:xrp.tp-omft.testnet).`,
   zec: `Tidepool does not drip native testnet ZEC (the ${ZEC_CHAIN.name} treasury is funded by public faucets). Get TAZ from ${ZEC_CHAIN.faucet} (Valar Group faucet) to a tm... transparent address, then deposit it to a quote's depositAddress (originAsset nep141:zec.tp-omft.testnet).`,
 };
-export async function drip(body, ip) {
+// opts.trusted: server-owned wallets (Agent API agents) skip the wallet-age check; caps and the 24h limit still apply.
+export async function drip(body, ip, opts = {}) {
   if (body.chain === 'xrp' || body.chain === 'ripple' || (!body.chain && (isXrpAddress(body.address) || isXrpAddress(body.accountId)))) throw new BadRequest(UTXO_FAUCETS.xrp, 400, { faucet: XRP_CHAIN.faucet, chain: 'xrp' });
   const utxo = ['btc', 'zec'].filter(k => k === 'btc' || ZEC_CHAIN.deployed).find(k => body.chain === k || (!body.chain && (k === 'btc' ? isBtcAddress(body.address) || isBtcAddress(body.accountId) : isZecAddress(body.address) || isZecAddress(body.accountId))));
   if (utxo) throw new BadRequest(UTXO_FAUCETS[utxo], 400, { faucet: utxo === 'btc' ? BTC_CHAIN.faucet : ZEC_CHAIN.faucet, chain: utxo });
@@ -82,7 +85,7 @@ export async function drip(body, ip) {
   if (body.chain === 'stellar' || body.chain === 'xlm' || (!body.chain && (isStellarAddress(body.address) || isStellarAddress(body.accountId)))) return stellarDrip(body, ip);
   if (body.chain === 'sol' || body.chain === 'solana' || (!body.chain && isSolAddress(body.address))) return solDrip(body, ip);
   if (body.chain || isEvmAddress(body.accountId) || isEvmAddress(body.address)) return evmDrip(body, ip);
-  return nearDrip(body, ip);
+  return nearDrip(body, ip, opts);
 }
 
 // Per-chain EVM faucet: the relayer mints the test ERC-20s (USDC, USDT) on that chain to an address.
@@ -95,6 +98,7 @@ async function evmDrip({ chain = 'base', address, accountId, assets }, ip) {
   const list = assets?.length ? c.tokens.filter(t => assets.includes(t.assetId) || assets.includes(t.symbol)) : c.tokens;
   if (!list.length) throw new BadRequest('no matching assets');
   const { hits, key } = assertClaimAllowed(to, c.key, ip);
+  await assertEvmEligible(c.key, to);
   markClaim(key, ip, hits);
   const out = [];
   try {
@@ -176,7 +180,7 @@ export function nearDripCheck(accountId, ip) {
   assertClaimAllowed(accountId, 'intents', ip);
 }
 
-async function nearDrip({ accountId, mode = 'wallet', assets }, ip) {
+async function nearDrip({ accountId, mode = 'wallet', assets }, ip, { trusted = false } = {}) {
   if (typeof accountId !== 'string' || !/^[a-z0-9._-]{2,64}$/.test(accountId)) throw new BadRequest('accountId must be a NEAR testnet account id');
   if (!['wallet', 'intents'].includes(mode)) throw new BadRequest('mode must be "wallet" or "intents"');
   // NEAR faucet: native Tidepool tokens by default; bridged test tokens (USDC/USDT on every chain, plus verifier-only test SOL and XLM)
@@ -188,7 +192,7 @@ async function nearDrip({ accountId, mode = 'wallet', assets }, ip) {
   // One claim per account every 24h across wallet, intents and bridged drips.
   const variant = list.some(isBridgedToken) ? 'intents-bridged' : mode;
   const { hits, key } = assertClaimAllowed(accountId, variant, ip);
-  if (mode === 'wallet' && !(await viewAccount(accountId))) throw new BadRequest(`${accountId} does not exist on testnet. Create it first (wallet or https://helper.nearprotocol.com) or use mode "intents"`);
+  if (!trusted) await assertNearEligible(accountId);
   markClaim(key, ip, hits);
 
   const out = [];

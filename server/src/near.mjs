@@ -8,11 +8,13 @@ import nacl from 'tweetnacl';
 
 export const NETWORK = 'testnet';
 // Ordered NEAR RPC failover list. NEAR_RPC_URLS (comma separated) overrides; NEAR_RPC (legacy) stays first.
-const DEFAULT_RPCS = ['https://test.rpc.fastnear.com', 'https://near-testnet.drpc.org', 'https://testnet-rpc.intea.rs', 'https://rpc.testnet.near.org'];
+// FastNEAR's free tier rate-limits us often, so it goes last.
+const DEFAULT_RPCS = ['https://near-testnet.drpc.org', 'https://testnet-rpc.intea.rs', 'https://rpc.testnet.near.org', 'https://test.rpc.fastnear.com'];
 export const RPC_URLS = [...new Set([process.env.NEAR_RPC, ...(process.env.NEAR_RPC_URLS ? process.env.NEAR_RPC_URLS.split(',') : DEFAULT_RPCS)].map(u => u?.trim()).filter(Boolean))];
 export const RPC = RPC_URLS[0];
 const COOLDOWN_429_MS = Number(process.env.NEAR_RPC_COOLDOWN_MS || 30_000);
 const cooldown = new Map(); // url -> until (ms)
+const lastLog = new Map(); // host:kind -> last warn (ms), so fallback warnings log at most once a minute
 const isTxMethod = (m) => /^(broadcast_tx|send_tx|tx$|EXPERIMENTAL_tx)/.test(m);
 // Transient = provider problem (rate limit, 5xx, timeout, network), safe to retry on another node.
 // Note: retrying broadcast of the SAME signed tx is idempotent (same hash); we never re-sign here.
@@ -39,7 +41,8 @@ async function withFailover(method, fn) {
       const status = e?.status ?? (typeof e?.cause === 'number' ? e.cause : undefined);
       if (!transient(e, status)) throw e;
       if (status === 429 || /429|rate.?limit|too many/i.test(String(e?.message) + JSON.stringify(e?.rpc || ''))) cooldown.set(url, Date.now() + COOLDOWN_429_MS);
-      console.warn(`[near-rpc] ${method} via ${new URL(url).host} failed (${String(e?.message || e).slice(0, 120)}); trying next provider`);
+      const host = new URL(url).host, msg = String(e?.message || e).slice(0, 120), lk = host + (/429/.test(msg) ? ':429' : ':' + msg.slice(0, 40));
+      if (!(lastLog.get(lk) > Date.now() - 60_000)) { lastLog.set(lk, Date.now()); console.warn(`[near-rpc] ${method} via ${host} failed (${msg}); trying next provider (repeats muted for 60s)`); }
       last = e;
     } finally { clearTimeout(timer); }
   }

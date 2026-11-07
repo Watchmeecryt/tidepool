@@ -39,8 +39,20 @@ export async function erc20Balance(chainKey, token, holder) {
   return BigInt(await new ethers.Contract(token, ERC20_ABI, provider(chainKey)).balanceOf(holder));
 }
 // Serialise relayer txs per chain so nonces never collide.
+// Relayer sends are serialized per chain (withSigner) and use a locally tracked nonce, so concurrent faucet claims or a lagging
+// RPC node can't hand two txs the same nonce; on "nonce already used / too low" we resync from the chain and retry once.
+const nextNonce = {};
+const NONCE_ERR = /nonce (has )?already (been )?used|nonce too low|NONCE_EXPIRED|replacement transaction underpriced/i;
 const send = (chainKey, fn) => withSigner(`evm:${chainKey}`, async () => {
-  const tx = await fn(relayer(chainKey));
+  const w = relayer(chainKey);
+  let tx;
+  for (let attempt = 0; ; attempt++) {
+    const chainNonce = await w.provider.getTransactionCount(w.address, 'pending');
+    const nonce = Math.max(chainNonce, nextNonce[chainKey] ?? 0);
+    const sw = w.connect(w.provider); sw.getNonce = async () => nonce; // pin the nonce for this one tx
+    try { tx = await fn(sw); nextNonce[chainKey] = nonce + 1; break; }
+    catch (e) { if (attempt === 0 && NONCE_ERR.test(String(e?.message || e))) { nextNonce[chainKey] = Math.max(chainNonce + 1, nonce + 1); continue; } throw e; }
+  }
   const rc = await tx.wait(1, 180_000);
   if (rc.status !== 1) throw new Error(`EVM tx reverted ${tx.hash}`);
   return rc;

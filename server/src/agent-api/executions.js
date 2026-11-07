@@ -198,7 +198,7 @@ async function settle(id, agent, n, ip) {
   try {
     const { keyPair, accountId } = agentWallet(agent.id);
     if (n.kind === 'deposit') {
-      await drip({ accountId, mode: 'intents' }, ip);
+      await drip({ accountId, mode: 'intents' }, ip, { trusted: true });
       return finish(id, 'SUCCESS');
     }
     let intents;
