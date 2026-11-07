@@ -7,7 +7,7 @@ import { setFaucetCheckers } from '../src/faucet-guard.js';
 
 setFaucetCheckers({ nearExists: async () => true, nearCreatedAt: async () => 0, evmActive: async () => true });
 
-const DAY = 24 * 60 * 60_000;
+const DAY = 7 * 24 * 60 * 60_000;
 const ADDR = '0x' + 'ab'.repeat(20);
 const NEAR = 'cooldown-bot.testnet';
 
@@ -23,7 +23,7 @@ test('faucet: same EVM address is blocked across chains for 24h', async () => {
   await assert.rejects(
     () => drip({ chain: 'eth', address: ADDR }, '203.0.113.9'),
     (e) => e instanceof BadRequest && e.code === 429 && e.extra?.available_at && e.extra?.retryAfterSeconds > 0
-      && /24 hours/.test(e.message),
+      && /7 days/.test(e.message),
   );
   await assert.rejects(
     () => drip({ chain: 'base', address: ADDR.toUpperCase().replace('0X', '0x') }, '203.0.113.10'),
@@ -35,7 +35,7 @@ test('faucet: same EVM address is blocked across chains for 24h', async () => {
 test('faucet: NEAR claim blocks wallet, intents and bridged for 24h', async () => {
   wipe(NEAR);
   db.faucet[`${NEAR}:wallet`] = Date.now();
-  await assert.rejects(() => drip({ accountId: NEAR, mode: 'intents' }, '203.0.113.11'), (e) => e.code === 429 && /24 hours/.test(e.message));
+  await assert.rejects(() => drip({ accountId: NEAR, mode: 'intents' }, '203.0.113.11'), (e) => e.code === 429 && /7 days/.test(e.message));
   assert.throws(() => nearDripCheck(NEAR, '203.0.113.12'), (e) => e.code === 429 && !!e.extra?.available_at);
   wipe(NEAR);
 });

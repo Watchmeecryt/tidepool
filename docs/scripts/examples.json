@@ -659,16 +659,16 @@
     ]
    },
    "429": {
-    "message": "Rate limited: alice.testnet can use the faucet again after 2026-11-07T12:00:00.000Z (one claim per address every 24 hours).",
+    "message": "Rate limited: alice.testnet can use the faucet again after 2026-11-07T12:00:00.000Z (one claim per address every 7 days).",
     "available_at": "2026-11-07T12:00:00.000Z",
     "retryAfter": "2026-11-07T12:00:00.000Z",
-    "retryAfterSeconds": 86400
+    "retryAfterSeconds": 604800
    },
    "400": {
     "message": "accountId must be a NEAR testnet account id"
    }
   },
-  "notes": "Limits: one claim per address every 24 hours across all faucet variants; six per IP per hour. Other chains: send `{\"chain\":\"base\",\"address\":\"0x…\"}` (also eth, arb, sol, stellar, sui; btc and xrp answer 400 with the external faucet to use, since native BTC and XRP are never dripped). Bridged tokens into the verifier: `{\"accountId\":\"alice.testnet\",\"mode\":\"intents\",\"assets\":[\"sol\"]}`. In `wallet` mode `drips` has one entry and `transactions` one transaction per token (all six NEAR test tokens by default); in `intents` mode the transfer is batched into one transaction per six tokens. The 200 sample below was recorded from a live `wallet` drip and is **shortened**: it lists two of the six tokens in `drips` and only the first mint in `transactions`. A full response lists every token (one `transactions` entry per token in `wallet` mode). See [Faucet](/docs/guides/faucet)."
+  "notes": "Limits: one claim per address every 7 days across all faucet variants; six per IP per hour. Other chains: send `{\"chain\":\"base\",\"address\":\"0x…\"}` (also eth, arb, sol, stellar, sui; btc and xrp answer 400 with the external faucet to use, since native BTC and XRP are never dripped). Bridged tokens into the verifier: `{\"accountId\":\"alice.testnet\",\"mode\":\"intents\",\"assets\":[\"sol\"]}`. In `wallet` mode `drips` has one entry and `transactions` one transaction per token (all six NEAR test tokens by default); in `intents` mode the transfer is batched into one transaction per six tokens. The 200 sample below was recorded from a live `wallet` drip and is **shortened**: it lists two of the six tokens in `drips` and only the first mint in `transactions`. A full response lists every token (one `transactions` entry per token in `wallet` mode). See [Faucet](/docs/guides/faucet)."
  },
  "TidepoolHealth": {
   "tryIt": true,

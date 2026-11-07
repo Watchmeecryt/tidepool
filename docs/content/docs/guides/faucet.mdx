@@ -105,7 +105,7 @@ Response to `{"accountId":"alice.testnet","mode":"wallet"}`. This sample was rec
 }
 ```
 
-A rejected request returns `{ "message": "…" }` with HTTP 400 (for example `{"message":"accountId must be a NEAR testnet account id"}`) or 429 when rate limited (`Rate limited: … can use the faucet again after <time> (one claim per address every 24 hours).`, plus `available_at` / `retryAfter`). Every field is in the [faucet reference](/docs/api-reference/tidepool-faucet).
+A rejected request returns `{ "message": "…" }` with HTTP 400 (for example `{"message":"accountId must be a NEAR testnet account id"}`) or 429 when rate limited (`Rate limited: … can use the faucet again after <time> (one claim per address every 7 days).`, plus `available_at` / `retryAfter`). Every field is in the [faucet reference](/docs/api-reference/tidepool-faucet).
 
 ### Bridged tokens into the verifier (`assets` chain aliases)
 
@@ -119,7 +119,7 @@ With `mode: "intents"`, `assets` accepts asset ids, NEAR symbols (`"USDC"` means
 | `sui` | 100 USDC + 100 USDT + **0.005 test SUI** (`nep141:sui.tp-omft.testnet`) |
 | `bridged` | All of the above |
 
-The test SOL, XLM and SUI exist **only inside the verifier**: they are not native coins and are never sent to a wallet. Bridged drips share the same 24-hour per-address claim limit as every other faucet variant. Bridged tokens cannot be requested in `wallet` mode (`400`).
+The test SOL, XLM and SUI exist **only inside the verifier**: they are not native coins and are never sent to a wallet. Bridged drips share the same 7-day per-address claim limit as every other faucet variant. Bridged tokens cannot be requested in `wallet` mode (`400`).
 
 ## NEAR: what you get per drip
 
@@ -147,7 +147,7 @@ See [POST /v0/faucet](/docs/api-reference/tidepool-faucet) for the full response
 
 ## Limits
 
-- **One claim per address every 24 hours**, across every faucet variant (NEAR wallet, NEAR intents, bridged intents, and every other chain). Claiming on Base blocks the same `0x` on Ethereum Sepolia, and a NEAR `wallet` drip blocks `intents` for that account until the window ends.
+- **One claim per address every 7 days**, across every faucet variant (NEAR wallet, NEAR intents, bridged intents, and every other chain). Claiming on Base blocks the same `0x` on Ethereum Sepolia, and a NEAR `wallet` drip blocks `intents` for that account until the window ends.
 - **Wallet age and IP cap:** NEAR accounts must exist and be at least 24 hours old, and EVM addresses must have sent a transaction or hold ETH on Ethereum Sepolia; otherwise you get `403` with a `reason`. Each IP can claim twice every 24 hours. If captcha is enabled, send `turnstileToken` (from the faucet page) or an `Authorization: Bearer naa_...` key.
 - **Six drips per IP per hour**, across everything. Over the limit returns **HTTP 429** with `available_at` / `retryAfter` (and a `Retry-After` header). If a transfer fails, the limit is not consumed.
 - Global daily caps protect the treasuries: Solana (it pays for token accounts), Stellar and Sui (it pays gas). Over the cap returns `429`.

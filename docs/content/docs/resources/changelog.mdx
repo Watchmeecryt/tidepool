@@ -3,6 +3,10 @@ title: Changelog
 description: What changed in Tidepool and when.
 icon: ClockCounterClockwise
 ---
+## 2026-11-07 · Faucet: one claim per address every 7 days
+
+- **Faucet rate limit:** each address or NEAR account can now claim once every 7 days (was 24 hours) across every faucet variant. Need a different token? Swap the one you claimed. The IP cap (2 claims per 24 hours) is unchanged.
+
 ## 2026-11-07 · Faucet: wallet-age check, 2 claims per IP per day
 
 - **Eligibility:** NEAR accounts must exist and be at least 24 hours old; EVM addresses must have on-chain activity (nonce > 0 or some ETH) on Ethereum Sepolia. Otherwise `403` with `reason` `account_not_found`, `account_too_new` or `address_inactive`.

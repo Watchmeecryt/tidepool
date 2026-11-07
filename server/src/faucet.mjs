@@ -11,7 +11,7 @@ import { withSigner, BadRequest } from './engine.mjs';
 import { assertNearEligible, assertEvmEligible } from './faucet-guard.js';
 import { resolveIntentAssets, isBridgedToken, CHAIN_ALIASES } from './faucet-assets.mjs';
 
-const ACCOUNT_COOLDOWN_MS = 24 * 60 * 60_000; // one claim per address across all faucet variants per 24h
+const ACCOUNT_COOLDOWN_MS = 7 * 24 * 60 * 60_000; // one claim per address across all faucet variants per 7 days
 const INTENTS_CHUNK = 6;
 const IP_LIMIT = 2; // drips per IP per 24h
 const IP_WINDOW_MS = 24 * 60 * 60_000;
@@ -36,7 +36,7 @@ function lastClaimFor(addr) {
   return last;
 }
 
-/** Throw 429 if this address claimed within 24h (any variant) or the IP hit its 24h cap. Returns { id, hits, key }. */
+/** Throw 429 if this address claimed within 7 days (any variant) or the IP hit its 24h cap. Returns { id, hits, key }. */
 function assertClaimAllowed(addr, variant, ip) {
   const id = normAddr(addr);
   const last = lastClaimFor(id);
@@ -44,7 +44,7 @@ function assertClaimAllowed(addr, variant, ip) {
     const available_at = new Date(last + ACCOUNT_COOLDOWN_MS).toISOString();
     const retryAfterSeconds = Math.max(1, Math.ceil((last + ACCOUNT_COOLDOWN_MS - Date.now()) / 1000));
     throw new BadRequest(
-      `Rate limited: ${addr} can use the faucet again after ${available_at} (one claim per address every 24 hours).`,
+      `Rate limited: ${addr} can use the faucet again after ${available_at} (one claim per address every 7 days).`,
       429,
       { available_at, retryAfter: available_at, retryAfterSeconds },
     );
@@ -82,7 +82,7 @@ const UTXO_FAUCETS = {
   xrp: `Tidepool does not drip native testnet XRP (the ${XRP_CHAIN.name} treasury is funded by the official faucet, and so can you). Get free test XRP from ${XRP_CHAIN.faucet} (the official XRPL Testnet faucet, no captcha: POST {"destination": "r..."} or use https://xrpl.org/resources/dev-tools/xrp-faucets), then deposit it to a quote's depositAddress with depositMode MEMO and the quote's depositMemo as the DestinationTag (originAsset nep141:xrp.tp-omft.testnet).`,
   zec: `Tidepool does not drip native testnet ZEC (the ${ZEC_CHAIN.name} treasury is funded by public faucets). Get TAZ from ${ZEC_CHAIN.faucet} (Valar Group faucet) to a tm... transparent address, then deposit it to a quote's depositAddress (originAsset nep141:zec.tp-omft.testnet).`,
 };
-// opts.trusted: server-owned wallets (Agent API agents) skip the wallet-age check; caps and the 24h limit still apply.
+// opts.trusted: server-owned wallets (Agent API agents) skip the wallet-age check; caps and the 7-day limit still apply.
 export async function drip(body, ip, opts = {}) {
   if (body.chain === 'xrp' || body.chain === 'ripple' || (!body.chain && (isXrpAddress(body.address) || isXrpAddress(body.accountId)))) throw new BadRequest(UTXO_FAUCETS.xrp, 400, { faucet: XRP_CHAIN.faucet, chain: 'xrp' });
   const utxo = ['btc', 'zec'].filter(k => k === 'btc' || ZEC_CHAIN.deployed).find(k => body.chain === k || (!body.chain && (k === 'btc' ? isBtcAddress(body.address) || isBtcAddress(body.accountId) : isZecAddress(body.address) || isZecAddress(body.accountId))));
@@ -195,7 +195,7 @@ async function nearDrip({ accountId, mode = 'wallet', assets }, ip, { trusted = 
   const list = assets?.length ? resolveIntentAssets(assets, mode === 'intents' ? TOKENS : NEAR_TOKENS) : NEAR_TOKENS.filter(t => Number(t.drip) > 0);
   if (!list.length && assets?.length && assets.every(a => ['btc', 'xrp', 'ripple', ...(ZEC_CHAIN.deployed ? ['zec'] : [])].includes(String(a).toLowerCase()) || (ZEC_CHAIN.deployed ? /^nep141:(btc|xrp|zec)\.tp-omft/ : /^nep141:(btc|xrp)\.tp-omft/).test(String(a)))) throw new BadRequest(UTXO_FAUCETS[/xrp|ripple/i.test(String(assets[0])) ? 'xrp' : /zec/i.test(String(assets[0])) ? 'zec' : 'btc']);
   if (!list.length) throw new BadRequest(`no matching assets${mode === 'intents' ? ` (use asset ids, NEAR symbols, or chain aliases: ${CHAIN_ALIASES.join(', ')})` : ''}`);
-  // One claim per account every 24h across wallet, intents and bridged drips.
+  // One claim per account every 7 days across wallet, intents and bridged drips.
   const variant = list.some(isBridgedToken) ? 'intents-bridged' : mode;
   const { hits, key } = assertClaimAllowed(accountId, variant, ip);
   markClaim(key, ip, hits); // reserve before any await (see evmDrip)
