@@ -78,7 +78,7 @@ Violations return HTTP 403 with `layer: "policy"` and a code such as `policy_act
 
 ## Faucet deposits
 
-`POST /v1/agents/{id}/deposit` with `{"origin_asset": "...", "testnet_faucet": true}` drips the default test tokens into the agent wallet. It allows one drip per agent wallet every 24 hours and a few per IP per hour. When it is rate-limited the call answers **429 `rate_limited`** right away (with `Retry-After`) and no execution is created, so check the HTTP status, not just for a `correlation_id`. A 202 means the drip was accepted: poll `GET /v1/status` until `SUCCESS` before spending.
+`POST /v1/agents/{id}/deposit` with `{"origin_asset": "...", "testnet_faucet": true}` drips the default test tokens into the agent wallet. It allows one drip per agent wallet per hour and a few per IP per hour. When it is rate-limited the call answers **429 `rate_limited`** right away (with `Retry-After`) and no execution is created, so check the HTTP status, not just for a `correlation_id`. A 202 means the drip was accepted: poll `GET /v1/status` until `SUCCESS` before spending.
 
 ## Idempotency and errors
 
