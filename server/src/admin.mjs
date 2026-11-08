@@ -1,9 +1,9 @@
 // Private /admin usage dashboard. Password from env ADMIN_PASSWORD (constant-time compare),
 // signed httpOnly session cookie, login rate limit. Disabled (404) when ADMIN_PASSWORD is unset.
 import crypto from 'node:crypto';
-import { db } from './store.mjs';
+import { db, save as saveDb } from './store.mjs';
 import { TOKENS, fromUnits } from './config.mjs';
-import { log, isOurs, ourList, ourCount } from './analytics.mjs';
+import { log, isOurs, ourList, ourCount, save as saveLog } from './analytics.mjs';
 import { sql } from './agent-api/db.js';
 
 const PW = process.env.ADMIN_PASSWORD || '';
@@ -102,6 +102,26 @@ function agentSummary() {
   return `<div class="grid"><div class="card"><h2>Agent API (/v1): ${keys} keys, ${agents} agents</h2><table><tr><th>Key</th><th>Name</th><th>Created</th><th>Agents</th></tr>${per.map(k => `<tr><td class="mono">${esc(k.prefix)}…</td><td>${esc(k.name || '')}</td><td>${fmtT(Date.parse(k.created_at))}</td><td>${k.n}</td></tr>`).join('')}</table></div>
 <div class="card"><h2>Agent API operations</h2><table><tr><th>Type</th><th>Status</th><th>Count</th></tr>${ops.map(o => `<tr><td>${esc(o.type)}</td><td class="${statusCls(o.status)}">${esc(o.status)}</td><td>${o.n}</td></tr>`).join('')}<tr><td>faucet 429 (logged since this build)</td><td class="bad">rejected</td><td>${rej}</td></tr></table><p class="mute">Not counted as swaps. Deposits include faucet drips.</p></div></div>`;
 }
+// Deletes inactive (faucet-only or zero-activity, same rule as the dashboard) non-ours wallets from the swap db faucet map,
+// the analytics wallet log and the agent-API tables. Irreversible; admin session only.
+function purgeInactive() {
+  const isInactive = (w) => !w.quotes && !w.dryQuotes && !w.swaps && !w.agentTransfers && !w.agentOther;
+  const gone = new Set(walletStats().filter(w => !w.ours && isInactive(w)).map(w => w.wallet));
+  let faucetKeys = 0, logWallets = 0, agents = 0;
+  for (const k of Object.keys(db.faucet)) if (gone.has(k.slice(0, k.lastIndexOf(':')))) { delete db.faucet[k]; faucetKeys++; }
+  for (const w of Object.keys(log.wallets)) if (gone.has(w)) { delete log.wallets[w]; logWallets++; }
+  sql.exec('BEGIN');
+  try {
+    for (const a of sql.prepare('SELECT id, wallet_account FROM agents').all()) if (gone.has(a.wallet_account)) {
+      for (const t of ['operations', 'grants', 'policy_revisions', 'owner_intents', 'faucet_rejects']) sql.prepare(`DELETE FROM ${t} WHERE agent_id = ?`).run(a.id);
+      sql.prepare('DELETE FROM agents WHERE id = ?').run(a.id); agents++;
+    }
+    for (const w of gone) sql.prepare('DELETE FROM faucet_rejects WHERE wallet_account = ?').run(w);
+    sql.exec('COMMIT');
+  } catch (e) { sql.exec('ROLLBACK'); throw e; }
+  saveDb(); saveLog();
+  return { wallets: gone.size, faucetKeys, logWallets, agents };
+}
 function dashboard(all, fo = false) {
   const ws = walletStats();
   // Faucet-only: claimed from the faucet but never quoted (live or dry), swapped, or used the agent API beyond faucet drips.
@@ -168,6 +188,7 @@ export async function admin(req, res, p, url) {
   if (!session(req)) { res.writeHead(p === '/admin' ? 200 : 303, p === '/admin' ? H : { ...H, location: '/admin' }); res.end(p === '/admin' ? loginPage() : ''); return true; }
   const all = url.searchParams.get('all') === '1';
   if (p === '/admin' || p === '/admin/') { res.writeHead(200, H); res.end(dashboard(all, url.searchParams.get('fo') === '1')); return true; }
+  if (p === '/admin/purge-inactive' && req.method === 'POST') { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify(purgeInactive())); return true; }
   const m = p.match(/^\/admin\/wallet\/(.+)$/);
   if (m) { res.writeHead(200, H); res.end(walletPage(decodeURIComponent(m[1]))); return true; }
   res.writeHead(404, H); res.end('Not found'); return true;

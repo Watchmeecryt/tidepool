@@ -12,7 +12,7 @@ log.salt ||= crypto.randomBytes(16).toString('hex');
 log.since ||= new Date().toISOString();
 log.raw ||= []; log.daily ||= {}; log.wallets ||= {};
 let t = null;
-const save = () => { if (t) return; t = setTimeout(() => { t = null; try { fs.writeFileSync(FILE + '.tmp', JSON.stringify(log)); fs.renameSync(FILE + '.tmp', FILE); } catch (e) { console.error('analytics save', e.message); } }, 2000); };
+export const save = () => { if (t) return; t = setTimeout(() => { t = null; try { fs.writeFileSync(FILE + '.tmp', JSON.stringify(log)); fs.renameSync(FILE + '.tmp', FILE); } catch (e) { console.error('analytics save', e.message); } }, 2000); };
 
 // Our own wallets: everything we own, operate, or use in docs/examples/tests. These are hidden from the /admin
 // wallet views by default so only genuinely new external wallets show (use "show ours" to see everything).
