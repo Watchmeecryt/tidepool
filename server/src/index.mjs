@@ -10,7 +10,7 @@ import { authenticate, refresh, balances, history, sessionOf } from './auth.mjs'
 import { createOrder, getOrder, listOrders, cancelOrder, ApiError, errorDoc } from './orders.mjs';
 import crypto from 'node:crypto';
 import { drip } from './faucet.mjs';
-import { assertHuman } from './faucet-guard.js';
+import { assertHuman, assertSiteTicket, issueFaucetTicket, SITE_FAUCET_URL } from './faucet-guard.js';
 import { authenticate as authenticatePartnerKey } from './agent-api/partner-keys.js';
 import { prices } from './prices.mjs';
 import { evmHealth } from './evm.mjs';
@@ -123,7 +123,7 @@ const server = http.createServer(async (req, res) => {
   res.on('finish', () => { try { record(req, res, p, req._body, url); } catch (e) { console.error('analytics', e.message); } });
   try {
     if (await admin(req, res, p, url)) return;
-    if (req.method === 'OPTIONS') { res.writeHead(204, { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type, authorization, x-api-key', 'access-control-allow-methods': 'GET, POST, OPTIONS' }); return res.end(); }
+    if (req.method === 'OPTIONS') { res.writeHead(204, { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type, authorization, x-api-key, x-faucet-ticket', 'access-control-allow-methods': 'GET, POST, OPTIONS' }); return res.end(); }
     // ---- Agent API (/v1, SDK-compatible, testnet) ----
     if (p === '/v1' || p.startsWith('/v1/')) return handleV1(req, res, url, { origin: origin(req), ip: ip(req), openapi: () => JSON.parse(fs.readFileSync(PUBLIC + 'agent-api.openapi.json', 'utf8')) });
     // ---- API (1Click-compatible) ----
@@ -146,7 +146,9 @@ const server = http.createServer(async (req, res) => {
         throw e;
       }
     }
+    if (p === '/v0/faucet/ticket' && req.method === 'GET') return json(res, 200, issueFaucetTicket(req.headers, ip(req)));
     if (p === '/v0/faucet' && req.method === 'POST') {
+      assertSiteTicket(req.headers, ip(req));
       const body = await readBody(req);
       let keyOk = false;
       if (process.env.TURNSTILE_SECRET) { try { authenticatePartnerKey(req); keyOk = true; } catch {} }

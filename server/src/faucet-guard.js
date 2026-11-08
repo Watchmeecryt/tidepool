@@ -59,3 +59,24 @@ export async function assertHuman(body, ip, hasValidApiKey) {
   } catch {}
   if (!ok) throw new BadRequest('Captcha verification failed: reload the faucet page and try again.', 403, { reason: 'captcha_failed' });
 }
+
+// Site-only faucet: the web app first GETs /v0/faucet/ticket from an allowed browser Origin and sends the short-lived,
+// IP-bound HMAC ticket as x-faucet-ticket. Direct API/agent calls get 403 pointing to the site faucet page.
+import crypto from 'node:crypto';
+export const SITE_FAUCET_URL = 'https://app.usetidepool.tech/faucet';
+const ORIGINS = new Set(['https://app.usetidepool.tech', 'https://www.usetidepool.tech', 'https://usetidepool.tech', ...String(process.env.FAUCET_ORIGINS || '').split(',').filter(Boolean)]);
+const TICKET_KEY = process.env.FAUCET_TICKET_SECRET || crypto.randomBytes(32).toString('hex');
+const TICKET_TTL_MS = 10 * 60_000;
+const sign = (s) => crypto.createHmac('sha256', TICKET_KEY).update(s).digest('base64url');
+const siteOnly = () => new BadRequest(`The faucet is not available via the API. Claim test tokens manually on the site faucet page: ${SITE_FAUCET_URL}`, 403, { reason: 'site_only', faucetUrl: SITE_FAUCET_URL });
+const browserFromSite = (h) => ORIGINS.has(String(h.origin || '')) && !!h['sec-fetch-mode'] && !!h['sec-fetch-site'];
+export function issueFaucetTicket(headers, ip) {
+  if (!browserFromSite(headers)) throw siteOnly();
+  const exp = Date.now() + TICKET_TTL_MS, nonce = crypto.randomBytes(8).toString('base64url');
+  return { ticket: `${exp}.${nonce}.${sign(`${exp}.${nonce}.${ip}`)}`, expiresAt: new Date(exp).toISOString() };
+}
+export function assertSiteTicket(headers, ip) {
+  const [exp, nonce, mac] = String(headers['x-faucet-ticket'] || '').split('.');
+  const good = browserFromSite(headers) && mac && Number(exp) > Date.now() && crypto.timingSafeEqual(Buffer.from(sign(`${exp}.${nonce}.${ip}`)), Buffer.from(mac.padEnd(43).slice(0, 43)));
+  if (!good) throw siteOnly();
+}
