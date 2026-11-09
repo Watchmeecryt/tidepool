@@ -5,82 +5,98 @@
     "AAPLon": {
       "address": "0xD5B38f11A483C140E0BBc63Cae904CAa50F79B1f",
       "decimals": 18,
-      "mainnetAddress": "0x390a684ef9cade28a7ad0dfa61ab1eb3842618c4"
+      "mainnetAddress": "0x390a684ef9cade28a7ad0dfa61ab1eb3842618c4",
+      "vaultBacked": true
     },
     "AGGon": {
       "address": "0x64C0BBD6D18241AD0d1a0A94E8292d326407378b",
       "decimals": 18,
-      "mainnetAddress": "0x08ce97f3d5cf11e577d091ab048bc5e2eae3fabb"
+      "mainnetAddress": "0x08ce97f3d5cf11e577d091ab048bc5e2eae3fabb",
+      "vaultBacked": true
     },
     "AMZNon": {
       "address": "0x93f62c39BceE422899E3FC2b432ed45413857cA5",
       "decimals": 18,
-      "mainnetAddress": "0x4553cfe1c09f37f38b12dc509f676964e392f8fc"
+      "mainnetAddress": "0x4553cfe1c09f37f38b12dc509f676964e392f8fc",
+      "vaultBacked": true
     },
     "BLKDIGon": {
       "address": "0x8e5E3202A117DFC784185D0463Dc6bf809757205",
       "decimals": 18,
-      "mainnetAddress": "0xe658c62195f32bc53226e7e2642e3d76b4382fb8"
+      "mainnetAddress": "0xe658c62195f32bc53226e7e2642e3d76b4382fb8",
+      "vaultBacked": true
     },
     "BLKGRWon": {
       "address": "0x61857adD54372aF81b6aCdbAbff5ed7Ae7fDfB00",
       "decimals": 18,
-      "mainnetAddress": "0xe4bd77247671746caa3119e9feaa146f8a4ee237"
+      "mainnetAddress": "0xe4bd77247671746caa3119e9feaa146f8a4ee237",
+      "vaultBacked": true
     },
     "BLKHIon": {
       "address": "0x193b5AD948A36130CF00d1A6a563A1b84c45eF60",
       "decimals": 18,
-      "mainnetAddress": "0xf78155dc15b838b7577002bc53bbe1041ca48622"
+      "mainnetAddress": "0xf78155dc15b838b7577002bc53bbe1041ca48622",
+      "vaultBacked": true
     },
     "BRAINon": {
       "address": "0x83aCdf8979502c181fDa40F07F9ff919D623A77b",
       "decimals": 18,
-      "mainnetAddress": "0x0574e53f8214d0402c8388b4402113a74354d1b0"
+      "mainnetAddress": "0x0574e53f8214d0402c8388b4402113a74354d1b0",
+      "vaultBacked": true
     },
     "CRCLon": {
       "address": "0xe8Fd4d24914c1FdCbD7eb7B0A2dE89ceD9eD30Db",
       "decimals": 18,
-      "mainnetAddress": "0x992879cd8ce0c312d98648875b5a8d6d042cbf34"
+      "mainnetAddress": "0x992879cd8ce0c312d98648875b5a8d6d042cbf34",
+      "vaultBacked": true
     },
     "GLDon": {
       "address": "0xE34bf67BA883B273D95f10220b15e005edD2C738",
       "decimals": 18,
-      "mainnetAddress": "0xfa9a1e901085e269f6d428f79cd5252d8b919344"
+      "mainnetAddress": "0xfa9a1e901085e269f6d428f79cd5252d8b919344",
+      "vaultBacked": true
     },
     "GOOGLon": {
       "address": "0x548231eC9ceeF27063E65663EC0b95049F82FB49",
       "decimals": 18,
-      "mainnetAddress": "0x091fc7778e6932d4009b087b191d1ee3bac5729a"
+      "mainnetAddress": "0x091fc7778e6932d4009b087b191d1ee3bac5729a",
+      "vaultBacked": true
     },
     "HOODon": {
       "address": "0xe26345D12051282C439C9A27D0B3bBa9Dd1eAa06",
       "decimals": 18,
-      "mainnetAddress": "0x19601179a60f55ff6636f5d1a8b6671053bd60a8"
+      "mainnetAddress": "0x19601179a60f55ff6636f5d1a8b6671053bd60a8",
+      "vaultBacked": true
     },
     "IAUon": {
       "address": "0x18aE4A617C981F49d9dACa02C37D5109ED933E05",
       "decimals": 18,
-      "mainnetAddress": "0xcb2a0f46f67dc4c58a316f1c008edef5c2311795"
+      "mainnetAddress": "0xcb2a0f46f67dc4c58a316f1c008edef5c2311795",
+      "vaultBacked": true
     },
     "INTCon": {
       "address": "0xe83B33A4a81A31bC4dda935C1379647a64571E52",
       "decimals": 18,
-      "mainnetAddress": "0xa528caaa2f96090e379d43f90834c75df54d6e74"
+      "mainnetAddress": "0xa528caaa2f96090e379d43f90834c75df54d6e74",
+      "vaultBacked": true
     },
     "MAG7Xon": {
       "address": "0xE9429B7a8a30b543A5f1d15E7EbA1f8FE037D6a4",
       "decimals": 18,
-      "mainnetAddress": "0x50436ec45316a98e72b03ead5752e8543f11ec09"
+      "mainnetAddress": "0x50436ec45316a98e72b03ead5752e8543f11ec09",
+      "vaultBacked": true
     },
     "METAon": {
       "address": "0x0eF93540BF87E166a87302c98Bf315FC6420eD8F",
       "decimals": 18,
-      "mainnetAddress": "0xd7df5863a3e742f0c767768cdfcb63f09e0422f6"
+      "mainnetAddress": "0xd7df5863a3e742f0c767768cdfcb63f09e0422f6",
+      "vaultBacked": true
     },
     "MRVLon": {
       "address": "0x4B954a7455ab7e0e8E60c06029B27C81783A414f",
       "decimals": 18,
-      "mainnetAddress": "0x1501ec83ffef405b4331cc4f73277a40fb0c627d"
+      "mainnetAddress": "0x1501ec83ffef405b4331cc4f73277a40fb0c627d",
+      "vaultBacked": true
     },
     "MSFTon": {
       "address": "0x7d6cA8B1a78aec77236CAA787D14D83fB744Be81",
@@ -101,6 +117,46 @@
       "address": "0x15c476715AbCc0e25e1Be87b897DC4a3eEe3C191",
       "decimals": 18,
       "mainnetAddress": "0xc008c5f579ec1450f20099c39f587547e27c7523"
+    },
+    "SLVon": {
+      "address": "0x0Bc75653514FE08e82d51d56C1F96b6Aaa59a38b",
+      "decimals": 18,
+      "mainnetAddress": "0x8b872732b07be325a8803cdb480d9d20b6f8d11b"
+    },
+    "SPYon": {
+      "address": "0xcdC43dD6c9A5Eac209c80826EE85275Af5AC81Ee",
+      "decimals": 18,
+      "mainnetAddress": "0x6a708ead771238919d85930b5a0f10454e1c331a"
+    },
+    "TIPon": {
+      "address": "0xFc6b13E8b39ACdfb2ff1165692aF6Ad88263D031",
+      "decimals": 18,
+      "mainnetAddress": "0x2ac26ec236df5d1d2ad1a6dd4e448a90e45dc35d"
+    },
+    "TLTon": {
+      "address": "0xf66b4b5E204844c0cd03C71284A8bB0D7C71b3be",
+      "decimals": 18,
+      "mainnetAddress": "0xf69e40069ac227c11459e3f4e8a446b3401616b6"
+    },
+    "TSLAon": {
+      "address": "0x8d0d4CD3e44Eae4C0986D7Ce4A490028e4739a2a",
+      "decimals": 18,
+      "mainnetAddress": "0x2494b603319d4d9f9715c9f4496d9e0364b59d93"
+    },
+    "USDon": {
+      "address": "0x566Cdc1888b890CfBF5E5d8dA02fb7D9c6A3b72e",
+      "decimals": 18,
+      "mainnetAddress": "0x1f8955e640cbd9abc3c3bb408c9e2e1f5f20dfe6"
+    },
+    "YLD5on": {
+      "address": "0x2c9264Aa4B1ee45c6A7372486d006D17D5E1f00c",
+      "decimals": 18,
+      "mainnetAddress": "0x0cfd1030e2431e0fa15d4cc3f3e43076fe93f8f9"
+    },
+    "YLD8on": {
+      "address": "0x656C42Bfb701CaA43aFeC02837b53C687bF63648",
+      "decimals": 18,
+      "mainnetAddress": "0x2f20d5dfbaffa3e6351e06b8b18059747cd7ee72"
     }
   },
   "txs": [
@@ -203,6 +259,126 @@
       "label": "deploy SGOVon",
       "hash": "0x0d4841f1e9c1de51d57dfd042934c3e81749b1a22894b60cbb67002a27700676",
       "at": "2026-11-09T18:27:56.621Z"
+    },
+    {
+      "label": "deploy SLVon",
+      "hash": "0xbea79f3b624d954ab34a9dc4819b684fb869294f0ae33422bc42c3f328e712d0",
+      "at": "2026-11-09T18:28:00.864Z"
+    },
+    {
+      "label": "deploy SPYon",
+      "hash": "0x2ded7b2c2c5e2acea76cae0ccd6c8dc68516e15f34f14562aec7cbcc941974ef",
+      "at": "2026-11-09T18:28:05.161Z"
+    },
+    {
+      "label": "deploy TIPon",
+      "hash": "0x81194d07bdf2bc6bc9a32dda3eb338f67bda754b4b0d17357786ca77ef2c9d04",
+      "at": "2026-11-09T18:28:09.408Z"
+    },
+    {
+      "label": "deploy TLTon",
+      "hash": "0xb4fd38aabed2cccaa5031400b7b5ff6bda820607a11cbe20d038ebdef1ac1998",
+      "at": "2026-11-09T18:28:13.716Z"
+    },
+    {
+      "label": "deploy TSLAon",
+      "hash": "0x15e12ebb7173489c7b3bbb83d4e2c7a0571ad3ac7be1d276b767870d66d8667c",
+      "at": "2026-11-09T18:28:17.973Z"
+    },
+    {
+      "label": "deploy USDon",
+      "hash": "0x369bce05e7879994989bab915d517a684c23f1548b359d844f8d9fcaa51213ab",
+      "at": "2026-11-09T18:28:22.235Z"
+    },
+    {
+      "label": "deploy YLD5on",
+      "hash": "0x354803cf0ee879b7a6376fe088933c83118319b0274e61af546dd290d99d58de",
+      "at": "2026-11-09T18:28:26.552Z"
+    },
+    {
+      "label": "deploy YLD8on",
+      "hash": "0xf689821d87dbac62c57673f514b72bb918cdb883aae8649b85c1cc6196bb75ef",
+      "at": "2026-11-09T18:28:30.830Z"
+    },
+    {
+      "label": "mint vault AAPLon",
+      "hash": "0x122bc4e459ca1fa0273cb6c243991008f5276ed8b856ce588b64a594bc459580",
+      "at": "2026-11-09T18:28:35.125Z"
+    },
+    {
+      "label": "mint vault AGGon",
+      "hash": "0x2b154babf0978900d3177e849421b59019888b0324bd47d045d4365495cca1fd",
+      "at": "2026-11-09T18:28:39.468Z"
+    },
+    {
+      "label": "mint vault AMZNon",
+      "hash": "0xde5a943f3bd58466bc74d939a8b148fe2d0f4eb6ed02627e669b891637320f0f",
+      "at": "2026-11-09T18:28:43.763Z"
+    },
+    {
+      "label": "mint vault BLKDIGon",
+      "hash": "0x58fba1ae9c640309f4ba7d227d9b6bb238d94f112e09cadf8266113bf683f008",
+      "at": "2026-11-09T18:28:48.063Z"
+    },
+    {
+      "label": "mint vault BLKGRWon",
+      "hash": "0x93f14be08533b9d8978f399f3c94d1b03a62d8ec10fc7e2531ee00200c1a1b19",
+      "at": "2026-11-09T18:28:52.347Z"
+    },
+    {
+      "label": "mint vault BLKHIon",
+      "hash": "0xa089b04c1bd005c6b90bad85cdb40c8a9ed0a04eb3841e53d3ec0fc07f665b10",
+      "at": "2026-11-09T18:28:56.633Z"
+    },
+    {
+      "label": "mint vault BRAINon",
+      "hash": "0x2cd749d4badabe6bbe1ec5762d6e8287969ef21f2fb8df4ceee687948c30b3af",
+      "at": "2026-11-09T18:29:00.941Z"
+    },
+    {
+      "label": "mint vault CRCLon",
+      "hash": "0x5c63214f0563fa1c8989ec2133c922fb7051f0caebe541946792c1561bba53f7",
+      "at": "2026-11-09T18:29:05.227Z"
+    },
+    {
+      "label": "mint vault GLDon",
+      "hash": "0x962a8bc16e5e9028da7516d22c3fa8c3cc3efe3e4a8c6837d146112aac111d9b",
+      "at": "2026-11-09T18:29:09.544Z"
+    },
+    {
+      "label": "mint vault GOOGLon",
+      "hash": "0x25b933f58130d046fb9c6919e9f8fe487964fc21f63160b795c50f3219363208",
+      "at": "2026-11-09T18:29:13.876Z"
+    },
+    {
+      "label": "mint vault HOODon",
+      "hash": "0x94d0423068269df63d2fca8c7c2f8cbf4a4ead06208fd9415b1108d39d902269",
+      "at": "2026-11-09T18:29:18.176Z"
+    },
+    {
+      "label": "mint vault IAUon",
+      "hash": "0xe79181995a10c88af6500ba23291b3a7dd6f0f765ca319c102b38534b9ade117",
+      "at": "2026-11-09T18:29:22.500Z"
+    },
+    {
+      "label": "mint vault INTCon",
+      "hash": "0x75ac3309452e8a5f7e8307d491e3c5f0e585a31eeb748690405d2f79b8d68092",
+      "at": "2026-11-09T18:29:26.806Z"
+    },
+    {
+      "label": "mint vault MAG7Xon",
+      "hash": "0xa4b20ad50e22f5ff35462a517124a9a84db8fc841ab7b1e6fb1b36ec7d28f17c",
+      "at": "2026-11-09T18:29:31.100Z"
+    },
+    {
+      "label": "mint vault METAon",
+      "hash": "0xa676b54acedf2593e7b6075a45a9d490a244239fdbf663989d0672c6368d1857",
+      "at": "2026-11-09T18:29:35.400Z"
+    },
+    {
+      "label": "mint vault MRVLon",
+      "hash": "0xa223f10bacdebfea94bb0976d0b71426d4e9c05896ff94dbab33447b01acca15",
+      "at": "2026-11-09T18:29:39.719Z"
     }
   ],
   "live": false,
