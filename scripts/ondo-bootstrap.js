@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// Deploy Tidepool Ondo test tokens on Base Sepolia + NEAR NEP-141 mirrors (tp-omdep.testnet).
+// Deploy Tidepool Ondo test tokens on BSC Testnet (97) + NEAR NEP-141 mirrors (tp-omdep.testnet).
 // Idempotent. Keys from env / .secrets; never printed.
+// Requires bridge-deployments.json bsc.vault (run: node scripts/bridge-bootstrap.mjs bsc first).
 import fs from 'node:fs';
 import { ethers } from '../server/node_modules/ethers/lib.esm/index.js';
 import { KeyPair } from '../server/node_modules/near-api-js/lib/index.js';
@@ -10,40 +11,49 @@ import { ROOT, VERIFIER, MAKER, toUnits } from '../server/src/config.mjs';
 const OMDEP = process.env.TIDEPOOL_OMDEP || 'tp-omdep.testnet';
 const SECRETS = new URL('../.secrets/', import.meta.url).pathname;
 const DEP = new URL('../server/src/ondo-deployments.json', import.meta.url);
+const BRIDGE = new URL('../server/src/bridge-deployments.json', import.meta.url);
 const CAT = JSON.parse(fs.readFileSync(new URL('../server/src/ondo-catalog.json', import.meta.url)));
 const ART = JSON.parse(fs.readFileSync(new URL('../contracts/evm/artifacts.json', import.meta.url)));
 const WASM = fs.readFileSync(new URL('../contracts/token/target/near/tidepool_token.wasm', import.meta.url));
 
+const CHAIN_ID = 97;
+const RPC = process.env.BSC_TESTNET_RPC || 'https://bsc-testnet-rpc.publicnode.com';
+
 await loadKeys({ dir: SECRETS });
 const deployments = JSON.parse(fs.readFileSync(DEP, 'utf8'));
-deployments.chain ||= 'base';
-deployments.chainId ||= 84532;
+deployments.chain = 'bsc';
+deployments.chainId = CHAIN_ID;
 deployments.tokens ||= {};
 deployments.txs ||= [];
 const saveDep = () => fs.writeFileSync(DEP, JSON.stringify(deployments, null, 2) + '\n');
 const log = (label, h) => { deployments.txs.push({ label, hash: h, at: new Date().toISOString() }); saveDep(); console.log('  ', label, typeof h === 'string' ? h.slice(0, 18) + '…' : h); };
 
-const rpc = process.env.BASE_SEPOLIA_RPC || 'https://sepolia.base.org';
-const provider = new ethers.JsonRpcProvider(rpc, 84532, { staticNetwork: true });
+const bridge = JSON.parse(fs.readFileSync(BRIDGE, 'utf8'));
+const vault = bridge.bsc?.vault;
+if (!vault) {
+  console.error('MISSING_VAULT: run `node scripts/bridge-bootstrap.mjs bsc` first (needs tBNB on the relayer).');
+  process.exit(2);
+}
+deployments.vault = vault;
+
+const provider = new ethers.JsonRpcProvider(RPC, CHAIN_ID, { staticNetwork: true });
 const key = process.env.TIDEPOOL_EVM_RELAYER_KEY;
 if (!key) throw new Error('TIDEPOOL_EVM_RELAYER_KEY required');
 const wallet = new ethers.NonceManager(new ethers.Wallet(key, provider));
 const relayerAddr = await wallet.getAddress();
-const gasEth = ethers.formatEther(await provider.getBalance(relayerAddr));
-console.log(`== Base Sepolia Ondo deploy: relayer ${relayerAddr}, gas ${gasEth} ETH`);
-if (Number(gasEth) < 0.01) {
-  console.error(`INSUFFICIENT_GAS need ~0.05 ETH on Base Sepolia for ${CAT.length} deploys; have ${gasEth}`);
+const gas = ethers.formatEther(await provider.getBalance(relayerAddr));
+console.log(`== BSC Testnet Ondo deploy: relayer ${relayerAddr}, gas ${gas} tBNB`);
+if (Number(gas) < 0.01) {
+  console.error(`INSUFFICIENT_GAS need ~0.05–0.1 tBNB on BSC Testnet (97) for vault inventory + ${CAT.length} token deploys; have ${gas}`);
+  console.error(`Fund ${relayerAddr} on chain 97, then re-run.`);
   process.exit(2);
 }
 
-const vault = JSON.parse(fs.readFileSync(new URL('../server/src/bridge-deployments.json', import.meta.url))).base?.vault;
-if (!vault) throw new Error('base vault missing in bridge-deployments.json');
-deployments.vault = vault;
-
 async function deployToken(meta) {
   const f = new ethers.ContractFactory(ART.TidepoolTestToken.abi, ART.TidepoolTestToken.bytecode, wallet);
-  const drip = toUnits('1', meta.decimals); // 1 token per faucet drip
-  const ct = await f.deploy(`Tidepool Testnet ${meta.symbol} (Ondo, no value)`, meta.symbol, meta.decimals, drip);
+  const dripAmt = meta.symbol === 'USDon' ? '100' : (meta.fallback < 20 ? '10' : '1');
+  const drip = toUnits(dripAmt, meta.decimals);
+  const ct = await f.deploy(`Tidepool Testnet ${meta.symbol} (Ondo on BSC Testnet, no value)`, meta.symbol, meta.decimals, drip);
   const rc = await ct.deploymentTransaction().wait(1);
   const addr = await ct.getAddress();
   log(`deploy ${meta.symbol}`, rc.hash);
@@ -57,7 +67,6 @@ for (const meta of CAT) {
   saveDep();
 }
 
-// Back vault with inventory (10_000 of each)
 for (const meta of CAT) {
   const t = deployments.tokens[meta.symbol];
   if (!t?.address || t.vaultBacked) continue;
@@ -72,8 +81,7 @@ for (const meta of CAT) {
 }
 console.log('== EVM done,', Object.keys(deployments.tokens).length, 'tokens');
 
-// ---- NEAR: OMDEP parent + one NEP-141 per token ----
-const FUND = parseNear(0.45); // lean funding; FT wasm ~160KB
+const FUND = parseNear(1.75);
 if (!(await viewAccount(OMDEP).catch(() => null))) {
   console.log('== create', OMDEP);
   const kp = KeyPair.fromRandom('ed25519');
@@ -105,7 +113,6 @@ for (const meta of CAT) {
     await keyStore.setKey(NETWORK, id, kp);
     log(`create ${id}`, r.transaction.hash);
   } else {
-    // ensure key is loaded if we have secrets file
     try {
       const raw = JSON.parse(fs.readFileSync(SECRETS + id + '.json', 'utf8'));
       await keyStore.setKey(NETWORK, id, KeyPair.fromString(raw.private_key));
@@ -117,7 +124,7 @@ for (const meta of CAT) {
     log(`deploy ${id}`, (await (await account(id)).deployContract(WASM)).transaction.hash);
     log(`init ${id}`, (await mustCall(id, id, 'new', {
       owner_id: ROOT,
-      name: `Tidepool Testnet ${meta.symbol} (Ondo on Base Sepolia, no value)`,
+      name: `Tidepool Testnet ${meta.symbol} (Ondo on BSC Testnet, no value)`,
       symbol: meta.symbol,
       decimals: meta.decimals,
     })).txHash);

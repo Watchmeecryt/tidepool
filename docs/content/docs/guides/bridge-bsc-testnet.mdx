@@ -1,0 +1,72 @@
+---
+title: BSC Testnet bridge
+description: Swap between BSC Testnet (chain id 97) and NEAR testnet through Tidepool's testnet relayer, including Ondo tokenized stocks/RWAs (`ondoTokens=1`), with 1Click-style deposit addresses, status and refunds.
+icon: Cube
+---
+
+<Callout type="warn">**Trusted relayer, testnet only.** This route is run by Tidepool as its own testnet service. It is not a NEAR, Omni Bridge or 1Click bridge, and the tokens have no value. Read [Test bridges](/docs/guides/bridges) for what you are trusting.</Callout>
+
+## Contracts
+
+| What | Address |
+| --- | --- |
+| Chain | BSC Testnet, chain id `97`, `blockchain: "bsc"` |
+| Vault | Listed in [`GET /v0/tokens`](/docs/api-reference/get-tokens) once live (see `bridge-deployments` / status) |
+| Test USDC / USDT (6 decimals) | Appears in `/v0/tokens` with `blockchain: "bsc"` while the bridge is live |
+| Relayer | `0x55F2c8044D790e1b8369508c31c756c0c2Ca0E93` |
+
+Bridged stables use `nep141:bsc-0x<erc20>.tp-omft.testnet`. The route appears in `/v0/tokens` only while it is live.
+
+## Ondo tokenized stocks/RWAs
+
+Mainnet 1Click lists Ondo products under `blockchain: "bsc"` with `nep141:bnb-<addr>.omdep.near`. Tidepool mirrors that shape on testnet:
+
+- `GET /v0/tokens?ondoTokens=1` — 28 symbols (AAPLon, TSLAon, NVDAon, … USDon)
+- Asset ids: `nep141:bnb-<erc20>.tp-omdep.testnet`
+- ERC-20s + vault inventory on **BSC Testnet** (chain id 97)
+- Without `ondoTokens=1` they are omitted (same as mainnet)
+
+Prices prefer mainnet 1Click when reachable. Faucet drips Ondo only when you pass `assets: ["ondo"]` (or specific symbols); default `{"chain":"bsc"}` drips USDC/USDT only.
+
+## 1. Get tokens and gas
+
+```bash
+curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: application/json' \
+  -d '{"chain":"bsc","address":"0xYourAddress"}'
+```
+
+This mints 100 test USDC and 100 test USDT on BSC Testnet (while live). For Ondo drips:
+
+```bash
+curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: application/json' \
+  -d '{"chain":"bsc","address":"0xYourAddress","assets":["ondo"]}'
+```
+
+Also available in the dropdown on the [Faucet](/docs/guides/faucet) page. Gas is **not** included: get BSC Testnet tBNB from a [public faucet](https://www.bnbchain.org/en/testnet-faucet).
+
+## 2. BSC Testnet → NEAR
+
+```ts
+const quote = await OneClickService.getQuote({
+  dry: false, swapType: 'EXACT_INPUT', slippageTolerance: 100,
+  originAsset: 'nep141:bsc-0x…tp-omft.testnet', // USDC on BSC from GET /v0/tokens
+  destinationAsset: 'nep141:wnear.tidepool-sandbox.testnet',
+  amount: '10000000',                       // 10 USDC
+  depositType: 'ORIGIN_CHAIN', refundTo: '0xYourAddress', refundType: 'ORIGIN_CHAIN',
+  recipient: 'you.testnet', recipientType: 'DESTINATION_CHAIN',
+  deadline: new Date(Date.now() + 30 * 60_000).toISOString(),
+});
+// quote.quote.depositAddress is a 0x address on BSC Testnet. Send the ERC-20 there.
+await OneClickService.submitDepositTx({ txHash: '0x…', depositAddress: quote.quote.depositAddress });
+```
+
+Ondo origin/destination works the same once `ondoTokens=1` tokens are live — use the `nep141:bnb-…tp-omdep.testnet` asset id from `/v0/tokens?ondoTokens=1`.
+
+Status goes `PENDING_DEPOSIT → KNOWN_DEPOSIT_TX → PROCESSING → SUCCESS`, usually within a minute.
+
+## See also
+
+- [Test bridges](/docs/guides/bridges)
+- [Tokens](/docs/resources/tokens)
+- [Faucet](/docs/guides/faucet)
+- [Get tokens](/docs/api-reference/get-tokens)

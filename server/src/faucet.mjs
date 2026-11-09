@@ -74,7 +74,7 @@ function clearClaim(key) {
 
 // Direct-chain cooldown keys are `<address>:<chain>` (like the intents-mode keys `<account>:<mode>`), so the admin wallets list shows the
 // recipient. Older builds stored `<chain>:<address>`: rename those once at startup so existing cooldowns keep working.
-for (const k of Object.keys(db.faucet || {})) { const m = /^(base|arb|eth|sol|stellar):(.+)$/.exec(k); if (m) { db.faucet[`${m[2]}:${m[1]}`] = db.faucet[k]; delete db.faucet[k]; } }
+for (const k of Object.keys(db.faucet || {})) { const m = /^(base|arb|eth|bsc|sol|stellar):(.+)$/.exec(k); if (m) { db.faucet[`${m[2]}:${m[1]}`] = db.faucet[k]; delete db.faucet[k]; } }
 
 // Native BTC (testnet4) and ZEC (testnet) are never dripped (small public faucets fund the treasuries): answer with where to get them.
 const UTXO_FAUCETS = {
@@ -101,7 +101,11 @@ async function evmDrip({ chain = 'base', address, accountId, assets }, ip) {
   const c = chainOf(chain);
   if (!c || !c.deployed) throw new BadRequest(`chain must be one of: ${EVM_CHAINS.filter(c => c.deployed).map(c => c.key).join(', ')}`);
   if (!isEvmAddress(to)) throw new BadRequest(`address must be a ${c.name} address (0x...)`);
-  const list = assets?.length ? c.tokens.filter(t => assets.includes(t.assetId) || assets.includes(t.symbol)) : c.tokens;
+  // Default drip: bridged stables only. Pass assets:["ondo"] or specific Ondo symbols to include tokenized stocks/RWAs.
+  let list = assets?.length
+    ? c.tokens.filter(t => assets.includes(t.assetId) || assets.includes(t.symbol) || (assets.includes('ondo') && t.ondo))
+    : c.tokens.filter(t => !t.ondo);
+  list = list.filter(t => t.drip && t.drip !== '0');
   if (!list.length) throw new BadRequest('no matching assets');
   const { hits, key } = assertClaimAllowed(to, c.key, ip);
   markClaim(key, ip, hits); // reserve the slot before any await so concurrent requests for the same address get 429
@@ -110,7 +114,7 @@ async function evmDrip({ chain = 'base', address, accountId, assets }, ip) {
   try {
     for (const t of list) out.push({ assetId: t.assetId, symbol: t.symbol, token: t.evmAddress, amount: t.drip, txHash: await mintErc20(c.key, t.evmAddress, to, toUnits(t.drip, t.decimals)) });
   } catch (e) { if (!out.length) clearClaim(key); throw new Error('faucet transfer failed: ' + String(e.message).slice(0, 200)); }
-  return { chain: c.key, address: to, mode: 'wallet', drips: list.map(t => ({ assetId: t.assetId, symbol: t.symbol, token: t.evmAddress, amount: t.drip })), transactions: out.map(o => ({ ...o, explorerUrl: evmTxUrl(c.key, o.txHash) })), note: `Gas is not included: get ${c.name} ETH from a public faucet.` };
+  return { chain: c.key, address: to, mode: 'wallet', drips: list.map(t => ({ assetId: t.assetId, symbol: t.symbol, token: t.evmAddress, amount: t.drip })), transactions: out.map(o => ({ ...o, explorerUrl: evmTxUrl(c.key, o.txHash) })), note: `Gas is not included: get ${c.key === 'bsc' ? 'BSC Testnet tBNB' : c.name + ' ETH'} from a public faucet.` };
 }
 
 // Solana devnet faucet: the relayer (mint authority) mints the test SPL tokens (USDC, USDT) to a wallet's associated token accounts.

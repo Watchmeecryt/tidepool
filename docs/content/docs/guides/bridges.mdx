@@ -1,20 +1,23 @@
 ---
 title: Test bridges
-description: How Tidepool's testnet bridges to Base, Arbitrum and Ethereum Sepolia, Solana devnet, Stellar testnet, Sui testnet, Bitcoin testnet4 and XRP Ledger testnet work, and exactly what you trust when you use them.
+description: How Tidepool's testnet bridges to Base, Arbitrum and Ethereum Sepolia, BSC Testnet, Solana devnet, Stellar testnet, Sui testnet, Bitcoin testnet4 and XRP Ledger testnet work, and exactly what you trust when you use them.
 icon: Bridge
 ---
 
 <Callout type="warn">**These bridges are a trusted relayer run by Tidepool, on testnets only.** Tidepool runs them as its own testnet service. They are not NEAR's Omni Bridge, not POA bridge and not 1Click infrastructure. The tokens on both sides are Tidepool test tokens with no value.</Callout>
 
-Tidepool can swap between NEAR testnet and three EVM testnets (below), plus Solana devnet, Stellar testnet, Sui testnet, Bitcoin testnet4 and XRP Ledger testnet (after the table), with the same API shape as 1Click mainnet cross-chain swaps:
+Tidepool can swap between NEAR testnet and four EVM testnets (below), plus Solana devnet, Stellar testnet, Sui testnet, Bitcoin testnet4 and XRP Ledger testnet (after the table), with the same API shape as 1Click mainnet cross-chain swaps:
 
 | Chain | `blockchain` | Chain id | Route guide |
 | --- | --- | --- | --- |
 | Base Sepolia | `base` | 84532 | [Base Sepolia bridge](/docs/guides/bridge-base-sepolia) |
 | Arbitrum Sepolia | `arb` | 421614 | [Arbitrum Sepolia bridge](/docs/guides/bridge-arbitrum-sepolia) |
 | Ethereum Sepolia | `eth` | 11155111 | [Ethereum Sepolia bridge](/docs/guides/bridge-ethereum-sepolia) |
+| BSC Testnet | `bsc` | 97 | [BSC Testnet bridge](/docs/guides/bridge-bsc-testnet) |
 
-Native ETH is also supported on all three chains (`nep141:eth.tp-omft.testnet`, `nep141:base.tp-omft.testnet`, `nep141:arb.tp-omft.testnet`), capped at 0.006 ETH per swap — as origin (ORIGIN_CHAIN derived EOA deposit) or destination. See [Tokens](/docs/resources/tokens).
+Native ETH is also supported on Base, Arbitrum and Ethereum Sepolia (`nep141:eth.tp-omft.testnet`, `nep141:base.tp-omft.testnet`, `nep141:arb.tp-omft.testnet`), capped at 0.006 ETH per swap — as origin (ORIGIN_CHAIN derived EOA deposit) or destination. See [Tokens](/docs/resources/tokens).
+
+**Ondo tokenized stocks/RWAs** live on BSC Testnet (`blockchain: "bsc"`, ids `nep141:bnb-<addr>.tp-omdep.testnet`). Request them with `GET /v0/tokens?ondoTokens=1` (omitted otherwise, same as mainnet). See [BSC Testnet bridge](/docs/guides/bridge-bsc-testnet).
 
 Solana devnet is also available as a separate, same-style bridge (SOL capped at 0.005 SOL): [Solana devnet bridge](/docs/guides/bridge-solana-devnet). It is devnet only and custodial, and is listed in `/v0/tokens` only while it is live.
 

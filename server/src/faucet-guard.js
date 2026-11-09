@@ -42,7 +42,12 @@ export async function assertNearEligible(accountId) {
 }
 
 export async function assertEvmEligible(chainKey, addr) {
-  if (!(await checkers.evmActive(chainKey, addr))) throw new BadRequest(`${addr} has no on-chain activity. The faucet only serves EVM addresses that have sent a transaction or hold some ETH on Ethereum Sepolia (get Sepolia ETH from a public faucet first).`, 403, { reason: 'address_inactive' });
+  if (!(await checkers.evmActive(chainKey, addr))) {
+    const tip = chainKey === 'bsc'
+      ? 'BSC Testnet (hold some tBNB or send a tx; get tBNB from a public BSC testnet faucet first)'
+      : 'Ethereum Sepolia (get Sepolia ETH from a public faucet first)';
+    throw new BadRequest(`${addr} has no on-chain activity. The faucet only serves EVM addresses that have sent a transaction or hold a native balance on ${tip}.`, 403, { reason: 'address_inactive' });
+  }
 }
 
 /** If TURNSTILE_SECRET is set, require a valid Turnstile token (body.turnstileToken) or a valid naa_ API key. */

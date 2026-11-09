@@ -21,6 +21,8 @@ These are listed in `/v0/tokens` with `blockchain` set to `base`, `arb` or `eth`
 
 | Token | Asset id | ERC-20 | Decimals | Faucet drip (chain) | Faucet drip (verifier) |
 | --- | --- | --- | --- | --- | --- |
+| USDC on BSC Testnet | `nep141:bsc-0x….tp-omft.testnet` | See [`GET /v0/tokens`](/docs/api-reference/get-tokens) while live | 6 | 100 | 100, `assets: ["bsc"]` |
+| USDT on BSC Testnet | `nep141:bsc-0x….tp-omft.testnet` | See [`GET /v0/tokens`](/docs/api-reference/get-tokens) while live | 6 | 100 | 100, `assets: ["bsc"]` |
 | USDC on Base Sepolia | `nep141:base-0x38d81431b9f76d9699af7517040d5221d9dea252.tp-omft.testnet` | [`0x38d81431B9f76d9699AF7517040D5221D9dEA252`](https://sepolia.basescan.org/address/0x38d81431B9f76d9699AF7517040D5221D9dEA252) | 6 | 100 | 100, `assets: ["base"]` |
 | USDT on Base Sepolia | `nep141:base-0xc15cf5600225302675604310094f134e88705e62.tp-omft.testnet` | [`0xC15Cf5600225302675604310094f134e88705E62`](https://sepolia.basescan.org/address/0xC15Cf5600225302675604310094f134e88705E62) | 6 | 100 | 100, `assets: ["base"]` |
 | USDC on Arbitrum Sepolia | `nep141:arb-0x38d81431b9f76d9699af7517040d5221d9dea252.tp-omft.testnet` | [`0x38d81431B9f76d9699AF7517040D5221D9dEA252`](https://sepolia.arbiscan.io/address/0x38d81431B9f76d9699AF7517040D5221D9dEA252) | 6 | 100 | 100, `assets: ["arb"]` |
@@ -95,3 +97,8 @@ Native XRP only, like 1Click's `nep141:xrp.omft.near` (1Click has no issued XRPL
 | `set_owner({ new_owner })` | owner | Transfers ownership and registers storage for the new owner. |
 
 Current minters: `tidepool-sandbox.testnet` (wallet faucet) and `maker.tidepool-sandbox.testnet`.
+
+
+## Ondo tokenized stocks/RWAs (BSC Testnet)
+
+Request with [`GET /v0/tokens?ondoTokens=1`](/docs/api-reference/get-tokens). Same 28 symbols as mainnet 1Click (AAPLon, TSLAon, NVDAon, … USDon), `blockchain: "bsc"`, asset ids `nep141:bnb-<erc20>.tp-omdep.testnet`. ERC-20s live on BSC Testnet (chain id 97). Without the query flag they are omitted. See [BSC Testnet bridge](/docs/guides/bridge-bsc-testnet).

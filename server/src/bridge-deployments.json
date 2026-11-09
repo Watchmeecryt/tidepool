@@ -872,5 +872,15 @@
     },
     "treasury": "rwJx1hzscZ6THJwhDwmtPQj4YjhvysFyLd",
     "live": true
+  },
+  "bsc": {
+    "name": "BSC Testnet",
+    "chainId": 97,
+    "tokens": {},
+    "txs": [],
+    "deployBlock": null,
+    "vault": null,
+    "forwarderInitCodeHash": "0xabeef3d43fe26bb56bcef8e9101184837bf1f6f3ec95c97710a6f90f73033454",
+    "live": false
   }
 }

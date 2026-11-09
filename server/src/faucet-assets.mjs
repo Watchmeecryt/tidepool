@@ -3,7 +3,7 @@
 // (USDC/USDT everywhere, plus the verifier-only test SOL, XLM and SUI; native BTC, ZEC and XRP are never dripped, so btc/zec/xrp resolve to nothing): sol, stellar, sui, btc, zec, xrp, base, arb, eth, bridged (= every bridged chain).
 import { TOKENS } from './config.mjs';
 
-export const CHAIN_ALIASES = ['sol', 'stellar', 'sui', 'btc', 'zec', 'xrp', 'base', 'arb', 'eth', 'bridged'];
+export const CHAIN_ALIASES = ['sol', 'stellar', 'sui', 'btc', 'zec', 'xrp', 'base', 'arb', 'eth', 'bsc', 'bridged'];
 const ALIAS_MAP = { solana: 'sol', xlm: 'stellar', bitcoin: 'btc', zcash: 'zec', ripple: 'xrp' };
 
 export function resolveIntentAssets(assets, pool = TOKENS) {

@@ -1479,7 +1479,7 @@
                       "stellar",
                       "sui"
                     ],
-                    "description": "Chain to drip USDC and USDT on (Base Sepolia, Arbitrum Sepolia, Ethereum Sepolia, Solana devnet, Stellar testnet, Sui testnet). Omit for NEAR. btc and xrp are not drip chains: they answer 400 with the external faucet to use (native BTC and XRP are never dripped)."
+                    "description": "Chain to drip USDC and USDT on (Base Sepolia, Arbitrum Sepolia, Ethereum Sepolia, BSC Testnet, Solana devnet, Stellar testnet, Sui testnet). Omit for NEAR. btc and xrp are not drip chains: they answer 400 with the external faucet to use (native BTC and XRP are never dripped)."
                   },
                   "address": {
                     "type": "string",
@@ -2082,7 +2082,7 @@
               "qtc",
               "prl"
             ],
-            "description": "Blockchain associated with the token. The enum is the full 1Click list; Tidepool testnet lists near, eth, base, arb, sol, stellar, sui, btc, xrp.",
+            "description": "Blockchain associated with the token. The enum is the full 1Click list; Tidepool testnet lists near, eth, base, arb, bsc, sol, stellar, sui, btc, xrp.",
             "example": "near"
           },
           "symbol": {

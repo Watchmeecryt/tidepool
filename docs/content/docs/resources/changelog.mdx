@@ -3,11 +3,12 @@ title: Changelog
 description: What changed in Tidepool and when.
 icon: ClockCounterClockwise
 ---
-## 2026-11-09 · Ondo tokenized stocks/RWAs (`ondoTokens=1`)
+## 2026-11-09 · Ondo tokenized stocks/RWAs on BSC Testnet (`ondoTokens=1`)
 
 - **`GET /v0/tokens?ondoTokens=1`:** returns the same 28 Ondo symbols mainnet 1Click lists (AAPLon, TSLAon, NVDAon, … USDon), with `blockchain: "bsc"` and `nep141:bnb-<addr>.tp-omdep.testnet` ids. Without the flag they are omitted, matching mainnet.
-- **Testnet home:** ERC-20s are on **Base Sepolia** (Tidepool has no BSC testnet gas); vault + maker inventory are funded for quotes and swaps. Prices follow mainnet 1Click when reachable.
-- **App:** the trade selector loads tokens with `ondoTokens=1` and shows a BSC network entry that points at Base Sepolia explorers/faucets.
+- **Testnet home:** ERC-20s + vault live on **BSC Testnet** (chain id `97`), same shape as mainnet's BSC Ondo listing. Prices follow mainnet 1Click when reachable. Listed in `/v0/tokens` only while the BSC Ondo deploy is live.
+- **Bridge + faucet:** BSC Testnet is a first-class EVM route (`blockchain: "bsc"`) alongside Base/Arbitrum/Ethereum Sepolia. Faucet `{"chain":"bsc","address":"0x…"}` drips test USDC/USDT; pass `assets:["ondo"]` (or specific symbols) for Ondo drips. Gas is **tBNB** from a public BSC testnet faucet (never dripped).
+- **App:** trade selector loads `ondoTokens=1`; BSC uses chain id 97 explorers/faucets (BscScan testnet).
 
 ## 2026-11-08 · Faucet: site only
 

@@ -1,4 +1,4 @@
-// Testnet EVM bridge bootstrap for one chain (base | arb | eth). Idempotent.
+// Testnet EVM bridge bootstrap for one chain (base | arb | eth | bsc). Idempotent.
 //  1. EVM: deploy TidepoolTestToken USDC + USDT and TidepoolVault (relayer = TIDEPOOL_EVM_RELAYER_KEY),
 //     back the vault with test ERC-20s.
 //  2. NEAR: create tp-omft.testnet (once) and one NEP-141 per ERC-20 at <chain>-<erc20>.tp-omft.testnet,
@@ -13,7 +13,7 @@ import { ROOT, VERIFIER, MAKER, OMFT, EVM_CHAINS, toUnits } from '../server/src/
 
 const chainKey = process.argv[2];
 const c = EVM_CHAINS.find(x => x.key === chainKey);
-if (!c) throw new Error('usage: bridge-bootstrap.mjs base|arb|eth');
+if (!c) throw new Error('usage: bridge-bootstrap.mjs base|arb|eth|bsc');
 const SECRETS = new URL('../.secrets/', import.meta.url).pathname;
 const DEP = new URL('../server/src/bridge-deployments.json', import.meta.url);
 const ART = JSON.parse(fs.readFileSync(new URL('../contracts/evm/artifacts.json', import.meta.url)));

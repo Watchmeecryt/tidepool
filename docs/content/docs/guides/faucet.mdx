@@ -1,14 +1,14 @@
 ---
 title: Faucet
 seoTitle: "NEAR Testnet Faucet for Intents Test Tokens"
-description: "Free test tokens on NEAR, Ethereum Sepolia, Base Sepolia, Arbitrum Sepolia, Solana devnet, Stellar testnet and Sui testnet (native BTC and XRP are never dripped; see below): pick a chain, paste an address, and our backend funds it."
+description: "Free test tokens on NEAR, Ethereum Sepolia, Base Sepolia, Arbitrum Sepolia, BSC Testnet, Solana devnet, Stellar testnet and Sui testnet (native BTC and XRP are never dripped; see below): pick a chain, paste an address, and our backend funds it."
 icon: Drop
 ---
 
 <FaucetWidget />
 
 <Callout title="Faucet in the Tidepool App">
-The [Tidepool App](https://app.usetidepool.tech/faucet) has a faucet page with one card per chain (NEAR, Ethereum, Base, Arbitrum, Solana, Stellar, Sui and XRP, plus links for native BTC and gas). It calls the same `POST /v0/faucet` endpoint.
+The [Tidepool App](https://app.usetidepool.tech/faucet) has a faucet page with one card per chain (NEAR, Ethereum, Base, Arbitrum, BSC, Solana, Stellar, Sui and XRP, plus links for native BTC and gas). It calls the same `POST /v0/faucet` endpoint.
 </Callout>
 
 ## How the faucet works
@@ -21,11 +21,12 @@ The widget above and the API are the same faucet. In the UI you **pick a chain f
 | Ethereum Sepolia (`eth`) | `0x…` | 100 test USDC + 100 test USDT (ERC-20) | Your address on Ethereum Sepolia | Sepolia ETH for gas |
 | Base Sepolia (`base`) | `0x…` | 100 test USDC + 100 test USDT (ERC-20) | Your address on Base Sepolia | Base Sepolia ETH for gas |
 | Arbitrum Sepolia (`arb`) | `0x…` | 100 test USDC + 100 test USDT (ERC-20) | Your address on Arbitrum Sepolia | Arbitrum Sepolia ETH for gas |
+| BSC Testnet (`bsc`) | `0x…` | 100 test USDC + 100 test USDT (ERC-20); Ondo via `assets:["ondo"]` | Your address on BSC Testnet | BSC Testnet tBNB for gas |
 | Solana devnet (`sol`) | base58 wallet | 100 test USDC + 100 test USDT (SPL) | Your wallet's token accounts on Solana devnet (our backend creates them) | Devnet SOL for fees |
 | Stellar testnet (`stellar`) | `G…` | 100 test USDC + 100 test USDT (classic assets) | Your account on Stellar testnet | An existing account with trustlines |
 | Sui testnet (`sui`) | `0x…` (64 hex) | 100 test USDC + 100 test USDT (Move coins) | Your address on Sui testnet (any address, no setup) | Testnet SUI for gas |
 
-- **Native gas is never dripped.** ETH, SOL, XLM and SUI come from each chain's own public faucet ([Ethereum Sepolia](https://cloud.google.com/application/web3/faucet/ethereum/sepolia), [Base Sepolia](https://docs.base.org/get-started/get-funds), [Arbitrum Sepolia](https://faucet.quicknode.com/arbitrum/sepolia), [Solana devnet](https://faucet.solana.com), [Stellar Friendbot](https://friendbot.stellar.org), [Sui testnet](https://faucet.sui.io)).
+- **Native gas is never dripped.** ETH, tBNB, SOL, XLM and SUI come from each chain's own public faucet ([Ethereum Sepolia](https://cloud.google.com/application/web3/faucet/ethereum/sepolia), [Base Sepolia](https://docs.base.org/get-started/get-funds), [Arbitrum Sepolia](https://faucet.quicknode.com/arbitrum/sepolia), [BSC Testnet](https://www.bnbchain.org/en/testnet-faucet), [Solana devnet](https://faucet.solana.com), [Stellar Friendbot](https://friendbot.stellar.org), [Sui testnet](https://faucet.sui.io)).
 - **Stellar needs trustlines.** The account must exist (fund it with Friendbot) and add a `changeTrust` operation for each asset: `USDC` and `USDT`, both issued by `GDXABUSRHP4YA5CELHLNJQ4M3TX2BSJ6PEMDFCG2RA4PQLAQLRMFFQAN`. Without them the faucet answers `400` and names the missing one.
 - **Native BTC is never dripped and has no entry in the dropdown.** `{"chain":"btc"}` and the `btc` intents alias answer `400` and name the external faucets for tBTC (testnet4): [CypherFaucet](https://cypherfaucet.com/btc-testnet) or [testnet4.info](https://testnet4.info). The treasury behind the [Bitcoin](/docs/guides/bridge-bitcoin-testnet) route is funded the same way, so it has a cap (0.005 BTC).
 - **Native XRP is never dripped and has no entry in the dropdown.** `{"chain":"xrp"}` and the `xrp` intents alias answer `400` and point to the official XRPL testnet faucet, `POST https://faucet.altnet.rippletest.net/accounts` with `{"destination":"r…"}` (100 test XRP per request, no captcha; web version at [xrpl.org](https://xrpl.org/resources/dev-tools/xrp-faucets)). The treasury behind the [XRP Ledger](/docs/guides/bridge-xrp-testnet) route is funded the same way, so it has a cap (100 XRP). There is no USDC or USDT on the XRP Ledger route.
@@ -57,9 +58,13 @@ curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: applicatio
 curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: application/json' \
   -d '{"accountId":"alice.testnet","mode":"intents","assets":["base"]}'
 
-# Ethereum Sepolia, Base Sepolia or Arbitrum Sepolia (eth, base, arb)
+# Ethereum Sepolia, Base Sepolia, Arbitrum Sepolia or BSC Testnet (eth, base, arb, bsc)
 curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: application/json' \
   -d '{"chain":"eth","address":"0xYourAddress"}'
+
+# BSC Testnet Ondo drips (tokenized stocks/RWAs)
+curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: application/json' \
+  -d '{"chain":"bsc","address":"0xYourAddress","assets":["ondo"]}'
 
 # Solana devnet
 curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: application/json' \

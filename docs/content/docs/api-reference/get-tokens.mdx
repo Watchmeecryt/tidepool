@@ -6,7 +6,7 @@ description: "GET /v0/tokens · 1Click-compatible"
 
 <p><span className="tp-method tp-get">GET</span><code>{"/v0/tokens"}</code></p>
 
-Returns the six NEAR test tokens plus every live bridged token (USDC and USDT on Base, Arbitrum and Ethereum Sepolia; SOL, USDC and USDT on Solana devnet; XLM, USDC and USDT on Stellar testnet; SUI, USDC and USDT on Sui testnet; native BTC on Bitcoin testnet4; native XRP on the XRP Ledger testnet), with live USD prices. The example below is the **complete** live response (23 tokens on 2026-10-30). Each bridged route appears only while it is live. `ondoTokens=1` includes Tidepool's 28 Ondo test tokens (tokenized stocks/RWAs on Base Sepolia, API shape matching mainnet 1Click `blockchain: "bsc"` / `nep141:bnb-…tp-omdep.testnet`). Without the flag they are omitted, same as mainnet.
+Returns the six NEAR test tokens plus every live bridged token (USDC and USDT on Base, Arbitrum and Ethereum Sepolia and BSC Testnet; SOL, USDC and USDT on Solana devnet; XLM, USDC and USDT on Stellar testnet; SUI, USDC and USDT on Sui testnet; native BTC on Bitcoin testnet4; native XRP on the XRP Ledger testnet), with live USD prices. The example below is the **complete** live response (23 tokens on 2026-10-30). Each bridged route appears only while it is live. `ondoTokens=1` includes Tidepool's 28 Ondo test tokens (tokenized stocks/RWAs on **BSC Testnet**, matching mainnet 1Click `blockchain: "bsc"` / `nep141:bnb-…tp-omdep.testnet`). Without the flag they are omitted, same as mainnet. Listed only while the BSC Ondo deploy is live.
 
 Retrieves a list of tokens currently supported by the 1Click API for asset swaps. Each token entry includes its blockchain, contract address (if available), price in USD, and other metadata such as symbol and decimals.
 
@@ -282,7 +282,7 @@ const data = await res.json();
 | --- | --- | --- | --- |
 | `[]assetId` | string | yes | Unique asset identifier |
 | `[]decimals` | number | yes | Number of decimals for the token |
-| `[]blockchain` | "near" \\| "eth" \\| "base" \\| "arb" \\| "btc" \\| "sol" \\| "ton" \\| "dash" \\| "doge" \\| "xrp" \\| "zec" \\| "gnosis" \\| "bera" \\| "bsc" \\| "pol" \\| "tron" \\| "sui" \\| "movement" \\| "op" \\| "avax" \\| "stellar" \\| "aptos" \\| "cardano" \\| "ltc" \\| "xlayer" \\| "monad" \\| "bch" \\| "adi" \\| "plasma" \\| "scroll" \\| "starknet" \\| "aleo" \\| "hypercore" \\| "fogo" \\| "hood" \\| "hlevm" \\| "qtc" \\| "prl" | yes | Blockchain associated with the token. The enum is the full 1Click list; Tidepool testnet lists near, eth, base, arb, sol, stellar, sui, btc, xrp. |
+| `[]blockchain` | "near" \\| "eth" \\| "base" \\| "arb" \\| "btc" \\| "sol" \\| "ton" \\| "dash" \\| "doge" \\| "xrp" \\| "zec" \\| "gnosis" \\| "bera" \\| "bsc" \\| "pol" \\| "tron" \\| "sui" \\| "movement" \\| "op" \\| "avax" \\| "stellar" \\| "aptos" \\| "cardano" \\| "ltc" \\| "xlayer" \\| "monad" \\| "bch" \\| "adi" \\| "plasma" \\| "scroll" \\| "starknet" \\| "aleo" \\| "hypercore" \\| "fogo" \\| "hood" \\| "hlevm" \\| "qtc" \\| "prl" | yes | Blockchain associated with the token. The enum is the full 1Click list; Tidepool testnet lists near, eth, base, arb, bsc, sol, stellar, sui, btc, xrp. |
 | `[]symbol` | string | yes | Token symbol (e.g. BTC, ETH) |
 | `[]price` | number | yes | Current price of the token in USD |
 | `[]priceUpdatedAt` | string | yes | Date when the token price was last updated |

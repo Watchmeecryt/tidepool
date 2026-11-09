@@ -230,7 +230,7 @@
     }
    ]
   },
-  "notes": "Returns the six NEAR test tokens plus every live bridged token (USDC and USDT on Base, Arbitrum and Ethereum Sepolia; SOL, USDC and USDT on Solana devnet; XLM, USDC and USDT on Stellar testnet; SUI, USDC and USDT on Sui testnet; native BTC on Bitcoin testnet4; native XRP on the XRP Ledger testnet), with live USD prices. The example below is the **complete** live response (23 tokens on 2026-10-30). Each bridged route appears only while it is live. `ondoTokens=1` includes the 28 Ondo test tokens; omitted otherwise (same as mainnet)."
+  "notes": "Returns the six NEAR test tokens plus every live bridged token (USDC and USDT on Base, Arbitrum and Ethereum Sepolia and BSC Testnet; SOL, USDC and USDT on Solana devnet; XLM, USDC and USDT on Stellar testnet; SUI, USDC and USDT on Sui testnet; native BTC on Bitcoin testnet4; native XRP on the XRP Ledger testnet), with live USD prices. The example below is the **complete** live response (23 tokens on 2026-10-30). Each bridged route appears only while it is live. `ondoTokens=1` includes the 28 Ondo test tokens on BSC Testnet; omitted otherwise (same as mainnet)."
  },
  "getQuote": {
   "tryIt": true,

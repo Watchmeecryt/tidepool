@@ -1,6 +1,6 @@
 # Faucet
 
-Get Tidepool test tokens on NEAR testnet, or test USDC and USDT on Ethereum Sepolia, Base Sepolia, Arbitrum Sepolia, Solana devnet, Stellar testnet and Sui testnet. Native BTC and XRP are never dripped: use the external testnet faucets in the [Bitcoin](/docs/guides/bridge-bitcoin-testnet) guide, and the official [XRPL testnet faucet](https://faucet.altnet.rippletest.net/accounts) for XRP ([guide](/docs/guides/bridge-xrp-testnet)). See [How the faucet works](/docs/guides/faucet).
+Get Tidepool test tokens on NEAR testnet, or test USDC and USDT on Ethereum Sepolia, Base Sepolia, Arbitrum Sepolia, BSC Testnet, Solana devnet, Stellar testnet and Sui testnet (Ondo on BSC via assets:["ondo"]). Native BTC and XRP are never dripped: use the external testnet faucets in the [Bitcoin](/docs/guides/bridge-bitcoin-testnet) guide, and the official [XRPL testnet faucet](https://faucet.altnet.rippletest.net/accounts) for XRP ([guide](/docs/guides/bridge-xrp-testnet)). See [How the faucet works](/docs/guides/faucet).
 
 <div id="faucet-widget"></div>
 
