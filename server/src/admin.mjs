@@ -68,7 +68,8 @@ function walletStats() {
     else if (o.type === 'deposit' && String(JSON.parse(o.details_json || '{}').instructions || '').startsWith('testnet_faucet')) { if (o.status === 'SUCCESS') r.agentFaucet = (r.agentFaucet || 0) + 1; else if (o.status === 'FAILED') r.agentFaucetFailed = (r.agentFaucetFailed || 0) + 1; }
     else r.agentOther = (r.agentOther || 0) + 1;
   }
-  for (const x of sql.prepare('SELECT wallet_account w, COUNT(*) n FROM faucet_rejects GROUP BY wallet_account').all()) { const r = get(x.w); r.agentFaucetFailed = (r.agentFaucetFailed || 0) + x.n; }
+  // Rejects alone must not create wallet rows (same rule as analytics: only real activity counts).
+  for (const x of sql.prepare('SELECT wallet_account w, COUNT(*) n FROM faucet_rejects GROUP BY wallet_account').all()) { if (!W[x.w]) continue; const r = get(x.w); r.agentFaucetFailed = (r.agentFaucetFailed || 0) + x.n; }
   for (const r of Object.values(W)) r.agentVolumeFmt = r.agentVolume ? fmtVol(r.agentVolume) : '';
   for (const r of Object.values(W)) { r.ours = isOurs(r.wallet); r.volumeFmt = Object.entries(r.volume).map(([sym, v]) => `${fromUnits(v, TOKENS.find(t => t.symbol === sym).decimals)} ${sym}`).join(', '); if (r.first === Infinity) r.first = r.last; }
   return Object.values(W).sort((a, b) => b.last - a.last);

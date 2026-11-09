@@ -90,12 +90,14 @@ export function record(req, res, path, body, url) {
   }
   d.endpoints[ep] = (d.endpoints[ep] || 0) + 1;
   if (!d.ips.includes(ev.ip) && d.ips.length < 5000) d.ips.push(ev.ip);
-  for (const w of ev.w || []) {
+  // Only successful calls create/update wallet entries. 4xx/5xx (e.g. site-only faucet 403) still
+  // land in the raw request log above, but must not inflate the inactive-wallets list.
+  for (const w of ok ? (ev.w || []) : []) {
     if (!d.wallets.includes(w)) d.wallets.push(w);
     const r = log.wallets[w] ||= { first: ev.t, last: ev.t, requests: 0, quotes: 0, dryQuotes: 0, faucet: 0, uas: [] };
     r.last = ev.t; r.requests++;
-    if (path === '/v0/quote' && ok) r[ev.dry ? 'dryQuotes' : 'quotes']++;
-    if (path === '/v0/faucet' && ok) r.faucet++;
+    if (path === '/v0/quote') r[ev.dry ? 'dryQuotes' : 'quotes']++;
+    if (path === '/v0/faucet') r.faucet++;
     if (ev.ua && !r.uas.includes(ev.ua) && r.uas.length < 5) r.uas.push(ev.ua);
   }
   save();
