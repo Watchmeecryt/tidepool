@@ -3,6 +3,12 @@ title: Changelog
 description: What changed in Tidepool and when.
 icon: ClockCounterClockwise
 ---
+## 2026-11-09 · Ondo tokenized stocks/RWAs (`ondoTokens=1`)
+
+- **`GET /v0/tokens?ondoTokens=1`:** returns the same 28 Ondo symbols mainnet 1Click lists (AAPLon, TSLAon, NVDAon, … USDon), with `blockchain: "bsc"` and `nep141:bnb-<addr>.tp-omdep.testnet` ids. Without the flag they are omitted, matching mainnet.
+- **Testnet home:** ERC-20s are on **Base Sepolia** (Tidepool has no BSC testnet gas); vault + maker inventory are funded for quotes and swaps. Prices follow mainnet 1Click when reachable.
+- **App:** the trade selector loads tokens with `ondoTokens=1` and shows a BSC network entry that points at Base Sepolia explorers/faucets.
+
 ## 2026-11-08 · Faucet: site only
 
 The faucet can no longer be called directly via the API. `POST /v0/faucet` and `/v1` `testnet_faucet` answer 403 `site_only`; claim test tokens manually at https://app.usetidepool.tech/faucet.

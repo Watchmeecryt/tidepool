@@ -205,6 +205,35 @@ for (const [C, k, symbol, coingeckoId, fallback, label] of UTXO_NATIVE) {
   if (C.deployed) TOKENS.push(t);
   C.tokens.push(t);
 }
+
+// ---- Ondo tokenized stocks/RWAs (testnet mirrors of 1Click ondoTokens=1; live on Base Sepolia) ----
+// Mainnet lists these under blockchain "bsc" with nep141:bnb-<addr>.omdep.near. Tidepool has no BSC
+// testnet gas, so ERC-20s live on Base Sepolia (chain key "base") while the API shape keeps blockchain "bsc"
+// and nep141:bnb-<addr>.tp-omdep.testnet. Gated behind GET /v0/tokens?ondoTokens=1 (omitted otherwise, like mainnet).
+export const OMDEP = process.env.TIDEPOOL_OMDEP || 'tp-omdep.testnet';
+const ONDO_DEP = JSON.parse(fs.readFileSync(new URL('./ondo-deployments.json', import.meta.url), 'utf8'));
+const ONDO_CAT = JSON.parse(fs.readFileSync(new URL('./ondo-catalog.json', import.meta.url), 'utf8'));
+export const ONDO_TOKENS = [];
+if (ONDO_DEP.live && ONDO_DEP.tokens) {
+  const base = EVM_CHAINS.find(c => c.key === 'base');
+  for (const meta of ONDO_CAT) {
+    const d = ONDO_DEP.tokens[meta.symbol];
+    if (!d?.address || !d.nearReady) continue;
+    const evm = d.address.toLowerCase();
+    const near = d.nearContract || `bnb-${evm}.${OMDEP}`;
+    const t = {
+      symbol: meta.symbol, decimals: meta.decimals, coingeckoId: meta.coingeckoId, fallback: meta.fallback,
+      drip: '0', inventory: '10000', kind: 'evm', ondo: true, sub: `bnb-${meta.symbol.toLowerCase()}`,
+      chain: 'base', blockchain: 'bsc', evmAddress: evm, contractAddress: evm,
+      nearContract: near, assetId: `nep141:${near}`,
+      name: `Tidepool Testnet ${meta.symbol} (Ondo on Base Sepolia, no value)`,
+    };
+    ONDO_TOKENS.push(t);
+    if (base) base.tokens = [...(base.tokens || []), t];
+  }
+}
+// Ondo tokens are NOT pushed into TOKENS by default; tokens() adds them when ondoTokens=1.
+
 export const chainOf = (key) => key === 'sol' ? SOL_CHAIN : key === 'stellar' ? STELLAR_CHAIN : key === 'sui' ? SUI_CHAIN : key === 'btc' ? BTC_CHAIN : key === 'zec' ? ZEC_CHAIN : key === 'xrp' ? XRP_CHAIN : EVM_CHAINS.find(c => c.key === key);
 export const isEvmAddress = (s) => typeof s === 'string' && /^0x[0-9a-fA-F]{40}$/.test(s);
 

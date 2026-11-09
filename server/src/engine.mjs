@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import { KeyPair } from 'near-api-js';
 import bs58 from 'bs58';
 import { rpc, call, view, viewAccount, sendNear, signIntents, deriveDepositKey, keyStore, NETWORK, TGAS, parseNear, txUrl } from './near.mjs';
-import { ROOT, VERIFIER, MAKER, TOKENS, fromUnits, chainOf, isEvmAddress, isSolAddress, isStellarAddress, STELLAR_CHAIN, XLM_CAP_STROOPS, isSuiAddress, SUI_CHAIN, SUI_CAP_MIST, BTC_CHAIN, ZEC_CHAIN, XRP_CHAIN, XRP_CAP_DROPS, XRP_DECIMALS, isXrpAddress, isBtcAddress, isZecAddress, BTC_CAP_SATS, BTC_MIN_SATS, ZEC_CAP_ZAT, ZEC_MIN_ZAT, BRIDGE_ACCOUNT, ETH_CAP_WEI, ETH_RESERVE_WEI, SOL_PAYOUT_CAP_LAMPORTS, SOL_RENT_MIN_LAMPORTS } from './config.mjs';
+import { ROOT, VERIFIER, MAKER, TOKENS, fromUnits, chainOf, isEvmAddress, isSolAddress, isStellarAddress, STELLAR_CHAIN, XLM_CAP_STROOPS, isSuiAddress, SUI_CHAIN, SUI_CAP_MIST, BTC_CHAIN, ZEC_CHAIN, XRP_CHAIN, XRP_CAP_DROPS, XRP_DECIMALS, isXrpAddress, isBtcAddress, isZecAddress, BTC_CAP_SATS, BTC_MIN_SATS, ZEC_CAP_ZAT, ZEC_MIN_ZAT, BRIDGE_ACCOUNT, ETH_CAP_WEI, ETH_RESERVE_WEI, SOL_PAYOUT_CAP_LAMPORTS, SOL_RENT_MIN_LAMPORTS, ONDO_TOKENS } from './config.mjs';
 import * as evm from './evm.mjs';
 import * as sol from './solana.mjs';
 import * as stellar from './stellar.mjs';
@@ -17,7 +17,7 @@ import { prices } from './prices.mjs';
 import { db, save } from './store.mjs';
 
 const MASTER = process.env.DEPOSIT_MASTER_SEED;
-const byAsset = Object.fromEntries(TOKENS.map(t => [t.assetId, t]));
+const byAsset = Object.fromEntries([...TOKENS, ...ONDO_TOKENS].map(t => [t.assetId, t]));
 const STABLE = new Set(['USDC', 'USDT']);
 export class BadRequest extends Error { constructor(m, code = 400, extra) { super(m); this.code = code; if (extra) this.extra = extra; } }
 
@@ -133,10 +133,12 @@ function invert(amountOut, inT, outT, px, fee) { // exact output -> required inp
 }
 export const makerBalance = async (assetId) => BigInt(await view(VERIFIER, 'mt_balance_of', { account_id: MAKER, token_id: assetId }));
 
-export async function tokens() {
-  const p = await prices();
+export async function tokens({ ondo = false } = {}) {
+  const list = ondo ? [...TOKENS, ...ONDO_TOKENS] : TOKENS;
+  // prices() keys off TOKENS only; merge ondo fallbacks / live 1Click prices when requested
+  const p = await prices(ondo ? ONDO_TOKENS : []);
   const at = new Date(p.at).toISOString();
-  return TOKENS.map(t => ({ assetId: t.assetId, decimals: t.decimals, blockchain: t.blockchain, symbol: t.symbol, price: p.prices[t.assetId], priceUpdatedAt: at, contractAddress: t.contractAddress, coingeckoId: t.coingeckoId }));
+  return list.map(t => ({ assetId: t.assetId, decimals: t.decimals, blockchain: t.blockchain, symbol: t.symbol, price: p.prices[t.assetId] ?? t.fallback, priceUpdatedAt: at, contractAddress: t.contractAddress, coingeckoId: t.coingeckoId }));
 }
 
 function signQuote(obj) {

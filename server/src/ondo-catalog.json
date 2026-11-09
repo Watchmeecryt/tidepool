@@ -1,0 +1,226 @@
+[
+  {
+    "symbol": "AAPLon",
+    "decimals": 18,
+    "coingeckoId": "apple-ondo-tokenized-stock",
+    "fallback": 349.95,
+    "mainnetAddress": "0x390a684ef9cade28a7ad0dfa61ab1eb3842618c4",
+    "mainnetAssetId": "nep141:bnb-0x390a684ef9cade28a7ad0dfa61ab1eb3842618c4.omdep.near"
+  },
+  {
+    "symbol": "AGGon",
+    "decimals": 18,
+    "coingeckoId": "ishares-core-us-aggregate-bond-etf-ondo-tokenized-etf",
+    "fallback": 96.63,
+    "mainnetAddress": "0x08ce97f3d5cf11e577d091ab048bc5e2eae3fabb",
+    "mainnetAssetId": "nep141:bnb-0x08ce97f3d5cf11e577d091ab048bc5e2eae3fabb.omdep.near"
+  },
+  {
+    "symbol": "AMZNon",
+    "decimals": 18,
+    "coingeckoId": "amazon-ondo-tokenized-stock",
+    "fallback": 268.14,
+    "mainnetAddress": "0x4553cfe1c09f37f38b12dc509f676964e392f8fc",
+    "mainnetAssetId": "nep141:bnb-0x4553cfe1c09f37f38b12dc509f676964e392f8fc.omdep.near"
+  },
+  {
+    "symbol": "BLKDIGon",
+    "decimals": 18,
+    "coingeckoId": "ondo-diversified-growrth-powered-by-blackrock",
+    "fallback": 4.82,
+    "mainnetAddress": "0xe658c62195f32bc53226e7e2642e3d76b4382fb8",
+    "mainnetAssetId": "nep141:bnb-0xe658c62195f32bc53226e7e2642e3d76b4382fb8.omdep.near"
+  },
+  {
+    "symbol": "BLKGRWon",
+    "decimals": 18,
+    "coingeckoId": "ondo-high-growth-powered-by-blackrock",
+    "fallback": 4.79,
+    "mainnetAddress": "0xe4bd77247671746caa3119e9feaa146f8a4ee237",
+    "mainnetAssetId": "nep141:bnb-0xe4bd77247671746caa3119e9feaa146f8a4ee237.omdep.near"
+  },
+  {
+    "symbol": "BLKHIon",
+    "decimals": 18,
+    "coingeckoId": "ondo-high-income-powered-by-blackrock",
+    "fallback": 4.99,
+    "mainnetAddress": "0xf78155dc15b838b7577002bc53bbe1041ca48622",
+    "mainnetAssetId": "nep141:bnb-0xf78155dc15b838b7577002bc53bbe1041ca48622.omdep.near"
+  },
+  {
+    "symbol": "BRAINon",
+    "decimals": 18,
+    "coingeckoId": "ondo-ai-leaders-portfolio",
+    "fallback": 4.21,
+    "mainnetAddress": "0x0574e53f8214d0402c8388b4402113a74354d1b0",
+    "mainnetAssetId": "nep141:bnb-0x0574e53f8214d0402c8388b4402113a74354d1b0.omdep.near"
+  },
+  {
+    "symbol": "CRCLon",
+    "decimals": 18,
+    "coingeckoId": "circle-internet-group-ondo-tokenized-stock",
+    "fallback": 67.04,
+    "mainnetAddress": "0x992879cd8ce0c312d98648875b5a8d6d042cbf34",
+    "mainnetAssetId": "nep141:bnb-0x992879cd8ce0c312d98648875b5a8d6d042cbf34.omdep.near"
+  },
+  {
+    "symbol": "GLDon",
+    "decimals": 18,
+    "coingeckoId": "spdr-gold-shares-ondo-tokenized",
+    "fallback": 377.1,
+    "mainnetAddress": "0xfa9a1e901085e269f6d428f79cd5252d8b919344",
+    "mainnetAssetId": "nep141:bnb-0xfa9a1e901085e269f6d428f79cd5252d8b919344.omdep.near"
+  },
+  {
+    "symbol": "GOOGLon",
+    "decimals": 18,
+    "coingeckoId": "alphabet-class-a-ondo-tokenized-stock",
+    "fallback": 290.03,
+    "mainnetAddress": "0x091fc7778e6932d4009b087b191d1ee3bac5729a",
+    "mainnetAssetId": "nep141:bnb-0x091fc7778e6932d4009b087b191d1ee3bac5729a.omdep.near"
+  },
+  {
+    "symbol": "HOODon",
+    "decimals": 18,
+    "coingeckoId": "robinhood-markets-ondo-tokenized-stock",
+    "fallback": 83.78,
+    "mainnetAddress": "0x19601179a60f55ff6636f5d1a8b6671053bd60a8",
+    "mainnetAssetId": "nep141:bnb-0x19601179a60f55ff6636f5d1a8b6671053bd60a8.omdep.near"
+  },
+  {
+    "symbol": "IAUon",
+    "decimals": 18,
+    "coingeckoId": "ishares-gold-trust-ondo-tokenized-stock",
+    "fallback": 77,
+    "mainnetAddress": "0xcb2a0f46f67dc4c58a316f1c008edef5c2311795",
+    "mainnetAssetId": "nep141:bnb-0xcb2a0f46f67dc4c58a316f1c008edef5c2311795.omdep.near"
+  },
+  {
+    "symbol": "INTCon",
+    "decimals": 18,
+    "coingeckoId": "intel-ondo-tokenized-stock",
+    "fallback": 58.08,
+    "mainnetAddress": "0xa528caaa2f96090e379d43f90834c75df54d6e74",
+    "mainnetAssetId": "nep141:bnb-0xa528caaa2f96090e379d43f90834c75df54d6e74.omdep.near"
+  },
+  {
+    "symbol": "MAG7Xon",
+    "decimals": 18,
+    "coingeckoId": "ondo-magnificent-7-and-crypto-portfolio",
+    "fallback": 5.23,
+    "mainnetAddress": "0x50436ec45316a98e72b03ead5752e8543f11ec09",
+    "mainnetAssetId": "nep141:bnb-0x50436ec45316a98e72b03ead5752e8543f11ec09.omdep.near"
+  },
+  {
+    "symbol": "METAon",
+    "decimals": 18,
+    "coingeckoId": "meta-platforms-ondo-tokenized-stock",
+    "fallback": 643.83,
+    "mainnetAddress": "0xd7df5863a3e742f0c767768cdfcb63f09e0422f6",
+    "mainnetAssetId": "nep141:bnb-0xd7df5863a3e742f0c767768cdfcb63f09e0422f6.omdep.near"
+  },
+  {
+    "symbol": "MRVLon",
+    "decimals": 18,
+    "coingeckoId": "marvell-technology-ondo-tokenized-stock",
+    "fallback": 153.87,
+    "mainnetAddress": "0x1501ec83ffef405b4331cc4f73277a40fb0c627d",
+    "mainnetAssetId": "nep141:bnb-0x1501ec83ffef405b4331cc4f73277a40fb0c627d.omdep.near"
+  },
+  {
+    "symbol": "MSFTon",
+    "decimals": 18,
+    "coingeckoId": "microsoft-ondo-tokenized-stock",
+    "fallback": 544.49,
+    "mainnetAddress": "0x6bfe75d1ad432050ea973c3a3dcd88f02e2444c3",
+    "mainnetAssetId": "nep141:bnb-0x6bfe75d1ad432050ea973c3a3dcd88f02e2444c3.omdep.near"
+  },
+  {
+    "symbol": "NVDAon",
+    "decimals": 18,
+    "coingeckoId": "nvidia-ondo-tokenized-stock",
+    "fallback": 176.99,
+    "mainnetAddress": "0xa9ee28c80f960b889dfbd1902055218cba016f75",
+    "mainnetAssetId": "nep141:bnb-0xa9ee28c80f960b889dfbd1902055218cba016f75.omdep.near"
+  },
+  {
+    "symbol": "QQQon",
+    "decimals": 18,
+    "coingeckoId": "invesco-qqq-etf-ondo-tokenized-etf",
+    "fallback": 678.85,
+    "mainnetAddress": "0x0cde6936d305d5b34667fc46425e852efd73559a",
+    "mainnetAssetId": "nep141:bnb-0x0cde6936d305d5b34667fc46425e852efd73559a.omdep.near"
+  },
+  {
+    "symbol": "SGOVon",
+    "decimals": 18,
+    "coingeckoId": "ishares-0-3-month-treasury-bond-etf-ondo-tokenized-etf",
+    "fallback": 102.99,
+    "mainnetAddress": "0xc008c5f579ec1450f20099c39f587547e27c7523",
+    "mainnetAssetId": "nep141:bnb-0xc008c5f579ec1450f20099c39f587547e27c7523.omdep.near"
+  },
+  {
+    "symbol": "SLVon",
+    "decimals": 18,
+    "coingeckoId": "ishares-silver-trust-ondo-tokenized-stock",
+    "fallback": 47.51,
+    "mainnetAddress": "0x8b872732b07be325a8803cdb480d9d20b6f8d11b",
+    "mainnetAssetId": "nep141:bnb-0x8b872732b07be325a8803cdb480d9d20b6f8d11b.omdep.near"
+  },
+  {
+    "symbol": "SPYon",
+    "decimals": 18,
+    "coingeckoId": "spdr-s-p-500-etf-ondo-tokenized-etf",
+    "fallback": 757.16,
+    "mainnetAddress": "0x6a708ead771238919d85930b5a0f10454e1c331a",
+    "mainnetAssetId": "nep141:bnb-0x6a708ead771238919d85930b5a0f10454e1c331a.omdep.near"
+  },
+  {
+    "symbol": "TIPon",
+    "decimals": 18,
+    "coingeckoId": "ishares-tips-bond-etf-ondo-tokenized-etf",
+    "fallback": 110.45,
+    "mainnetAddress": "0x2ac26ec236df5d1d2ad1a6dd4e448a90e45dc35d",
+    "mainnetAssetId": "nep141:bnb-0x2ac26ec236df5d1d2ad1a6dd4e448a90e45dc35d.omdep.near"
+  },
+  {
+    "symbol": "TLTon",
+    "decimals": 18,
+    "coingeckoId": "ishares-20-year-treasury-bond-etf-ondo-tokenized-etf",
+    "fallback": 86.3,
+    "mainnetAddress": "0xf69e40069ac227c11459e3f4e8a446b3401616b6",
+    "mainnetAssetId": "nep141:bnb-0xf69e40069ac227c11459e3f4e8a446b3401616b6.omdep.near"
+  },
+  {
+    "symbol": "TSLAon",
+    "decimals": 18,
+    "coingeckoId": "tesla-ondo-tokenized-stock",
+    "fallback": 377.45,
+    "mainnetAddress": "0x2494b603319d4d9f9715c9f4496d9e0364b59d93",
+    "mainnetAssetId": "nep141:bnb-0x2494b603319d4d9f9715c9f4496d9e0364b59d93.omdep.near"
+  },
+  {
+    "symbol": "USDon",
+    "decimals": 18,
+    "coingeckoId": "ondo-u-s-dollar-token",
+    "fallback": 1,
+    "mainnetAddress": "0x1f8955e640cbd9abc3c3bb408c9e2e1f5f20dfe6",
+    "mainnetAssetId": "nep141:bnb-0x1f8955e640cbd9abc3c3bb408c9e2e1f5f20dfe6.omdep.near"
+  },
+  {
+    "symbol": "YLD5on",
+    "decimals": 18,
+    "coingeckoId": "ondo-5-targeted-income-tr-portfolio",
+    "fallback": 5.01,
+    "mainnetAddress": "0x0cfd1030e2431e0fa15d4cc3f3e43076fe93f8f9",
+    "mainnetAssetId": "nep141:bnb-0x0cfd1030e2431e0fa15d4cc3f3e43076fe93f8f9.omdep.near"
+  },
+  {
+    "symbol": "YLD8on",
+    "decimals": 18,
+    "coingeckoId": "ondo-8-targeted-income-tr-portfolio",
+    "fallback": 4.99,
+    "mainnetAddress": "0x2f20d5dfbaffa3e6351e06b8b18059747cd7ee72",
+    "mainnetAssetId": "nep141:bnb-0x2f20d5dfbaffa3e6351e06b8b18059747cd7ee72.omdep.near"
+  }
+]

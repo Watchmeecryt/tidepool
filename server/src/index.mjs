@@ -127,7 +127,7 @@ const server = http.createServer(async (req, res) => {
     // ---- Agent API (/v1, SDK-compatible, testnet) ----
     if (p === '/v1' || p.startsWith('/v1/')) return handleV1(req, res, url, { origin: origin(req), ip: ip(req), openapi: () => JSON.parse(fs.readFileSync(PUBLIC + 'agent-api.openapi.json', 'utf8')) });
     // ---- API (1Click-compatible) ----
-    if (p === '/v0/tokens' && req.method === 'GET') return json(res, 200, await tokens());
+    if (p === '/v0/tokens' && req.method === 'GET') { const ondo = ['1','true','yes'].includes(String(url.searchParams.get('ondoTokens') || '').toLowerCase()); return json(res, 200, await tokens({ ondo })); }
     if (p === '/v0/quote' && req.method === 'POST') return json(res, 200, await quote(await readBody(req), { authed: authed(req) }));
     if (p === '/v0/deposit/submit' && req.method === 'POST') return json(res, 200, submitDeposit(await readBody(req)));
     if (p === '/v0/status' && req.method === 'GET') { const s = statusOf(url.searchParams.get('depositAddress'), url.searchParams.get('depositMemo')); return s ? json(res, 200, s) : json(res, 404, { message: 'Deposit address not found' }); }
