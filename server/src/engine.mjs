@@ -282,7 +282,7 @@ export async function quote(req, { authed, maxDeadlineMs = 24 * 3600_000 } = {})
   const appFees = validateAppFees(req.appFees);
   const A = BigInt(appFees.reduce((a, f) => a + f.fee, 0));
 
-  const p = await prices();
+  const p = await prices(ONDO_TOKENS);
   const fee = feeBps(inT, outT, authed);
   const amt = BigInt(req.amount);
   const s = BigInt(Math.round(slip));
@@ -412,6 +412,13 @@ const tagEvm = (s, chain, h) => { (s.evmTxs ||= {})[h] = chain; return h; };
 export function statusOf(depositAddress, depositMemo) {
   const s = db.swaps[keyOf(depositAddress, depositMemo)];
   if (!s) { if (!depositMemo && depositAddress && (depositAddress === (MASTER && memoKey().accountId) || (STELLAR_CHAIN.treasury && depositAddress === STELLAR_CHAIN.treasury) || (XRP_CHAIN.treasury && depositAddress === XRP_CHAIN.treasury))) throw new BadRequest('depositMemo is required for this depositAddress (depositMode MEMO)'); return null; }
+  // Unpaid quote past deadline: terminal FAILED (persist). Funded swaps leave PENDING_DEPOSIT once a deposit is seen.
+  if (s.status === 'PENDING_DEPOSIT' && Date.now() >= new Date(s.quoteResponse.quote.deadline).getTime()) {
+    s.status = 'FAILED';
+    s.updatedAt = new Date().toISOString();
+    if (!s.note) s.note = 'Deadline passed with no deposit';
+    save();
+  }
   const { quoteResponse: qr } = s;
   const inT = byAsset[qr.quoteRequest.originAsset], outT = byAsset[qr.quoteRequest.destinationAsset];
   const d = { intentHashes: [...new Set(s.intentHashes)], nearTxHashes: s.txs.map(t => t.hash).filter(h => !s.evmTxs?.[h]), originChainTxHashes: s.originTxs.map(h => ({ hash: h, explorerUrl: urlOf(s, h) })), destinationChainTxHashes: s.destTxs.map(h => ({ hash: h, explorerUrl: urlOf(s, h) })) };
@@ -793,7 +800,7 @@ async function refund(addr, s, inT, amount, reason, status = 'REFUNDED') {
 
 async function settle(addr, s, inT, outT, deposited) {
   const req = s.quoteResponse.quoteRequest, q = s.quoteResponse.quote;
-  const p = await prices();
+  const p = await prices(ONDO_TOKENS);
   const fee = s.feeBps;
   let swapIn, out;
   const A = BigInt((s.appFees || []).reduce((a, f) => a + f.fee, 0));
@@ -912,7 +919,7 @@ async function tickAnyInput(addr, s, inT, outT, deadline) {
   const bal = await intentsBal(acctOf(addr, s), inT.assetId);
   if (bal === 0n) return;
   if (Date.now() >= deadline) return refund(addr, s, inT, bal, 'DEADLINE_PASSED', s.withdrawals?.length ? 'SUCCESS' : 'REFUNDED');
-  const p = await prices();
+  const p = await prices(ONDO_TOKENS);
   const af = appFeeSplit(bal, s.appFees);
   const tradeIn = bal - af.total;
   const out = convert(tradeIn, inT, outT, p.prices, s.feeBps);
