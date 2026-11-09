@@ -8,7 +8,7 @@ icon: Drop
 <FaucetWidget />
 
 <Callout title="Faucet in the Tidepool App">
-The [Tidepool App](https://app.usetidepool.tech/faucet) has a faucet page with one card per chain (NEAR, Ethereum, Base, Arbitrum, BSC, Solana, Stellar, Sui and XRP, plus links for native BTC and gas). It calls the same `POST /v0/faucet` endpoint.
+The [Tidepool App](https://app.usetidepool.tech/faucet) has two tabs: **Tokens** (one card per chain: NEAR, Ethereum, Base, Arbitrum, BSC, Solana, Stellar, Sui and XRP, plus links for native BTC and gas) and **Stocks & RWAs** (pick up to 5 Ondo tokens on BSC Testnet). It calls the same `POST /v0/faucet` endpoint.
 </Callout>
 
 ## How the faucet works
@@ -21,7 +21,8 @@ The widget above and the API are the same faucet. In the UI you **pick a chain f
 | Ethereum Sepolia (`eth`) | `0x…` | 100 test USDC + 100 test USDT (ERC-20) | Your address on Ethereum Sepolia | Sepolia ETH for gas |
 | Base Sepolia (`base`) | `0x…` | 100 test USDC + 100 test USDT (ERC-20) | Your address on Base Sepolia | Base Sepolia ETH for gas |
 | Arbitrum Sepolia (`arb`) | `0x…` | 100 test USDC + 100 test USDT (ERC-20) | Your address on Arbitrum Sepolia | Arbitrum Sepolia ETH for gas |
-| BSC Testnet (`bsc`) | `0x…` | 100 test USDC + 100 test USDT (ERC-20); Ondo via `assets:["ondo"]` | Your address on BSC Testnet | BSC Testnet tBNB for gas |
+| BSC Testnet (`bsc`) | `0x…` | 100 test USDC + 100 test USDT (ERC-20 only; Stocks & RWAs are a separate tab) | Your address on BSC Testnet | BSC Testnet tBNB for gas |
+| Stocks & RWAs (BSC) | `0x…` | Up to 5 Ondo tokens per claim (`assets: ["AAPLon",…]`); separate 7-day slot from Tokens | Your address on BSC Testnet | BSC Testnet tBNB for gas |
 | Solana devnet (`sol`) | base58 wallet | 100 test USDC + 100 test USDT (SPL) | Your wallet's token accounts on Solana devnet (our backend creates them) | Devnet SOL for fees |
 | Stellar testnet (`stellar`) | `G…` | 100 test USDC + 100 test USDT (classic assets) | Your account on Stellar testnet | An existing account with trustlines |
 | Sui testnet (`sui`) | `0x…` (64 hex) | 100 test USDC + 100 test USDT (Move coins) | Your address on Sui testnet (any address, no setup) | Testnet SUI for gas |
@@ -62,9 +63,9 @@ curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: applicatio
 curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: application/json' \
   -d '{"chain":"eth","address":"0xYourAddress"}'
 
-# BSC Testnet Ondo drips (tokenized stocks/RWAs)
+# BSC Testnet Stocks & RWAs (Ondo; max 5 symbols; separate 7-day claim slot)
 curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: application/json' \
-  -d '{"chain":"bsc","address":"0xYourAddress","assets":["ondo"]}'
+  -d '{"chain":"bsc","address":"0xYourAddress","assets":["AAPLon","TSLAon"]}'
 
 # Solana devnet
 curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: application/json' \

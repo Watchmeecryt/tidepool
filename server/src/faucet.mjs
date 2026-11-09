@@ -24,27 +24,29 @@ function normAddr(a) {
   return a;
 }
 
-/** Most recent claim timestamp for this address across every faucet variant (persisted in db.faucet). */
-function lastClaimFor(addr) {
+/** Most recent claim for this address. Stocks/RWAs (`ondo`) have their own 7-day slot; all other faucet variants share one slot. */
+function lastClaimFor(addr, variant) {
   const id = normAddr(addr);
   let last = 0;
   for (const [k, t] of Object.entries(db.faucet || {})) {
     const i = k.lastIndexOf(':');
     const w = i >= 0 ? k.slice(0, i) : k;
-    if (w === id || (id.startsWith('0x') && w.toLowerCase() === id)) last = Math.max(last, Number(t) || 0);
+    const v = i >= 0 ? k.slice(i + 1) : '';
+    if (!(w === id || (id.startsWith('0x') && w.toLowerCase() === id))) continue;
+    if (variant === 'ondo' ? v === 'ondo' : v !== 'ondo') last = Math.max(last, Number(t) || 0);
   }
   return last;
 }
 
-/** Throw 429 if this address claimed within 7 days (any variant) or the IP hit its 24h cap. Returns { id, hits, key }. */
+/** Throw 429 if this address claimed within 7 days (see lastClaimFor) or the IP hit its 24h cap. Returns { id, hits, key }. */
 function assertClaimAllowed(addr, variant, ip) {
   const id = normAddr(addr);
-  const last = lastClaimFor(id);
+  const last = lastClaimFor(id, variant);
   if (Date.now() - last < ACCOUNT_COOLDOWN_MS) {
     const available_at = new Date(last + ACCOUNT_COOLDOWN_MS).toISOString();
     const retryAfterSeconds = Math.max(1, Math.ceil((last + ACCOUNT_COOLDOWN_MS - Date.now()) / 1000));
     throw new BadRequest(
-      `Rate limited: ${addr} can use the faucet again after ${available_at} (one claim per address every 7 days).`,
+      `Rate limited: ${addr} can use the faucet again after ${available_at} (one ${variant === 'ondo' ? 'Stocks & RWAs' : 'tokens'} claim per address every 7 days).`,
       429,
       { available_at, retryAfter: available_at, retryAfterSeconds },
     );
@@ -101,13 +103,17 @@ async function evmDrip({ chain = 'base', address, accountId, assets }, ip) {
   const c = chainOf(chain);
   if (!c || !c.deployed) throw new BadRequest(`chain must be one of: ${EVM_CHAINS.filter(c => c.deployed).map(c => c.key).join(', ')}`);
   if (!isEvmAddress(to)) throw new BadRequest(`address must be a ${c.name} address (0x...)`);
-  // Default drip: bridged stables only. Pass assets:["ondo"] or specific Ondo symbols to include tokenized stocks/RWAs.
+  // Default drip: bridged stables only (never Ondo). Stocks/RWAs: pass assets:["ondo"] or specific symbols (max 5).
+  const ONDO_FAUCET_MAX = 5;
   let list = assets?.length
     ? c.tokens.filter(t => assets.includes(t.assetId) || assets.includes(t.symbol) || (assets.includes('ondo') && t.ondo))
     : c.tokens.filter(t => !t.ondo);
   list = list.filter(t => t.drip && t.drip !== '0');
-  if (!list.length) throw new BadRequest('no matching assets');
-  const { hits, key } = assertClaimAllowed(to, c.key, ip);
+  const wantsOndo = list.some(t => t.ondo);
+  if (wantsOndo) list = list.filter(t => t.ondo); // stocks tab never mixes stables into the same claim
+  if (wantsOndo && list.length > ONDO_FAUCET_MAX) throw new BadRequest(`Pick at most ${ONDO_FAUCET_MAX} Stocks & RWAs tokens per claim (you picked ${list.length}).`);
+  if (!list.length) throw new BadRequest(wantsOndo ? 'no matching Ondo assets' : 'no matching assets');
+  const { hits, key } = assertClaimAllowed(to, wantsOndo ? 'ondo' : c.key, ip);
   markClaim(key, ip, hits); // reserve the slot before any await so concurrent requests for the same address get 429
   try { await assertEvmEligible(c.key, to); } catch (e) { unmarkClaim(key, ip, hits); throw e; }
   const out = [];
