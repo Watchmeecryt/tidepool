@@ -6,9 +6,9 @@ description: "GET /v0/tokens · 1Click-compatible"
 
 <p><span className="tp-method tp-get">GET</span><code>{"/v0/tokens"}</code></p>
 
-Returns the six NEAR test tokens plus every live bridged token (USDC and USDT on Base, Arbitrum and Ethereum Sepolia and BSC Testnet; SOL, USDC and USDT on Solana devnet; XLM, USDC and USDT on Stellar testnet; SUI, USDC and USDT on Sui testnet; native BTC on Bitcoin testnet4; native XRP on the XRP Ledger testnet), with live USD prices. The example below is the **complete** live response (23 tokens on 2026-10-30). Each bridged route appears only while it is live. `ondoTokens=1` includes Tidepool's 28 Ondo test tokens (tokenized stocks/RWAs on **BSC Testnet**, matching mainnet 1Click `blockchain: "bsc"` / `nep141:bnb-…tp-omdep.testnet`). Without the flag they are omitted, same as mainnet. Listed only while the BSC Ondo deploy is live.
+Returns the six NEAR test tokens plus every live bridged token (USDC and USDT on Base, Arbitrum and Ethereum Sepolia and BSC Testnet; SOL, USDC and USDT on Solana devnet; XLM, USDC and USDT on Stellar testnet; SUI, USDC and USDT on Sui testnet; native BTC on Bitcoin testnet4; native XRP on the XRP Ledger testnet), with live USD prices. The example below is the **complete** live response (23 tokens on 2026-10-30). Each bridged route appears only while it is live. `ondoTokens=1` includes the 28 Ondo test tokens on BSC Testnet; omitted otherwise (same as mainnet).
 
-Retrieves a list of tokens currently supported by the 1Click API for asset swaps. Each token entry includes its blockchain, contract address (if available), price in USD, and other metadata such as symbol and decimals.
+Retrieves a list of tokens currently supported by the 1Click API for asset swaps. Each token entry includes its blockchain, contract address (if available), price in USD, and other metadata such as symbol and decimals. Native ETH is listed for eth, base and arb (assetIds nep141:eth.tp-omft.testnet, nep141:base.tp-omft.testnet, nep141:arb.tp-omft.testnet; 18 decimals, no contractAddress), supports ORIGIN_CHAIN deposits and DESTINATION_CHAIN payouts, and is capped at 0.006 ETH per swap. Pass `?ondoTokens=1` to include Tidepool's 28 Ondo test tokens on BSC Testnet (`blockchain: "bsc"`, `nep141:bnb-….tp-omdep.testnet`). Without the flag they are omitted.
 
 **Operation id:** `getTokens`
 
@@ -19,13 +19,15 @@ Retrieves a list of tokens currently supported by the 1Click API for asset swaps
 
 ```bash
 curl "https://www.usetidepool.tech/v0/tokens"
+# Include Ondo tokenized stocks/RWAs (BSC Testnet):
+curl "https://www.usetidepool.tech/v0/tokens?ondoTokens=1"
 ```
 
 </Tab>
 <Tab value="JavaScript">
 
 ```ts
-const res = await fetch('https://www.usetidepool.tech/v0/tokens');
+const res = await fetch('https://www.usetidepool.tech/v0/tokens?ondoTokens=1');
 const data = await res.json();
 ```
 
@@ -40,7 +42,7 @@ const data = await res.json();
 
 | Name | Type | Required | Description |
 | --- | --- | --- | --- |
-| `ondoTokens` | string |  | Show Ondo tokens if the query is set |
+| `ondoTokens` | "1" |  | Include Ondo tokenized stocks/RWAs (BSC Testnet). Pass `1` (or any value) to return them; omit the parameter to hide them (same as mainnet 1Click). |
 
 ## Responses
 

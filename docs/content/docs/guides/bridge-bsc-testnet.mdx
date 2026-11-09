@@ -11,11 +11,18 @@ icon: Cube
 | What | Address |
 | --- | --- |
 | Chain | BSC Testnet, chain id `97`, `blockchain: "bsc"` |
-| Vault | Listed in [`GET /v0/tokens`](/docs/api-reference/get-tokens) once live (see `bridge-deployments` / status) |
-| Test USDC / USDT (6 decimals) | Appears in `/v0/tokens` with `blockchain: "bsc"` while the bridge is live |
+| Vault | [`0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2`](https://testnet.bscscan.com/address/0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2) |
+| Test USDC (6 decimals) | [`0x38d81431B9f76d9699AF7517040D5221D9dEA252`](https://testnet.bscscan.com/address/0x38d81431B9f76d9699AF7517040D5221D9dEA252) |
+| Test USDT (6 decimals) | [`0xC15Cf5600225302675604310094f134e88705E62`](https://testnet.bscscan.com/address/0xC15Cf5600225302675604310094f134e88705E62) |
 | Relayer | `0x55F2c8044D790e1b8369508c31c756c0c2Ca0E93` |
 
-Bridged stables use `nep141:bsc-0x<erc20>.tp-omft.testnet`. The route appears in `/v0/tokens` only while it is live.
+| Asset id | NEP-141 on NEAR testnet |
+| --- | --- |
+| `nep141:bsc-0x38d81431b9f76d9699af7517040d5221d9dea252.tp-omft.testnet` | USDC on BSC Testnet |
+| `nep141:bsc-0xc15cf5600225302675604310094f134e88705e62.tp-omft.testnet` | USDT on BSC Testnet |
+
+Both appear in [`GET /v0/tokens`](/docs/api-reference/get-tokens) with `blockchain: "bsc"` and `contractAddress` set to the ERC-20.
+
 
 ## Ondo tokenized stocks/RWAs
 

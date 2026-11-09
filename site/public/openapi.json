@@ -313,16 +313,20 @@
     },
     "/v0/tokens": {
       "get": {
-        "description": "Retrieves a list of tokens currently supported by the 1Click API for asset swaps.\n\nEach token entry includes its blockchain, contract address (if available), price in USD, and other metadata such as symbol and decimals.\n\nNative ETH is listed for eth, base and arb (assetIds nep141:eth.tp-omft.testnet, nep141:base.tp-omft.testnet, nep141:arb.tp-omft.testnet; 18 decimals, no contractAddress), supports ORIGIN_CHAIN deposits and DESTINATION_CHAIN payouts, and is capped at 0.006 ETH per swap.",
+        "description": "Retrieves a list of tokens currently supported by the 1Click API for asset swaps.\n\nEach token entry includes its blockchain, contract address (if available), price in USD, and other metadata such as symbol and decimals.\n\nNative ETH is listed for eth, base and arb (assetIds nep141:eth.tp-omft.testnet, nep141:base.tp-omft.testnet, nep141:arb.tp-omft.testnet; 18 decimals, no contractAddress), supports ORIGIN_CHAIN deposits and DESTINATION_CHAIN payouts, and is capped at 0.006 ETH per swap.\n\nPass `?ondoTokens=1` to include Tidepool's 28 Ondo test tokens on BSC Testnet (`blockchain: \"bsc\"`, `nep141:bnb-\u2026.tp-omdep.testnet`). Without the flag they are omitted.",
         "operationId": "getTokens",
         "parameters": [
           {
             "name": "ondoTokens",
             "required": false,
             "in": "query",
-            "description": "Show Ondo tokens if the query is set",
+            "description": "Include Ondo tokenized stocks/RWAs (BSC Testnet). Pass `1` (or any value) to return them; omit the parameter to hide them (same as mainnet 1Click).",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "1"
+              ],
+              "example": "1"
             }
           }
         ],

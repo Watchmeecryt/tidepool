@@ -7,7 +7,7 @@
 // Keys are read from ../.secrets and env and never printed.
 import fs from 'node:fs';
 import { ethers } from '../server/node_modules/ethers/lib.esm/index.js';
-import { KeyPair } from 'near-api-js';
+import { KeyPair } from '../server/node_modules/near-api-js/lib/index.js';
 import { loadKeys, account, call, mustCall, view, viewAccount, parseNear, TGAS, keyStore, NETWORK } from '../server/src/near.mjs';
 import { ROOT, VERIFIER, MAKER, OMFT, EVM_CHAINS, toUnits } from '../server/src/config.mjs';
 
@@ -88,4 +88,5 @@ for (const b of BRIDGED) {
     log(`deposit maker inventory ${b.symbol}`, (await mustCall(ROOT, id, 'ft_transfer_call', { receiver_id: VERIFIER, amount: amt, msg: MAKER }, { deposit: 1n, gas: 150n * TGAS })).txHash);
   }
 }
-console.log('done', c.key, JSON.stringify({ vault: d.vault, tokens: d.tokens }));
+d.live = true; saveDep();
+console.log('done', c.key, JSON.stringify({ vault: d.vault, tokens: d.tokens, live: d.live }));
