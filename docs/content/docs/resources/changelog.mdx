@@ -10,6 +10,7 @@ icon: ClockCounterClockwise
 - **Load:** expired, unpaid quotes are checked once a minute instead of every 4 s (a late deposit is still refunded), which cuts NEAR RPC rate limiting.
 - **Status:** a `KNOWN_DEPOSIT_TX` swap with nothing credited now ends `FAILED`: right after the deadline when the submitted EVM deposit tx reverted, otherwise 24 hours after the deadline.
 - **Explorer links:** the status page's recent swaps (`GET /v0/health` `recent[].tx`) link each tx to its own chain's explorer (Solana devnet, EVM testnets, NEAR) instead of always NearBlocks.
+- **Docs:** OpenAPI and llms files synced.
 
 ## 2026-11-09 · Ondo tokenized stocks/RWAs on BSC Testnet (`ondoTokens=1`)
 

@@ -49,7 +49,7 @@ npm run failure-cases partial   # deposit too little, wait for REFUNDED
 What it does:
 
 1. Creates a throwaway testnet account through the public testnet helper.
-2. Calls `POST /v0/faucet` with `mode: "intents"`.
+2. Expects test tokens to already be in the account (claim them on the [site faucet](https://app.usetidepool.tech/faucet); `POST /v0/faucet` answers 403 `site_only`).
 3. Calls `POST /v0/quote` with `dry: false` and `depositType: "INTENTS"`.
 4. Deposits with a signed NEP-413 `transfer` intent to the deposit address. The script submits it with `execute_intents` from its own account, so it pays its own gas.
 5. Calls `POST /v0/deposit/submit`, then polls `GET /v0/status` until `SUCCESS` or `REFUNDED`.
@@ -59,7 +59,7 @@ What it does:
 - Always get a dry quote first and check `amountOut` and `minAmountOut` before going live.
 - Deposit exactly `quote.amountIn`. Under `minAmountIn` waits for more until the deadline, then refunds.
 - Poll `/v0/status` every 2 to 5 seconds. Stop on `SUCCESS`, `REFUNDED` or `FAILED`.
-- Faucet: one claim per address every 7 days. Do not loop on it.
+- Faucet: claim on the site only (https://app.usetidepool.tech/faucet). Direct API calls answer 403 `site_only`. One Tokens claim per address every 7 days, plus a separate Stocks & RWAs slot. Do not loop on it.
 - Native ETH on Ethereum, Base and Arbitrum Sepolia (`nep141:eth.tp-omft.testnet`, `nep141:base.tp-omft.testnet`, `nep141:arb.tp-omft.testnet`) is **capped at 0.006 ETH per swap, payout or refund** (400 at quote time, same cap on `/v1` withdraw; 503 while the treasury is low). ORIGIN_CHAIN deposits and DESTINATION_CHAIN payouts are supported; `ANY_INPUT` ETH origin/destination payouts are rejected. Ask for a small amount, for example gas for a fresh address.
 - Never send real assets. Tidepool is testnet only.
 
@@ -70,7 +70,7 @@ Paste this into your agent's system prompt:
 ```text
 You can swap test tokens on NEAR testnet through Tidepool, a 1Click-compatible sandbox
 (base URL https://www.usetidepool.tech). Read /llms-full.txt for the API.
-Flow: POST /v0/faucet → POST /v0/quote (dry:true, then dry:false) → deposit quote.amountIn
+Flow: claim tokens at https://app.usetidepool.tech/faucet (POST /v0/faucet is site-only and answers 403) → POST /v0/quote (dry:true, then dry:false) → deposit quote.amountIn
 to quote.depositAddress → POST /v0/deposit/submit → poll GET /v0/status until SUCCESS,
 REFUNDED or FAILED. Amounts are strings in base units. Testnet only.
 ```

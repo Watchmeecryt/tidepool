@@ -8,12 +8,12 @@ icon: Drop
 <FaucetWidget />
 
 <Callout title="Faucet in the Tidepool App">
-The [Tidepool App](https://app.usetidepool.tech/faucet) has two tabs: **Tokens** (one card per chain: NEAR, Ethereum, Base, Arbitrum, BSC, Solana, Stellar, Sui and XRP, plus links for native BTC and gas) and **Stocks & RWAs** (pick up to 5 Ondo tokens on BSC Testnet). It calls the same `POST /v0/faucet` endpoint.
+The [Tidepool App](https://app.usetidepool.tech/faucet) has two tabs: **Tokens** (one card per chain: NEAR, Ethereum, Base, Arbitrum, BSC, Solana, Stellar, Sui and XRP, plus links for native BTC and gas) and **Stocks & RWAs** (pick up to 5 Ondo tokens on BSC Testnet). Claim there, or with the widget on this page. Direct API calls to `POST /v0/faucet` and `/v1` `testnet_faucet` answer **403 `site_only`**.
 </Callout>
 
 ## How the faucet works
 
-The widget above and the API are the same faucet. In the UI you **pick a chain from the dropdown, paste your address on that chain, and press the button**: our backend signs and sends the tokens, you never sign anything. Through the API you send the same request yourself (examples below).
+The widget above and the Tidepool App are the same faucet. In the UI you **pick a chain from the dropdown, paste your address on that chain, and press the button**: our backend signs and sends the tokens, you never sign anything. Direct `POST /v0/faucet` calls (curl, agents, scripts) answer **403 `site_only`**. The examples below show the body the site sends, for reference.
 
 | Chain (`chain`) | Address you paste | What our backend sends | Where it lands | You still bring |
 | --- | --- | --- | --- | --- |
@@ -44,7 +44,7 @@ The widget above and the API are the same faucet. In the UI you **pick a chain f
 | Tokens ready to swap right now, inside the verifier | NEAR, mode `intents` (six NEAR tokens by default, or `assets` with chain aliases for bridged ones) |
 | NEP-141 tokens in a NEAR wallet | NEAR, mode `wallet` |
 
-### Call it from the API
+### Request body (reference only; direct calls answer 403 `site_only`)
 
 ```bash
 # NEAR wallet (the default)
@@ -153,15 +153,15 @@ See [POST /v0/faucet](/docs/api-reference/tidepool-faucet) for the full response
 
 ## Limits
 
-- **One claim per address every 7 days**, across every faucet variant (NEAR wallet, NEAR intents, bridged intents, and every other chain). Claiming on Base blocks the same `0x` on Ethereum Sepolia, and a NEAR `wallet` drip blocks `intents` for that account until the window ends.
-- **Wallet age and IP cap:** NEAR accounts must exist and be at least 24 hours old, and EVM addresses must have sent a transaction or hold ETH on Ethereum Sepolia; otherwise you get `403` with a `reason`. Each IP can claim twice every 24 hours. If captcha is enabled, send `turnstileToken` (from the faucet page) or an `Authorization: Bearer naa_...` key.
-- **Six drips per IP per hour**, across everything. Over the limit returns **HTTP 429** with `available_at` / `retryAfter` (and a `Retry-After` header). If a transfer fails, the limit is not consumed.
+- **One Tokens claim per address every 7 days**, across every non-Ondo variant (NEAR wallet, NEAR intents, bridged intents, and every other chain). Claiming on Base blocks the same `0x` on Ethereum Sepolia, and a NEAR `wallet` drip blocks `intents` for that account until the window ends.
+- **A separate Stocks & RWAs slot** (up to 5 Ondo tokens on BSC Testnet) can be claimed once per address every 7 days, independently of the Tokens slot.
+- **Wallet age and IP cap:** NEAR accounts must exist and be at least 24 hours old, and EVM addresses must have sent a transaction or hold a native balance on Ethereum Sepolia (or on BSC Testnet for a `bsc` claim); otherwise you get `403` with a `reason`. Each IP can claim twice every 24 hours. Over the limit returns **HTTP 429** with `available_at` / `retryAfter` (and a `Retry-After` header). If a transfer fails, the limit is not consumed. If captcha is enabled, the site sends `turnstileToken`.
 - Global daily caps protect the treasuries: Solana (it pays for token accounts), Stellar and Sui (it pays gas). Over the cap returns `429`.
 - Do not loop the faucet; every drip is a fixed amount.
 
 ## Details per chain
 
-- **EVM:** `{"chain":"base"|"arb"|"eth","address":"0x…"}` mints USDC and USDT (6 decimals). You can also call `faucet()` on the token contracts yourself. Addresses are in each route guide under [Test bridges](/docs/guides/bridges).
+- **EVM:** `{"chain":"base"|"arb"|"eth"|"bsc","address":"0x…"}` mints USDC and USDT (6 decimals). On BSC, `assets:["ondo"]` or specific symbols (max 5) drip Stocks & RWAs instead. You can also call `faucet()` on the token contracts yourself. Addresses are in each route guide under [Test bridges](/docs/guides/bridges).
 - **Solana devnet:** see the [Solana devnet bridge](/docs/guides/bridge-solana-devnet). SOL swaps are capped at 0.005 SOL.
 - **Stellar testnet:** 7 decimals. See the [Stellar testnet bridge](/docs/guides/bridge-stellar-testnet). Get XLM from [Friendbot](https://friendbot.stellar.org) (10,000 test XLM).
 - **Bitcoin testnet4:** native coins only, no faucet drip. See the [Bitcoin testnet4 bridge](/docs/guides/bridge-bitcoin-testnet).

@@ -8,13 +8,13 @@ icon: FlowArrow
 
 | Status | Meaning | Final |
 | --- | --- | --- |
-| `PENDING_DEPOSIT` | Live quote created. Nothing deposited yet. | |
-| `KNOWN_DEPOSIT_TX` | You called `/v0/deposit/submit`, but the funds have not landed in the verifier yet. | |
+| `PENDING_DEPOSIT` | Live quote created. Nothing deposited yet. Past the deadline with no deposit, this becomes `FAILED`. | |
+| `KNOWN_DEPOSIT_TX` | You called `/v0/deposit/submit`, but the funds have not landed in the verifier yet. If nothing is credited, this ends `FAILED`: right after the deadline when the submitted EVM deposit tx reverted, otherwise 24 hours after the deadline. | |
 | `INCOMPLETE_DEPOSIT` | Something arrived, but less than `minAmountIn`. Top up before the deadline or it is refunded. | |
 | `PROCESSING` | Enough arrived. Settlement transaction is being sent. | |
 | `SUCCESS` | Swapped. `swapDetails` has amounts, tx hashes and intent hashes. | ✓ |
 | `REFUNDED` | Deposit returned to `refundTo`. `swapDetails.refundReason` says why. | ✓ |
-| `FAILED` | Settlement and refund both failed. Rare; contact the maintainer with the deposit address. A quote with `simulate: "FAILED"` also ends here, with the deposit refunded (`refundReason: SWAP_FAILED`). | ✓ |
+| `FAILED` | Terminal, with nothing more to do. Used when an unpaid quote passes its deadline, when a `KNOWN_DEPOSIT_TX` swap is never credited (reverted EVM deposit, or 24 hours after the deadline), when settlement and refund both fail (rare; contact the maintainer with the deposit address), or when a quote with `simulate: "FAILED"` is refunded (`refundReason: SWAP_FAILED`). Read `tidepool.note`. | ✓ |
 
 ## Polling
 
@@ -104,7 +104,9 @@ Real, complete response for a swap that settled (`SUCCESS`), from the live deplo
 }
 ```
 
-Poll every 2–5 seconds and stop on a final status. The worker checks each active address about every 4 seconds and stops watching a quote 24 hours after its deadline.
+Poll every 2–5 seconds and stop on a final status. The worker checks each active address about every 4 seconds. Expired unpaid quotes (`PENDING_DEPOSIT` past the deadline) are checked once a minute — a late deposit is still refunded. The worker stops watching 24 hours after the deadline, and a `KNOWN_DEPOSIT_TX` swap that was never credited is then marked `FAILED` (or earlier, right after the deadline, if every submitted EVM deposit tx reverted).
+
+If an `execute_intents` call times out after the transaction has already landed, the next worker pass recovers it and the swap still finishes `SUCCESS` or `REFUNDED`; `tidepool.note` may mention a retry. A swap that stays `PROCESSING` with nothing left to settle is flagged for operators in `/admin`. That flag is not part of the public `/v0/status` body.
 
 ## swapDetails
 
@@ -116,7 +118,7 @@ Poll every 2–5 seconds and stop on a final status. The worker checks each acti
 | `refundedAmount` (+ `Formatted`, `Usd`) | Excess or refunded input. |
 | `refundReason` | Free text in the 1Click spec. Tidepool uses `PARTIAL_DEPOSIT`, `DEADLINE_PASSED`, `SLIPPAGE_EXCEEDED`, `PRICE_MOVED`, `INSUFFICIENT_LIQUIDITY`, `SWAP_FAILED`. |
 | `nearTxHashes` | NEAR settlement / refund transaction(s). |
-| `originChainTxHashes`, `destinationChainTxHashes` | `{ hash, explorerUrl }`. The URL points at NearBlocks testnet, or at the testnet explorer of the bridged chain (Sepolia, Solana devnet, Stellar testnet, Sui testnet, Bitcoin testnet4 and XRP Ledger testnet). |
+| `originChainTxHashes`, `destinationChainTxHashes` | `{ hash, explorerUrl }`. The URL points at NearBlocks testnet, or at the testnet explorer of the bridged chain (Sepolia, BSC Testnet, Solana devnet, Stellar testnet, Sui testnet, Bitcoin testnet4 and XRP Ledger testnet). |
 | `intentHashes` | Intent hashes logged by the verifier. |
 
 **Settlement distinction.** On mainnet, 1Click now settles every swap confidentially on the NEAR Private Shard, so `swapDetails.nearTxHashes` lists only the public shield and unshield transactions ([NEAR changelog, Oct 27, 2026](https://docs.near-intents.org/changelog/entries/2026-10-27-1click-confidential.md)). Tidepool testnet swaps settle publicly on the testnet verifier, so `nearTxHashes` also includes the swap's own hash. This is not a choice by Tidepool: confidential settlement (NEAR Private Shard / Confidential Intents) runs on NEAR's private infrastructure, which isn't exposed to outside builders. Rely on `status` (`SUCCESS` means delivered), not on the presence of a swap hash, so the same code works on both.

@@ -4,12 +4,9 @@ You need a NEAR testnet account. If you do not have one, create it in a testnet 
 
 ## 1. Get test tokens (30 seconds)
 
-```bash
-curl -X POST {{ORIGIN}}/v0/faucet -H 'content-type: application/json' \
-  -d '{"accountId":"alice.testnet","mode":"wallet"}'
-```
+Claim test tokens on the [faucet page](/docs/guides/faucet) or at [app.usetidepool.tech/faucet](https://app.usetidepool.tech/faucet). Direct `POST /v0/faucet` calls answer **403 `site_only`**.
 
-`mode: "wallet"` mints every test token to your account. `mode: "intents"` credits your balance inside the Tidepool verifier instead, so you can deposit with an in-verifier transfer. You can also use the [faucet page](/faucet).
+`mode: "wallet"` mints every test token to your account. `mode: "intents"` credits your balance inside the Tidepool verifier instead, so you can deposit with an in-verifier transfer.
 
 ## 2. Get a live quote
 

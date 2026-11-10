@@ -12,4 +12,4 @@ Get Tidepool test tokens on NEAR testnet, or test USDC and USDT on Ethereum Sepo
 
 Other chains: `{"chain":"base","address":"0x…"}` (also `eth`, `arb`, `sol`, `stellar`, `sui`; `btc` and `xrp` are rejected with a pointer to the external faucets) sends 100 USDC and 100 USDT to that address; native gas is never dripped. In intents mode, `assets:["sol"]` (or `stellar`, `sui`, `base`, `arb`, `eth`, `bridged`) credits that chain's bridged test tokens, including verifier-only test SOL (0.05), XLM (5) and SUI (0.5).
 
-API: `POST /v0/faucet` with `{"accountId":"alice.testnet","mode":"wallet"}`. See the [API reference](/docs/api).
+Claim on this page or at https://app.usetidepool.tech/faucet. Direct `POST /v0/faucet` calls answer **403 `site_only`**. See the [API reference](/docs/api-reference/tidepool-faucet).
