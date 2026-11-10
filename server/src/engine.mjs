@@ -461,7 +461,7 @@ function submitDepositCommon(s, depositAddress, memo, txHash, nearSenderAccount)
 }
 
 // ---------- settlement worker ----------
-const set = (s, status, extra = {}) => { Object.assign(s, extra, { status, updatedAt: new Date().toISOString() }); save(); };
+const set = (s, status, extra = {}) => { Object.assign(s, extra, { status, updatedAt: new Date().toISOString() }); if (['SUCCESS', 'REFUNDED', 'FAILED'].includes(status)) delete s.attention; save(); };
 const intentsBal = async (acct, assetId) => BigInt(await view(VERIFIER, 'mt_balance_of', { account_id: acct, token_id: assetId }));
 
 async function ensureStorage(token, accountId) {
@@ -787,13 +787,16 @@ async function refund(addr, s, inT, amount, reason, status = 'REFUNDED') {
     if (req.refundType === 'ORIGIN_CHAIN') await ensureStorage(inT.nearContract, inT.chain ? BRIDGE_ACCOUNT : req.refundTo);
     const kp = await depositKey(addr, s);
     const p = signIntents({ signerId: acctOf(addr, s), verifier: VERIFIER, keyPair: kp, intents: [outIntent(req.refundType === 'INTENTS' ? 'INTENTS' : 'NEAR', req.refundTo, inT, amount)] });
-    const r = await execute([p]);
+    const r = await executeTracked(s, [p], p, { kind: 'refund', amount: amount.toString(), reason, status });
     s.txs.push({ label: 'refund', hash: r.txHash });
     s.intentHashes.push(...hashesFrom(r.logs));
     if (!r.ok) { set(s, 'FAILED', { note: 'refund failed: ' + r.failures.join('; ').slice(0, 300) }); return; }
     s.destTxs.push(r.txHash);
     if (req.refundType === 'ORIGIN_CHAIN') queueRelease(s, 'refund', inT, req.refundTo, amount);
   }
+  return refundLanded(s, amount, reason, status);
+}
+async function refundLanded(s, amount, reason, status) {
   if (s.releases?.length) await processReleases(s).catch(e => { s.note = 'payout pending: ' + String(e.message).slice(0, 200); save(); });
   finish(s, status, { refunded: amount.toString(), refundReason: reason });
 }
@@ -831,23 +834,29 @@ async function settle(addr, s, inT, outT, deposited) {
   if (excess > 0n) userIntents.push(outIntent(req.refundType === 'INTENTS' ? 'INTENTS' : 'NEAR', req.refundTo, inT, excess));
   const user = signIntents({ signerId: acctOf(addr, s), verifier: VERIFIER, keyPair: kp, intents: userIntents });
   const maker = signIntents({ signerId: MAKER, verifier: VERIFIER, keyPair: makerKey(), intents: [{ intent: 'token_diff', diff: { [inT.assetId]: tradeIn.toString(), [outT.assetId]: (-out).toString() } }] });
-  const r = await execute([maker, user]);
+  const quoted = Number(q.amountOut) * Number(swapIn) / Number(q.amountIn);
+  const extra = { amountIn: swapIn.toString(), amountOut: out.toString(), refunded: excess > 0n ? excess.toString() : undefined, slippage: Math.round((1 - Number(out) / quoted) * 10000) / 10000, prices: { in: p.prices[inT.assetId], out: p.prices[outT.assetId] } };
+  const r = await executeTracked(s, [maker, user], user, { kind: 'settle', out: out.toString(), excess: excess.toString(), extra });
   s.txs.push({ label: af.parts.length ? 'swap + appFees (execute_intents)' : 'swap (execute_intents)', hash: r.txHash });
   if (r.ok && af.parts.length) s.appFeePaid = af.parts.map(x => ({ recipient: x.recipient, asset: inT.assetId, amount: x.amount.toString(), amountFormatted: fromUnits(x.amount, inT.decimals), txHash: r.txHash }));
   s.intentHashes.push(...hashesFrom(r.logs));
   if (!r.ok) { s.note = 'settlement failed: ' + r.failures.join('; ').slice(0, 300); save(); return refund(addr, s, inT, await intentsBal(acctOf(addr, s), inT.assetId), 'SWAP_FAILED'); }
   s.destTxs.push(r.txHash);
+  return settleLanded(s, inT, outT, out, excess, extra);
+}
+async function settleLanded(s, inT, outT, out, excess, extra) {
+  const req = s.quoteResponse.quoteRequest;
   if (req.recipientType === 'DESTINATION_CHAIN') queueRelease(s, 'swap', outT, req.recipient, out);
   if (excess > 0n && req.refundType === 'ORIGIN_CHAIN') queueRelease(s, 'excess refund', inT, req.refundTo, excess);
   if (s.releases?.length) await processReleases(s).catch(e => { s.note = 'payout pending: ' + String(e.message).slice(0, 200); save(); });
-  const quoted = Number(q.amountOut) * Number(swapIn) / Number(q.amountIn);
-  finish(s, 'SUCCESS', { amountIn: swapIn.toString(), amountOut: out.toString(), refunded: excess > 0n ? excess.toString() : undefined, slippage: Math.round((1 - Number(out) / quoted) * 10000) / 10000, prices: { in: p.prices[inT.assetId], out: p.prices[outT.assetId] } });
+  finish(s, 'SUCCESS', extra);
 }
 
 async function tick(addr, s) {
   const req = s.quoteResponse.quoteRequest, q = s.quoteResponse.quote;
   const inT = byAsset[req.originAsset], outT = byAsset[req.destinationAsset];
   const deadline = new Date(q.deadline).getTime();
+  if (s.pendingExec) return recoverExec(addr, s); // an execute_intents threw: find out whether it landed before doing anything else
   if (s.releases?.some(r => !r.done) || s.final) return processReleases(s); // settled on NEAR, EVM payout pending
   if (inT.kind === 'stellar' && req.depositType === 'ORIGIN_CHAIN') await bridgeInStellar(addr, s, inT);
   else if (inT.kind === 'xrp' && req.depositType === 'ORIGIN_CHAIN') await bridgeInXrp(addr, s, inT);
@@ -855,12 +864,14 @@ async function tick(addr, s) {
   else if (req.depositType === 'ORIGIN_CHAIN') await sweepOrigin(addr, s, inT);
   if (s.order) return hooks.tickOrder(addr, s, inT, outT);
   if (req.swapType === 'ANY_INPUT') return tickAnyInput(addr, s, inT, outT, deadline);
-  const bal = await intentsBal(acctOf(addr, s), inT.assetId);
+  const bal = await internals.intentsBal(acctOf(addr, s), inT.assetId);
   if (bal > 0n) s.deposited = bal.toString();
   if (s.simulate && (await simulateTick(addr, s, inT, bal, deadline))) return;
   if (bal >= BigInt(q.minAmountIn) && Date.now() < deadline) return settle(addr, s, inT, outT, bal);
   if (bal > 0n && Date.now() >= deadline) return refund(addr, s, inT, bal, bal < BigInt(q.minAmountIn) ? 'PARTIAL_DEPOSIT' : 'DEADLINE_PASSED');
   if (bal > 0n && s.status !== 'INCOMPLETE_DEPOSIT') set(s, 'INCOMPLETE_DEPOSIT');
+  // PROCESSING with nothing left to settle and no swap tx on record: nothing will move it, so flag it for /admin.
+  if (bal === 0n && s.status === 'PROCESSING' && !s.attention && !s.txs.some(t => /execute_intents|refund/.test(t.label))) { s.attention = 'PROCESSING with a zero intents balance, no swap tx and no pendingExec'; save(); }
 }
 
 // Simulated outage (opt-in `simulate` on the quote). Returns true when it handled this tick.
@@ -934,17 +945,85 @@ async function tickAnyInput(addr, s, inT, outT, deadline) {
     outIntent(req.recipientType, req.recipient, outT, out),
   ] });
   const maker = signIntents({ signerId: MAKER, verifier: VERIFIER, keyPair: makerKey(), intents: [{ intent: 'token_diff', diff: { [inT.assetId]: tradeIn.toString(), [outT.assetId]: (-out).toString() } }] });
-  const r = await execute([maker, user]);
+  const px = { in: p.prices[inT.assetId], out: p.prices[outT.assetId] };
+  const fees = af.parts.map(x => ({ recipient: x.recipient, asset: inT.assetId, amount: x.amount.toString(), amountFormatted: fromUnits(x.amount, inT.decimals) }));
+  const r = await executeTracked(s, [maker, user], user, { kind: 'any', out: out.toString(), bal: bal.toString(), prices: px, fees });
   s.txs.push({ label: 'ANY_INPUT conversion (execute_intents)', hash: r.txHash });
   s.intentHashes.push(...hashesFrom(r.logs));
-  (s.withdrawals ||= []).push({ status: r.ok ? 'SUCCESS' : 'FAILED', amountOutFormatted: fromUnits(r.ok ? out : 0n, outT.decimals), amountOutUsd: usd(r.ok ? out : 0n, outT, p.prices[outT.assetId]), amountOut: (r.ok ? out : 0n).toString(), withdrawFeeFormatted: '0', withdrawFee: '0', withdrawFeeUsd: '0', timestamp: new Date().toISOString(), hash: r.txHash, amountIn: bal.toString() });
-  if (!r.ok) { set(s, 'FAILED', { note: 'ANY_INPUT conversion failed: ' + r.failures.join('; ').slice(0, 300) }); return; }
+  if (!r.ok) { (s.withdrawals ||= []).push(anyWithdrawal(outT, 0n, bal, px, r.txHash, 'FAILED')); set(s, 'FAILED', { note: 'ANY_INPUT conversion failed: ' + r.failures.join('; ').slice(0, 300) }); return; }
   s.destTxs.push(r.txHash);
-  if (af.parts.length) (s.appFeePaid ||= []).push(...af.parts.map(x => ({ recipient: x.recipient, asset: inT.assetId, amount: x.amount.toString(), amountFormatted: fromUnits(x.amount, inT.decimals), txHash: r.txHash })));
+  return anyLanded(s, outT, out, bal, px, fees, r.txHash);
+}
+const anyWithdrawal = (outT, out, bal, px, hash, status) => ({ status, amountOutFormatted: fromUnits(out, outT.decimals), amountOutUsd: usd(out, outT, px.out), amountOut: out.toString(), withdrawFeeFormatted: '0', withdrawFee: '0', withdrawFeeUsd: '0', timestamp: new Date().toISOString(), hash, amountIn: bal.toString() });
+async function anyLanded(s, outT, out, bal, px, fees, hash) {
+  const req = s.quoteResponse.quoteRequest;
+  (s.withdrawals ||= []).push(anyWithdrawal(outT, out, bal, px, hash, 'SUCCESS'));
+  if (fees.length) (s.appFeePaid ||= []).push(...fees.map(x => ({ ...x, txHash: hash })));
   if (req.recipientType === 'DESTINATION_CHAIN') queueRelease(s, `any-input ${s.withdrawals.length}`, outT, req.recipient, out);
   if (s.releases?.length) await processReleases(s).catch(e => { s.note = 'payout pending: ' + String(e.message).slice(0, 200); save(); });
   const sum = (k) => s.withdrawals.filter(w => w.status === 'SUCCESS').reduce((a, w) => a + BigInt(w[k]), 0n);
-  finish(s, 'SUCCESS', { amountIn: sum('amountIn').toString(), amountOut: sum('amountOut').toString(), prices: { in: p.prices[inT.assetId], out: p.prices[outT.assetId] } });
+  finish(s, 'SUCCESS', { amountIn: sum('amountIn').toString(), amountOut: sum('amountOut').toString(), prices: px });
+}
+
+// ---- execute_intents that landed while the RPC reported an error ----
+// Every NEAR RPC can answer send_tx with a timeout / 429 even though the tx was included. Before each execute we persist
+// pendingExec: the deposit account's intent nonce plus what to do once it landed. If execute() throws, the next tick asks
+// the verifier (is_nonce_used): used -> run the same "landed" step as the normal path (payout release + final status);
+// unused after the intent deadline -> clear it so the normal settle / refund path runs again.
+export const EXEC_TTL_MS = 120_000; // signIntents' default intent deadline
+const EXEC_GRACE_MS = 30_000;
+async function executeTracked(s, signed, userSigned, data) {
+  s.pendingExec = { ...data, signer: JSON.parse(userSigned.payload.message).signer_id, nonce: userSigned.payload.nonce, at: Date.now() };
+  save();
+  const r = await internals.execute(signed); // throws -> pendingExec stays for recoverExec
+  delete s.pendingExec; save();
+  return r;
+}
+async function recoverExec(addr, s) {
+  const pe = s.pendingExec;
+  const req = s.quoteResponse.quoteRequest, inT = byAsset[req.originAsset], outT = byAsset[req.destinationAsset];
+  const used = await internals.view(VERIFIER, 'is_nonce_used', { account_id: pe.signer, nonce: pe.nonce });
+  if (!used) {
+    if (Date.now() < pe.at + EXEC_TTL_MS + EXEC_GRACE_MS) return; // may still land
+    delete s.pendingExec; s.note = 'execute_intents did not land before the intent deadline; retrying'; save(); return;
+  }
+  delete s.pendingExec;
+  s.note = 'execute_intents landed but the RPC never returned its result (recovered from the verifier nonce)';
+  save();
+  if (pe.kind === 'settle') return settleLanded(s, inT, outT, BigInt(pe.out), BigInt(pe.excess), pe.extra);
+  if (pe.kind === 'refund') { if (req.refundType === 'ORIGIN_CHAIN') queueRelease(s, 'refund', inT, req.refundTo, BigInt(pe.amount)); return refundLanded(s, BigInt(pe.amount), pe.reason, pe.status); }
+  if (pe.kind === 'any') return anyLanded(s, outT, BigInt(pe.out), BigInt(pe.bal), pe.prices, pe.fees, undefined);
+}
+// One-off repairs for swaps stuck before pendingExec existed: the swap tx landed (verified on chain here) but was never recorded.
+const REPAIRS = [{ correlationId: '9b3bb49b-4ec4-4509-9768-8e6458b5d4d9', txHash: '3s33GVntatKqvUKUZVQbg6GNGLgueqA2kgQonq84Vwdi' }];
+export async function repairLandedSwap(addr, s, txHash) {
+  const req = s.quoteResponse.quoteRequest, q = s.quoteResponse.quote, inT = byAsset[req.originAsset], outT = byAsset[req.destinationAsset];
+  if (s.status !== 'PROCESSING' || s.pendingExec || s.releases?.length || s.txs.some(t => t.hash === txHash) || s.appFees?.length || req.swapType === 'ANY_INPUT') return false;
+  const tx = await internals.rpc('tx', { tx_hash: txHash, sender_account_id: MAKER, wait_until: 'FINAL' });
+  if (tx.status?.Failure || tx.receipts_outcome.some(r => r.outcome.status.Failure) || tx.transaction.receiver_id !== VERIFIER) throw new Error('repair: tx failed or is not an execute_intents on the verifier');
+  const logs = tx.receipts_outcome.flatMap(r => r.outcome.logs);
+  const acct = acctOf(addr, s);
+  const diff = logs.flatMap(l => { try { const e = JSON.parse(l.replace(/^EVENT_JSON:/, '')); return e.event === 'token_diff' ? e.data : []; } catch { return []; } }).find(d => d.account_id === acct)?.diff;
+  if (!diff) throw new Error('repair: no token_diff for the deposit account in that tx');
+  const tradeIn = -BigInt(diff[inT.assetId] || 0), out = BigInt(diff[outT.assetId] || 0);
+  if (tradeIn <= 0n || out <= 0n) throw new Error('repair: unexpected token_diff');
+  const excess = BigInt(s.deposited || 0) - tradeIn;
+  const p = await prices(ONDO_TOKENS);
+  const quoted = Number(q.amountOut) * Number(tradeIn) / Number(q.amountIn);
+  s.txs.push({ label: 'swap (execute_intents)', hash: txHash });
+  s.intentHashes.push(...hashesFrom(logs));
+  s.destTxs.push(txHash);
+  s.note = 'repaired: the swap tx landed but the RPC reported an error; payout queued';
+  delete s.attention; save();
+  await settleLanded(s, inT, outT, out, excess > 0n ? excess : 0n, { amountIn: tradeIn.toString(), amountOut: out.toString(), refunded: excess > 0n ? excess.toString() : undefined, slippage: Math.round((1 - Number(out) / quoted) * 10000) / 10000, prices: { in: p.prices[inT.assetId], out: p.prices[outT.assetId] } });
+  return true;
+}
+async function runRepairs() {
+  for (const { correlationId, txHash } of REPAIRS) {
+    const e = Object.entries(db.swaps).find(([, s]) => s.quoteResponse.correlationId === correlationId);
+    if (!e) continue;
+    try { if (await repairLandedSwap(e[0], e[1], txHash)) console.log('repair', correlationId, 'payout queued'); } catch (err) { console.error('repair', correlationId, err.message); }
+  }
 }
 export function anyInputWithdrawals(depositAddress, depositMemo, { timestampFrom, page = 1, limit = 50, sortOrder = 'desc' } = {}) {
   const s = db.swaps[keyOf(depositAddress, depositMemo)];
@@ -974,22 +1053,24 @@ async function payoutBridged(opId, t, to, amount) {
   if (s.releases.some((r) => !r.done)) throw new Error(`payout on ${chainOf(t.chain).name} is still confirming`);
   return s.destTxs;
 }
-export const internals = { payoutBridged, convert, invert, grossUp, settle: (...a) => settle(...a), refund: (...a) => refund(...a), intentsBal, deriveDepositKey: (id) => deriveDepositKey(MASTER, id), execute, hashesFrom, byAsset, isAccount, set, MASTER: () => MASTER, feeBps, usd };
+export const internals = { rpc, view, recoverExec: (...a) => recoverExec(...a), tick: (...a) => tick(...a), payoutBridged, convert, invert, grossUp, settle: (...a) => settle(...a), refund: (...a) => refund(...a), intentsBal, deriveDepositKey: (id) => deriveDepositKey(MASTER, id), execute, hashesFrom, byAsset, isAccount, set, MASTER: () => MASTER, feeBps, usd };
 
 const ACTIVE = ['PENDING_DEPOSIT', 'KNOWN_DEPOSIT_TX', 'INCOMPLETE_DEPOSIT', 'PROCESSING'];
 export function startWorker() {
   const busy = new Set();
   const warmUtxo = () => { if (BTC_CHAIN.deployed) btc.warm(); if (ZEC_CHAIN.deployed) zec.warm(); };
   warmUtxo(); setInterval(warmUtxo, 60_000);
-  setInterval(() => {
+  const slow = new Map(); // expired unpaid quotes: checked once a minute (still refunds a late deposit) instead of every 4 s
+  (MASTER ? runRepairs() : Promise.resolve()).finally(() => setInterval(() => {
     if (!MASTER) return;
     for (const [addr, s] of Object.entries(db.swaps)) {
       const anyLive = s.quoteResponse.quoteRequest.swapType === 'ANY_INPUT' && s.status === 'SUCCESS' && Date.now() < new Date(s.quoteResponse.quote.deadline).getTime() + 60_000;
       const orderLive = s.order && !['FILLED', 'CANCELED', 'EXPIRED'].includes(s.order.fillStatus);
       if (!(ACTIVE.includes(s.status) || anyLive || orderLive) || busy.has(addr)) continue;
       if (Date.now() > new Date(s.quoteResponse.quote.deadline).getTime() + 24 * 3600_000) continue; // stop watching stale quotes
+      if (s.status === 'PENDING_DEPOSIT' && Date.now() > new Date(s.quoteResponse.quote.deadline).getTime()) { if ((slow.get(addr) || 0) > Date.now()) continue; slow.set(addr, Date.now() + 60_000); }
       busy.add(addr);
       tick(addr, s).catch(e => { s.note = String(e.message).slice(0, 300); save(); console.error('tick', addr, e.message); }).finally(() => busy.delete(addr));
     }
-  }, 4000);
+  }, 4000));
 }
