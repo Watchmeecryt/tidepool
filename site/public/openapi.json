@@ -1654,6 +1654,109 @@
           }
         }
       }
+    },
+    "/v0/explorer/swaps": {
+      "get": {
+        "operationId": "TidepoolExplorerSwaps",
+        "tags": [
+          "Tidepool"
+        ],
+        "summary": "Public swap explorer list (Tidepool extension, not part of 1Click)",
+        "description": "Read-only list of funded swaps (a deposit was seen), newest first, as shown on https://www.usetidepool.tech/explorer. Unpaid quotes and simulate test fixtures are excluded. No auth. Rate limit: 120 requests per minute per IP across /v0/explorer/*.",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "1-based page."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 25,
+              "maximum": 100
+            },
+            "description": "Rows per page (1-100)."
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "SUCCESS",
+                "PROCESSING",
+                "KNOWN_DEPOSIT_TX",
+                "INCOMPLETE_DEPOSIT",
+                "REFUNDED",
+                "FAILED"
+              ]
+            },
+            "description": "Only swaps with this status."
+          },
+          {
+            "name": "chain",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Only swaps with this chain on either side (near, eth, base, arb, bsc, sol, stellar, sui, xrp, btc, zec, hypercore)."
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Case-insensitive match on deposit address, sender, recipient, token symbol or tx link."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of swaps",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExplorerSwapsPage"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "More than 120 explorer requests per minute from this IP (Retry-After: 60)"
+          }
+        }
+      }
+    },
+    "/v0/explorer/stats": {
+      "get": {
+        "operationId": "TidepoolExplorerStats",
+        "tags": [
+          "Tidepool"
+        ],
+        "summary": "Public swap explorer stats (Tidepool extension, not part of 1Click)",
+        "description": "Totals for the explorer header: funded swaps by status, successful volume in USD (testnet prices), last 24 hours, unique addresses and swaps per chain. No auth; same rate limit as /v0/explorer/swaps.",
+        "responses": {
+          "200": {
+            "description": "Explorer stats",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExplorerStats"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "More than 120 explorer requests per minute from this IP (Retry-After: 60)"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -32992,6 +33095,187 @@
             "type": "string"
           },
           "about": {
+            "type": "string"
+          }
+        }
+      },
+      "ExplorerSide": {
+        "type": "object",
+        "description": "One side of a swap.",
+        "properties": {
+          "assetId": {
+            "type": "string",
+            "example": "nep141:usdc.tidepool.testnet"
+          },
+          "symbol": {
+            "type": "string",
+            "example": "USDC"
+          },
+          "chain": {
+            "type": "string",
+            "description": "Chain key: near, eth, base, arb, bsc, sol, stellar, sui, xrp, btc, zec or hypercore.",
+            "example": "near"
+          },
+          "chainName": {
+            "type": "string",
+            "example": "NEAR Testnet"
+          },
+          "amount": {
+            "type": "string",
+            "nullable": true,
+            "description": "Decimal amount (deposited/settled amount when known, else the quoted amount).",
+            "example": "10"
+          },
+          "amountUsd": {
+            "type": "string",
+            "nullable": true,
+            "description": "USD value from testnet price feeds (tokens have no value).",
+            "example": "10.00"
+          }
+        }
+      },
+      "ExplorerSwap": {
+        "type": "object",
+        "description": "Public view of one funded swap. Only fields already public through /v0/status or on chain.",
+        "properties": {
+          "depositAddress": {
+            "type": "string"
+          },
+          "depositMemo": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "KNOWN_DEPOSIT_TX",
+              "INCOMPLETE_DEPOSIT",
+              "PROCESSING",
+              "SUCCESS",
+              "REFUNDED",
+              "FAILED"
+            ]
+          },
+          "swapType": {
+            "type": "string",
+            "example": "EXACT_INPUT"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "from": {
+            "$ref": "#/components/schemas/ExplorerSide"
+          },
+          "to": {
+            "$ref": "#/components/schemas/ExplorerSide"
+          },
+          "sender": {
+            "type": "string",
+            "nullable": true,
+            "description": "Depositing account, or refundTo when unknown."
+          },
+          "recipient": {
+            "type": "string",
+            "nullable": true
+          },
+          "txs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string",
+                  "description": "Block explorer link."
+                }
+              }
+            }
+          }
+        }
+      },
+      "ExplorerSwapsPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExplorerSwap"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "example": 1
+          },
+          "limit": {
+            "type": "integer",
+            "example": 25
+          },
+          "total": {
+            "type": "integer",
+            "example": 42
+          },
+          "totalPages": {
+            "type": "integer",
+            "example": 2
+          }
+        }
+      },
+      "ExplorerStats": {
+        "type": "object",
+        "properties": {
+          "totalSwaps": {
+            "type": "integer"
+          },
+          "success": {
+            "type": "integer"
+          },
+          "refunded": {
+            "type": "integer"
+          },
+          "failed": {
+            "type": "integer"
+          },
+          "processing": {
+            "type": "integer"
+          },
+          "volumeUsd": {
+            "type": "string",
+            "description": "Sum of amountUsd over successful swaps."
+          },
+          "swaps24h": {
+            "type": "integer"
+          },
+          "volume24hUsd": {
+            "type": "string"
+          },
+          "uniqueAddresses": {
+            "type": "integer"
+          },
+          "chains": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "chain": {
+                  "type": "string"
+                },
+                "chainName": {
+                  "type": "string"
+                },
+                "swaps": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "note": {
             "type": "string"
           }
         }

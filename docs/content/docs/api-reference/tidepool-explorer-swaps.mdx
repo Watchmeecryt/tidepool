@@ -1,0 +1,130 @@
+---
+title: "Public swap explorer list"
+icon: ArrowsLeftRight
+description: "GET /v0/explorer/swaps · Tidepool extension"
+---
+
+<p><span className="tp-method tp-get">GET</span><code>{"/v0/explorer/swaps"}</code></p>
+
+<Callout title="Tidepool extension">This endpoint is not part of the 1Click API. Do not call it on mainnet.</Callout>
+
+Read-only list of funded swaps (a deposit was seen), newest first, as shown on https://www.usetidepool.tech/explorer. Unpaid quotes and simulate test fixtures are excluded. No auth. Rate limit: 120 requests per minute per IP across /v0/explorer/*.
+
+**Operation id:** `TidepoolExplorerSwaps`
+
+## Request
+
+<Tabs items={['curl', 'JavaScript']}>
+<Tab value="curl">
+
+```bash
+curl "https://www.usetidepool.tech/v0/explorer/swaps"
+```
+
+</Tab>
+<Tab value="JavaScript">
+
+```ts
+const res = await fetch('https://www.usetidepool.tech/v0/explorer/swaps');
+const data = await res.json();
+```
+
+</Tab>
+</Tabs>
+
+### Query parameters
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| `page` | integer |  | 1-based page. |
+| `limit` | integer |  | Rows per page (1-100). |
+| `status` | "SUCCESS" \| "PROCESSING" \| "KNOWN_DEPOSIT_TX" \| "INCOMPLETE_DEPOSIT" \| "REFUNDED" \| "FAILED" |  | Only swaps with this status. |
+| `chain` | string |  | Only swaps with this chain on either side (near, eth, base, arb, bsc, sol, stellar, sui, xrp, btc, zec, hypercore). |
+| `search` | string |  | Case-insensitive match on deposit address, sender, recipient, token symbol or tx link. |
+
+## Responses
+
+### 200 A page of swaps
+
+```json
+{
+  "data": [
+    {
+      "depositAddress": "string",
+      "depositMemo": "string",
+      "status": "KNOWN_DEPOSIT_TX",
+      "swapType": "EXACT_INPUT",
+      "createdAt": "string",
+      "updatedAt": "string",
+      "from": {
+        "assetId": "nep141:usdc.tidepool.testnet",
+        "symbol": "USDC",
+        "chain": "near",
+        "chainName": "NEAR Testnet",
+        "amount": "10",
+        "amountUsd": "10.00"
+      },
+      "to": {
+        "assetId": "nep141:usdc.tidepool.testnet",
+        "symbol": "USDC",
+        "chain": "near",
+        "chainName": "NEAR Testnet",
+        "amount": "10",
+        "amountUsd": "10.00"
+      },
+      "sender": "string",
+      "recipient": "string",
+      "txs": [
+        {
+          "label": "string",
+          "url": "string"
+        }
+      ]
+    }
+  ],
+  "page": 1,
+  "limit": 25,
+  "total": 42,
+  "totalPages": 2
+}
+```
+
+<Accordions><Accordion title="Response fields">
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `data` | ExplorerSwap[] |  |  |
+| `data[].[]depositAddress` | string |  |  |
+| `data[].[]depositMemo` | string |  |  |
+| `data[].[]status` | "KNOWN_DEPOSIT_TX" \\| "INCOMPLETE_DEPOSIT" \\| "PROCESSING" \\| "SUCCESS" \\| "REFUNDED" \\| "FAILED" |  |  |
+| `data[].[]swapType` | string |  |  |
+| `data[].[]createdAt` | string |  |  |
+| `data[].[]updatedAt` | string |  |  |
+| `data[].[]from` | ExplorerSide |  | One side of a swap. |
+| `data[].[]from.assetId` | string |  |  |
+| `data[].[]from.symbol` | string |  |  |
+| `data[].[]from.chain` | string |  | Chain key: near, eth, base, arb, bsc, sol, stellar, sui, xrp, btc, zec or hypercore. |
+| `data[].[]from.chainName` | string |  |  |
+| `data[].[]from.amount` | string |  | Decimal amount (deposited/settled amount when known, else the quoted amount). |
+| `data[].[]from.amountUsd` | string |  | USD value from testnet price feeds (tokens have no value). |
+| `data[].[]to` | ExplorerSide |  | One side of a swap. |
+| `data[].[]to.assetId` | string |  |  |
+| `data[].[]to.symbol` | string |  |  |
+| `data[].[]to.chain` | string |  | Chain key: near, eth, base, arb, bsc, sol, stellar, sui, xrp, btc, zec or hypercore. |
+| `data[].[]to.chainName` | string |  |  |
+| `data[].[]to.amount` | string |  | Decimal amount (deposited/settled amount when known, else the quoted amount). |
+| `data[].[]to.amountUsd` | string |  | USD value from testnet price feeds (tokens have no value). |
+| `data[].[]sender` | string |  | Depositing account, or refundTo when unknown. |
+| `data[].[]recipient` | string |  |  |
+| `data[].[]txs` | object[] |  |  |
+| `data[].[]txs[].[]label` | string |  |  |
+| `data[].[]txs[].[]url` | string |  | Block explorer link. |
+| `page` | integer |  |  |
+| `limit` | integer |  |  |
+| `total` | integer |  |  |
+| `totalPages` | integer |  |  |
+
+</Accordion></Accordions>
+
+### 429 More than 120 explorer requests per minute from this IP (Retry-After: 60)
+

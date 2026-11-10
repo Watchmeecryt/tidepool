@@ -10,6 +10,7 @@ export function baseOptions(): BaseLayoutProps {
     links: [
       { icon: renderIcon('BookOpen'), text: 'Docs', url: '/docs', active: 'nested-url' },
       { icon: renderIcon('Code'), text: 'API reference', url: '/docs/api-reference' },
+      { icon: renderIcon('ArrowsLeftRight'), text: 'Explorer', url: '/explorer' },
       { icon: renderIcon('Drop'), text: 'Faucet', url: '/docs/guides/faucet' },
       { icon: renderIcon('Heartbeat'), text: 'Status', url: '/docs/status' },
       { type: 'button', icon: renderIcon('ArrowSquareOut'), text: 'Launch app', url: 'https://app.usetidepool.tech', external: true, secondary: false },

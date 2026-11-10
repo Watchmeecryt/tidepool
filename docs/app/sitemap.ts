@@ -7,6 +7,7 @@ export const dynamic = 'force-static';
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     { url: `${SITE}/`, lastModified: LASTMOD[':home'] || undefined },
+    { url: `${SITE}/explorer` },
     ...source.getPages().map((p) => ({ url: `${SITE}${p.url}`, lastModified: LASTMOD[p.slugs.join('/')] || undefined })),
   ];
 }

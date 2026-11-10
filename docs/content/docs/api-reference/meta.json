@@ -20,6 +20,8 @@
     "tidepool-faucet",
     "tidepool-health",
     "tidepool-demo-run",
-    "tidepool-demo-info"
+    "tidepool-demo-info",
+    "tidepool-explorer-swaps",
+    "tidepool-explorer-stats"
   ]
 }

@@ -3,6 +3,12 @@ title: Changelog
 description: What changed in Tidepool and when.
 icon: ClockCounterClockwise
 ---
+## 2026-11-10 · Public swap explorer
+
+- **[/explorer](/explorer):** a public page listing every funded testnet swap, newest first: from and to tokens with chain badges, amounts, USD value (testnet prices), status, time, sender, recipient, deposit address and block explorer links. Search, status and chain filters, pagination, and a header with total swaps, successful volume, last-24h swaps and unique addresses. It refreshes every 15 seconds.
+- **API:** `GET /v0/explorer/swaps` (`page`, `limit` up to 100, `status`, `chain`, `search`) and `GET /v0/explorer/stats`. No auth. Only fields already public through `/v0/status` or on chain; unpaid quotes and simulated test swaps are left out. 120 requests per minute per IP (`429` with `Retry-After: 60`).
+- **Docs:** API reference, `/openapi.json`, `/v1/openapi.json` and llms files updated.
+
 ## 2026-11-10 · Hyperliquid testnet (HyperCore) destination
 
 - **New destination:** `blockchain: "hypercore"`, asset id `nep141:hypercore.tp-omft.testnet` (USDC, 6 decimals). A swap with `recipientType: "DESTINATION_CHAIN"` pays USDC into the recipient's HyperCore perps balance via a gasless EIP-712 `usdSend`. Recipients are `0x` addresses.

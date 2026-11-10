@@ -1,0 +1,83 @@
+---
+title: "Public swap explorer stats"
+icon: Pulse
+description: "GET /v0/explorer/stats · Tidepool extension"
+---
+
+<p><span className="tp-method tp-get">GET</span><code>{"/v0/explorer/stats"}</code></p>
+
+<Callout title="Tidepool extension">This endpoint is not part of the 1Click API. Do not call it on mainnet.</Callout>
+
+Totals for the explorer header: funded swaps by status, successful volume in USD (testnet prices), last 24 hours, unique addresses and swaps per chain. No auth; same rate limit as /v0/explorer/swaps.
+
+**Operation id:** `TidepoolExplorerStats`
+
+## Request
+
+<Tabs items={['curl', 'JavaScript']}>
+<Tab value="curl">
+
+```bash
+curl "https://www.usetidepool.tech/v0/explorer/stats"
+```
+
+</Tab>
+<Tab value="JavaScript">
+
+```ts
+const res = await fetch('https://www.usetidepool.tech/v0/explorer/stats');
+const data = await res.json();
+```
+
+</Tab>
+</Tabs>
+
+## Responses
+
+### 200 Explorer stats
+
+```json
+{
+  "totalSwaps": 0,
+  "success": 0,
+  "refunded": 0,
+  "failed": 0,
+  "processing": 0,
+  "volumeUsd": "string",
+  "swaps24h": 0,
+  "volume24hUsd": "string",
+  "uniqueAddresses": 0,
+  "chains": [
+    {
+      "chain": "string",
+      "chainName": "string",
+      "swaps": 0
+    }
+  ],
+  "note": "string"
+}
+```
+
+<Accordions><Accordion title="Response fields">
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `totalSwaps` | integer |  |  |
+| `success` | integer |  |  |
+| `refunded` | integer |  |  |
+| `failed` | integer |  |  |
+| `processing` | integer |  |  |
+| `volumeUsd` | string |  | Sum of amountUsd over successful swaps. |
+| `swaps24h` | integer |  |  |
+| `volume24hUsd` | string |  |  |
+| `uniqueAddresses` | integer |  |  |
+| `chains` | object[] |  |  |
+| `chains[].[]chain` | string |  |  |
+| `chains[].[]chainName` | string |  |  |
+| `chains[].[]swaps` | integer |  |  |
+| `note` | string |  |  |
+
+</Accordion></Accordions>
+
+### 429 More than 120 explorer requests per minute from this IP (Retry-After: 60)
+
