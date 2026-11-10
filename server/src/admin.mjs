@@ -2,7 +2,7 @@
 // signed httpOnly session cookie, login rate limit. Disabled (404) when ADMIN_PASSWORD is unset.
 import crypto from 'node:crypto';
 import { db, save as saveDb } from './store.mjs';
-import { TOKENS, fromUnits } from './config.mjs';
+import { TOKENS, ONDO_TOKENS, fromUnits, chainOf } from './config.mjs';
 import { log, isOurs, ourList, ourCount, save as saveLog } from './analytics.mjs';
 import { sql } from './agent-api/db.js';
 
@@ -22,6 +22,15 @@ const fmtT = (t) => t ? new Date(t).toISOString().replace('T', ' ').slice(0, 16)
 const walletUrl = (w) => /^0x[0-9a-fA-F]{64}$/.test(w) ? `https://suiscan.xyz/testnet/account/${w}` : /^tb1[a-z0-9]{20,80}$/.test(w) ? `https://mempool.space/testnet4/address/${w}` : /^t[m2][1-9A-HJ-NP-Za-km-z]{33}$/.test(w) ? `https://testnet.zcashexplorer.app/address/${w}` : /^[a-z0-9._-]{2,64}$/.test(w) && !/^0x[0-9a-f]{40}$/.test(w) ? `https://testnet.nearblocks.io/address/${encodeURIComponent(w)}` : null;
 const nb = (w) => walletUrl(w) ? `<a href="${walletUrl(w)}" target="_blank" rel="noopener">${esc(w)}</a>` : esc(w);
 const bySym = Object.fromEntries(TOKENS.map(t => [t.assetId, t]));
+const byAny = Object.fromEntries([...TOKENS, ...ONDO_TOKENS].map(t => [t.assetId, t]));
+// "NEAR USDC → Solana Devnet USDC": the chain each side lives on (bridged tokens carry a chain key; the rest are NEAR) plus the asset.
+const side = (a) => { const t = byAny[a]; return t ? `${t.chain ? chainOf(t.chain)?.name || t.chain : 'NEAR'} ${t.symbol}` : String(a).replace(/^nep141:/, ''); };
+const direction = (s) => { const q = s.quoteResponse.quoteRequest; return `${esc(side(q.originAsset))} → ${esc(side(q.destinationAsset))}`; };
+const lastTxLink = (s) => { const tx = s.txs.at(-1); return tx ? `<a href="https://testnet.nearblocks.io/txns/${encodeURIComponent(tx.hash)}" target="_blank" rel="noopener">${esc(tx.label || 'tx')}</a>` : ''; };
+const walletsOf = (s) => swapWallets(s).map(w => `<a href="/admin/wallet/${encodeURIComponent(w)}">${esc(w.length > 24 ? w.slice(0, 10) + '…' + w.slice(-6) : w)}</a>`).join(', ');
+// Swaps table for the overview: newest first by last update, from the swap db itself (not the request log, which
+// heavy /v0/status polling pushes past its last 150 events in minutes).
+const swapRows = (list) => `<table><tr><th>Updated</th><th>Quoted</th><th>Status</th><th>Direction</th><th>Amount in</th><th>Amount out</th><th>Wallets</th><th>Deposit address</th><th>Last tx</th><th>Note</th></tr>${list.map(([da, s]) => { const qq = s.quoteResponse.quote; return `<tr><td>${fmtT(Date.parse(s.updatedAt))}</td><td>${fmtT(Date.parse(s.quoteResponse.timestamp))}</td><td class="${statusCls(s.status)}">${s.status}</td><td>${direction(s)}</td><td>${esc(qq.amountInFormatted)}</td><td>${esc(qq.amountOutFormatted)}</td><td class="mono">${walletsOf(s)}</td><td class="mono">${nb(da)}</td><td>${lastTxLink(s)}</td><td class="mute wrapcell">${esc(s.attention || s.note || '')}</td></tr>`; }).join('')}</table>`;
 
 const CSS = `:root{color-scheme:light;--bg:#f7f5f1;--card:#fcfbf9;--line:#e9e6e2;--line2:#dcd7cf;--ink:#1d1b18;--mute:#696660;--brand:#a65f0c;--gold:#ffad24;--wash:#fff1d6;--ok:#17633f;--bad:#b4383c;--warn:#a65f0c;--btn:linear-gradient(180deg,#3f3933,#211d19);--onbtn:#fff;--hover:#f3f1ec}
 @media (prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#12100e;--card:#191613;--line:#3a332c;--line2:#4a4037;--ink:#f3efe8;--mute:#a8a094;--brand:#ffc052;--wash:rgba(255,173,36,.14);--ok:#7fd1a6;--bad:#f2777b;--warn:#ffc052;--btn:linear-gradient(180deg,#ffd078,#ffad24);--onbtn:#1d1b18;--hover:#211d19}}
@@ -132,6 +141,10 @@ function dashboard(all, fo = false) {
   const shown = base.filter(w => !hide.has(w.wallet));
   const swaps = Object.values(db.swaps).filter(s => all || swapWallets(s).some(w => !isOurs(w)));
   const cnt = (st) => swaps.filter(s => s.status === st).length;
+  const entries = Object.entries(db.swaps).filter(([, s]) => all || swapWallets(s).some(w => !isOurs(w)));
+  const funded = entries.filter(([, s]) => s.status !== 'PENDING_DEPOSIT' && !(s.status === 'FAILED' && !s.deposited && !s.txs.length)).sort((a, b) => String(b[1].updatedAt).localeCompare(String(a[1].updatedAt)));
+  const recentSwaps = funded.slice(0, 100);
+  const attention = Object.entries(db.swaps).filter(([, s]) => s.status === 'PROCESSING' && s.attention);
   const D = daily(all, hide);
   const ep = {}; for (const l of Object.values(log.daily)) for (const [k, v] of Object.entries(l.endpoints)) ep[k] = (ep[k] || 0) + v;
   const reqTotal = Object.values(log.daily).reduce((a, l) => a + ((all ? l.all : l.ext).requests || 0), 0);
@@ -148,6 +161,8 @@ function dashboard(all, fo = false) {
 <div class="card"><h2>Unique wallets / day</h2>${bars(D, [{ k: 'wallets', n: 'wallets', c: '#b8691a' }])}</div>
 <div class="card"><h2>Requests / day</h2>${bars(D, [{ k: 'requests', n: 'requests', c: '#ffd078' }])}</div>
 <div class="card"><h2>Unique IPs / day (all traffic)</h2>${bars(D, [{ k: 'ips', n: 'IPs', c: '#8a8278' }])}</div></div>
+${attention.length ? `<div class="card"><h2 class="bad">Needs attention (${attention.length})</h2><p class="mute">PROCESSING with a zero intents balance, no swap tx and no pending execute: the worker cannot move these on its own.</p>${swapRows(attention)}</div>` : ''}
+<div class="card"><h2>Recent swaps (${recentSwaps.length} of ${funded.length} with a deposit)</h2><div class="scroll">${swapRows(recentSwaps)}</div></div>
 ${agentSummary()}
 <div class="card"><h2>Wallets (${shown.length})</h2><div class="scroll"><table><tr><th>Wallet</th><th>First seen</th><th>Last seen</th><th>Live quotes</th><th>Dry quotes</th><th>Swaps</th><th>Success</th><th>Refunded</th><th>Failed</th><th>Faucet</th><th>Volume in (success)</th><th>Agent transfers (ok/all)</th><th>Agent volume (ok)</th><th>Agent faucet (ok/failed)</th><th>Agent other ops</th><th></th></tr>
 ${shown.map(w => `<tr><td class="mono">${nb(w.wallet)}${w.ours ? ' <span class="pill">ours</span>' : ''}</td><td>${fmtT(w.first)}</td><td>${fmtT(w.last)}</td><td>${w.quotes}</td><td>${w.dryQuotes}</td><td>${w.swaps}</td><td class="ok">${w.success || ''}</td><td class="warn">${w.refunded || ''}</td><td class="bad">${w.failed || ''}</td><td>${w.faucet}</td><td>${esc(w.volumeFmt)}</td><td>${w.agentTransfers ? `${w.agentTransfersOk || 0}/${w.agentTransfers}` : ''}</td><td>${esc(w.agentVolumeFmt || '')}</td><td>${w.agent ? `${w.agentFaucet || 0}/${w.agentFaucetFailed || 0}` : ''}</td><td>${w.agentOther || ''}</td><td><a href="/admin/wallet/${encodeURIComponent(w.wallet)}${q}">details →</a></td></tr>`).join('')}</table></div></div>
@@ -162,11 +177,10 @@ function walletPage(w) {
   const sw = Object.entries(db.swaps).filter(([, s]) => swapWallets(s).includes(w)).sort((a, b) => b[1].quoteResponse.timestamp.localeCompare(a[1].quoteResponse.timestamp));
   const fc = Object.entries(db.faucet).filter(([k]) => k.slice(0, k.lastIndexOf(':')) === w);
   const evs = log.raw.filter(e => e.w?.includes(w)).slice(-200).reverse();
-  const sym = (a) => bySym[a]?.symbol || a;
   return page(w, `<header><h1><a href="/admin">←</a> <span class="mono">${esc(w)}</span>${r.ours ? ' <span class="pill">ours</span>' : ''}</h1>${walletUrl(w) ? `<a class="btn ghost" href="${walletUrl(w)}" target="_blank" rel="noopener">${walletUrl(w).includes("suiscan") ? "suiscan" : "nearblocks"} ↗</a>` : ""}</header>
 <div class="stats"><div class="stat"><b>${fmtT(r.first)}</b><small>first seen</small></div><div class="stat"><b>${fmtT(r.last)}</b><small>last seen</small></div><div class="stat"><b>${r.quotes}</b><small>live quotes</small></div><div class="stat"><b>${r.dryQuotes}</b><small>dry quotes</small></div><div class="stat"><b>${r.swaps}</b><small>swaps</small></div><div class="stat"><b class="ok">${r.success}</b><small>success</small></div><div class="stat"><b class="warn">${r.refunded}</b><small>refunded</small></div><div class="stat"><b>${r.faucet}</b><small>faucet claims</small></div></div>
 <div class="card"><h2>Volume in (successful swaps)</h2>${esc(r.volumeFmt) || '<span class="mute">none</span>'}${r.uas?.length ? `<h2 style="margin-top:14px">User agents</h2>${r.uas.map(u => `<div class="mono mute">${esc(u)}</div>`).join('')}` : ''}</div>
-<div class="card"><h2>Swaps (${sw.length})</h2><table><tr><th>Quoted</th><th>Updated</th><th>Status</th><th>Pair</th><th>Amount in</th><th>Amount out</th><th>Role</th><th>Deposit address</th><th>Last tx</th></tr>${sw.map(([da, s]) => { const q = s.quoteResponse.quoteRequest, qq = s.quoteResponse.quote; const role = [q.refundTo === w && 'refundTo', q.recipient === w && 'recipient', s.sender === w && 'sender'].filter(Boolean).join(', '); const tx = s.txs.at(-1); return `<tr><td>${fmtT(Date.parse(s.quoteResponse.timestamp))}</td><td>${fmtT(Date.parse(s.updatedAt))}</td><td class="${statusCls(s.status)}">${s.status}</td><td>${esc(sym(q.originAsset))} → ${esc(sym(q.destinationAsset))}</td><td>${esc(qq.amountInFormatted)}</td><td>${esc(qq.amountOutFormatted)}</td><td class="mute">${role}</td><td class="mono">${nb(da)}</td><td>${tx ? `<a href="https://testnet.nearblocks.io/txns/${encodeURIComponent(tx.hash)}" target="_blank" rel="noopener">${esc(tx.label || 'tx')}</a>` : ''}</td></tr>`; }).join('')}</table></div>
+<div class="card"><h2>Swaps (${sw.length})</h2><table><tr><th>Quoted</th><th>Updated</th><th>Status</th><th>Direction</th><th>Amount in</th><th>Amount out</th><th>Role</th><th>Deposit address</th><th>Last tx</th></tr>${sw.map(([da, s]) => { const q = s.quoteResponse.quoteRequest, qq = s.quoteResponse.quote; const role = [q.refundTo === w && 'refundTo', q.recipient === w && 'recipient', s.sender === w && 'sender'].filter(Boolean).join(', '); const tx = s.txs.at(-1); return `<tr><td>${fmtT(Date.parse(s.quoteResponse.timestamp))}</td><td>${fmtT(Date.parse(s.updatedAt))}</td><td class="${statusCls(s.status)}">${s.status}</td><td>${direction(s)}</td><td>${esc(qq.amountInFormatted)}</td><td>${esc(qq.amountOutFormatted)}</td><td class="mute">${role}</td><td class="mono">${nb(da)}</td><td>${tx ? `<a href="https://testnet.nearblocks.io/txns/${encodeURIComponent(tx.hash)}" target="_blank" rel="noopener">${esc(tx.label || 'tx')}</a>` : ''}</td></tr>`; }).join('')}</table></div>
 <div class="card"><h2>Faucet (last claim per mode)</h2><table><tr><th>Mode</th><th>Last claim</th></tr>${fc.map(([k, t]) => `<tr><td>${esc(k.slice(k.lastIndexOf(':') + 1))}</td><td>${fmtT(t)}</td></tr>`).join('')}</table></div>
 <div class="card"><h2>Recent events</h2>${events(evs)}</div>`);
 }

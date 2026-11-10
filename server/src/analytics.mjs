@@ -61,7 +61,8 @@ export const ourCount = () => OURS.size;
 
 const ENDPOINTS = ['/v0/tokens', '/v0/quote', '/v0/deposit/submit', '/v0/status', '/v0/faucet', '/v0/health', '/openapi.json', '/llms.txt', '/llms-full.txt', '/AGENTS.md', '/agents.md'];
 const bucket = (p) => ENDPOINTS.includes(p) ? p : p.startsWith('/v0/') ? '/v0/*' : p.startsWith('/docs') ? '/docs/*' : p.startsWith('/_next/') ? null : p.startsWith('/admin') ? null : p === '/' ? '/' : '/other';
-const isAcct = (s) => typeof s === 'string' && /^[a-z0-9._-]{2,64}$/.test(s);
+// NEAR accounts plus other chains' addresses (Solana/Stellar/XRP base58 and checksummed 0x are mixed case).
+const isAcct = (s) => typeof s === 'string' && /^[A-Za-z0-9._-]{2,100}$/.test(s);
 
 export function record(req, res, path, body, url) {
   const ep = bucket(path);
@@ -72,7 +73,7 @@ export function record(req, res, path, body, url) {
   // direct-chain drips (chain + address): record the recipient address (EVM and Sui addresses lowercased like the faucet's cooldown key)
   if (body && path === '/v0/faucet' && typeof body.address === 'string' && /^[A-Za-z0-9]{20,100}$/.test(body.address)) wallets.add(/^0x/i.test(body.address) ? body.address.toLowerCase() : body.address);
   if (body && path === '/v0/deposit/submit') { if (isAcct(body.nearSenderAccount)) wallets.add(body.nearSenderAccount); const s = db.swaps[body.depositAddress]; if (s) wallets.add(s.quoteResponse.quoteRequest.refundTo); }
-  if (path === '/v0/status') { const s = db.swaps[url.searchParams.get('depositAddress')]; if (s) wallets.add(s.quoteResponse.quoteRequest.refundTo); }
+  if (path === '/v0/status') { const s = db.swaps[url.searchParams.get('depositAddress')]; if (s) { const q = s.quoteResponse.quoteRequest; [q.refundTo, q.recipient].filter(isAcct).forEach(w => wallets.add(w)); } }
   const ev = { t: Date.now(), ep, m: req.method, s: res.statusCode, ip: crypto.createHash('sha256').update(log.salt + (String(req.headers['x-forwarded-for'] || req.socket.remoteAddress).split(',')[0].trim())).digest('hex').slice(0, 12), ua: String(req.headers['user-agent'] || '').slice(0, 160) };
   if (wallets.size) ev.w = [...wallets];
   if (res.statusCode >= 400 && res._err) ev.err = String(res._err).slice(0, 300);

@@ -3,6 +3,12 @@ title: Changelog
 description: What changed in Tidepool and when.
 icon: ClockCounterClockwise
 ---
+## 2026-11-10 · Settlement: swaps no longer stick in PROCESSING when the RPC errors
+
+- **Fix:** when every NEAR RPC answered the swap's `execute_intents` with a timeout or 429 although the transaction had landed, the swap stayed `PROCESSING` forever and a bridged payout (e.g. Solana) was never sent. The server now records the intent nonce before each execute and, on the next worker pass, asks the verifier (`is_nonce_used`): if it landed, the payout is released and the swap finishes `SUCCESS` (or `REFUNDED`); if not, it retries normally after the intent deadline.
+- **Repaired:** one swap affected on Nov 10 (NEAR USDC → Solana Devnet USDC) was completed and paid out.
+- **Load:** expired, unpaid quotes are checked once a minute instead of every 4 s (a late deposit is still refunded), which cuts NEAR RPC rate limiting.
+
 ## 2026-11-09 · Ondo tokenized stocks/RWAs on BSC Testnet (`ondoTokens=1`)
 
 - **`GET /v0/tokens?ondoTokens=1`:** returns the same 28 Ondo symbols mainnet 1Click lists (AAPLon, TSLAon, NVDAon, … USDon), with `blockchain: "bsc"` and `nep141:bnb-<addr>.tp-omdep.testnet` ids. Without the flag they are omitted, matching mainnet.
