@@ -2561,7 +2561,7 @@
           },
           "signature": {
             "type": "string",
-            "description": "Signature of the 1Click service confirming the quote for the specific deposit address. Must be saved on the client side (along with the whole quote) in order to resolve any disputes or mistakes."
+            "description": "ed25519 signature of the quote, formatted `ed25519:` + base58(sig). Tidepool uses the same scheme as 1Click: json-stable-stringify of the selected quoteRequest and quote fields plus timestamp, SHA-256, Base58-encode, then sign the UTF-8 bytes of that Base58 string. Verify with `@defuse-protocol/one-click-sdk-typescript` `verifyQuoteSignature(quote, 'ed25519:U1Mu4u1nHnHmgABpCkfDGXt2FZj8k29UGqhkMAu4iWY')`. The SDK default (1Click's key) will not verify. See https://www.usetidepool.tech/docs/guides/verify-quote-signatures"
           },
           "quoteRequest": {
             "description": "User request",

@@ -1,6 +1,6 @@
 # Use the official 1Click SDK
 
-The official TypeScript client, [`@defuse-protocol/one-click-sdk-typescript`](https://www.npmjs.com/package/@defuse-protocol/one-click-sdk-typescript), works against Tidepool unchanged. Point `OpenAPI.BASE` at Tidepool and use the same calls. We tested `getTokens`, `getQuote` and `getExecutionStatus` with SDK version 0.1.26.
+The official TypeScript client, [`@defuse-protocol/one-click-sdk-typescript`](https://www.npmjs.com/package/@defuse-protocol/one-click-sdk-typescript), works against Tidepool unchanged. Point `OpenAPI.BASE` at Tidepool and use the same calls. We tested `getTokens`, `getQuote` and `getExecutionStatus` with SDK version 0.1.26. To verify a quote, call `verifyQuoteSignature` with [Tidepool's maker public key](/docs/guides/verify-quote-signatures); the SDK default is 1Click's key and will not match.
 
 ```bash
 npm i @defuse-protocol/one-click-sdk-typescript

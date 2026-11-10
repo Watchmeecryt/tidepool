@@ -38,7 +38,7 @@ The +25 bps for keyless calls mirrors mainnet 1Click. On Tidepool **any** `X-API
 
 ## Signature
 
-`signature` is an ed25519 signature by the maker key over the quote body, prefixed `ed25519:`. It proves the quote came from Tidepool. It is **not** a 1Click signature.
+Quotes are signed with the same scheme as 1Click, using Tidepool's maker key. To verify one, see [Verify quote signatures](/docs/guides/verify-quote-signatures).
 
 ## Dry vs live
 

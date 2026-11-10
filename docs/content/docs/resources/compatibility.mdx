@@ -14,6 +14,7 @@ Checked against the official 1Click OpenAPI (`https://1click.chaindefuser.com/do
 | Status codes | `200` on success for all four (quote and deposit/submit return `200`, as in the spec), `400` on bad input, `404` for an unknown deposit address |
 | Request fields | `dry`, `swapType`, `slippageTolerance`, `originAsset`, `depositType`, `destinationAsset`, `amount`, `refundTo`, `refundType`, `recipient`, `recipientType`, `deadline` (same required set) |
 | Response shapes | `QuoteResponse` (`correlationId`, `timestamp`, `signature`, `quoteRequest`, `quote`), `GetExecutionStatusResponse` with `swapDetails`, `TokenResponse` |
+| Quote signatures | Same scheme as 1Click. `verifyQuoteSignature(quote, "ed25519:U1Mu4u1nHnHmgABpCkfDGXt2FZj8k29UGqhkMAu4iWY")` — pass Tidepool's maker key; the SDK default (1Click's key) will not verify. See [Verify quote signatures](/docs/guides/verify-quote-signatures) |
 | Swap types | `EXACT_INPUT`, `EXACT_OUTPUT`, `FLEX_INPUT`, `ANY_INPUT` |
 | Quote options | `appFees` (bps, settled in the same `execute_intents`), `depositMode` `SIMPLE` / `MEMO` |
 | Deposit / refund / recipient types | `ORIGIN_CHAIN`, `INTENTS` / `ORIGIN_CHAIN`, `INTENTS` / `DESTINATION_CHAIN`, `INTENTS` |

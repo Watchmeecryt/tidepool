@@ -1,0 +1,41 @@
+---
+title: Verify quote signatures
+description: Confirm a Tidepool quote was signed by Tidepool's maker, using the same scheme as 1Click.
+icon: ShieldCheck
+---
+
+Tidepool signs every quote (dry and live) with the same scheme 1Click documents, so you can verify a payload before you show it or send funds to `depositAddress`. The only difference is the key: Tidepool signs with its maker key, not 1Click's.
+
+## Public key
+
+```
+ed25519:U1Mu4u1nHnHmgABpCkfDGXt2FZj8k29UGqhkMAu4iWY
+```
+
+This is the only key on `maker.tidepool-sandbox.testnet`. Pass it as the second argument to `verifyQuoteSignature`. The SDK default is 1Click's mainnet key, which will not verify a Tidepool quote.
+
+## Use the TypeScript SDK
+
+`verifyQuoteSignature()` needs `@defuse-protocol/one-click-sdk-typescript` version 0.1.24 or later.
+
+```ts
+import { OpenAPI, OneClickService, verifyQuoteSignature } from '@defuse-protocol/one-click-sdk-typescript';
+
+OpenAPI.BASE = 'https://www.usetidepool.tech';
+
+const quote = await OneClickService.getQuote(quoteRequest);
+const ok = verifyQuoteSignature(quote, 'ed25519:U1Mu4u1nHnHmgABpCkfDGXt2FZj8k29UGqhkMAu4iWY');
+if (!ok) throw new Error('Invalid quote signature');
+```
+
+You can also `POST /v0/quote` yourself and pass the JSON body to `verifyQuoteSignature`. `/v0/status` returns the original `quoteResponse` from quote time (it is not re-signed), so the same check works there.
+
+## What is signed
+
+The signed message is the UTF-8 bytes of a Base58-encoded SHA-256 hash. The hash input is a deterministic JSON object of selected quote-request fields, selected quote fields, and `timestamp`, serialized with stable key ordering (`json-stable-stringify`). Undefined fields are omitted, matching the SDK. The signature is formatted `ed25519:` + Base58(signature bytes).
+
+Non-dry quotes include extra execution fields in the signed payload (`depositAddress`, `depositMemo`, `deadline`, `timeWhenInactive`, `timeEstimate`, `refundFee`, `withdrawFee`). Dry quotes sign only the amount fields plus the request and timestamp.
+
+This is the same construction 1Click describes on [Verify Quote Signatures](https://docs.near-intents.org/integration/distribution-channels/1click-api/verify-quote-signature) and that `verifyQuoteSignature()` implements. A vault that already checks 1Click quotes byte-for-byte can keep that check and supply Tidepool's public key.
+
+Quotes issued before this scheme will not verify. Signatures are computed at quote time and are not rewritten on stored swaps.

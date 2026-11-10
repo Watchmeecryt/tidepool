@@ -4,6 +4,7 @@
 import crypto from 'node:crypto';
 import { KeyPair } from 'near-api-js';
 import bs58 from 'bs58';
+import stringify from 'json-stable-stringify';
 import { rpc, call, view, viewAccount, sendNear, signIntents, deriveDepositKey, keyStore, NETWORK, TGAS, parseNear, txUrl } from './near.mjs';
 import { ROOT, VERIFIER, MAKER, TOKENS, fromUnits, chainOf, isEvmAddress, isSolAddress, isStellarAddress, STELLAR_CHAIN, XLM_CAP_STROOPS, isSuiAddress, SUI_CHAIN, SUI_CAP_MIST, BTC_CHAIN, ZEC_CHAIN, XRP_CHAIN, XRP_CAP_DROPS, XRP_DECIMALS, isXrpAddress, isBtcAddress, isZecAddress, BTC_CAP_SATS, BTC_MIN_SATS, ZEC_CAP_ZAT, ZEC_MIN_ZAT, BRIDGE_ACCOUNT, ETH_CAP_WEI, ETH_RESERVE_WEI, SOL_PAYOUT_CAP_LAMPORTS, SOL_RENT_MIN_LAMPORTS, ONDO_TOKENS } from './config.mjs';
 import * as evm from './evm.mjs';
@@ -141,9 +142,41 @@ export async function tokens({ ondo = false } = {}) {
   return list.map(t => ({ assetId: t.assetId, decimals: t.decimals, blockchain: t.blockchain, symbol: t.symbol, price: p.prices[t.assetId] ?? t.fallback, priceUpdatedAt: at, contractAddress: t.contractAddress, coingeckoId: t.coingeckoId }));
 }
 
-function signQuote(obj) {
-  const kp = makerKey();
-  const sig = kp ? kp.sign(crypto.createHash('sha256').update(JSON.stringify(obj)).digest()).signature : crypto.randomBytes(64);
+// 1Click-compatible quote signature (byte-for-byte with @defuse-protocol/one-click-sdk-typescript
+// verifyQuoteSignature). Signed message is the UTF-8 bytes of base58(sha256(json-stable-stringify(
+// { ...signedRequestFields, ...signedQuoteFields, timestamp }))). See
+// https://docs.near-intents.org/integration/distribution-channels/1click-api/verify-quote-signature
+const signedRequestFields = (r = {}) => ({
+  dry: r.dry, swapType: r.swapType, slippageTolerance: r.slippageTolerance,
+  originAsset: r.originAsset, depositType: r.depositType, destinationAsset: r.destinationAsset,
+  amount: r.amount, refundTo: r.refundTo, refundType: r.refundType, recipient: r.recipient,
+  recipientType: r.recipientType, deadline: r.deadline,
+  quoteWaitingTimeMs: r.quoteWaitingTimeMs ? r.quoteWaitingTimeMs : undefined,
+  referral: r.referral ? r.referral : undefined,
+  virtualChainRecipient: r.virtualChainRecipient ? r.virtualChainRecipient : undefined,
+  virtualChainRefundRecipient: r.virtualChainRefundRecipient ? r.virtualChainRefundRecipient : undefined,
+  customRecipientMsg: r.customRecipientMsg ? r.customRecipientMsg : undefined,
+  sessionId: undefined, connectedWallets: undefined, correlationId: undefined, appFees: undefined,
+  partnerId: undefined, userAccountId: undefined, depositMode: undefined,
+});
+const signedQuoteFields = (response) => {
+  const q = response.quote || {};
+  const amounts = {
+    amountIn: q.amountIn, amountInFormatted: q.amountInFormatted, amountInUsd: q.amountInUsd, minAmountIn: q.minAmountIn,
+    amountOut: q.amountOut, amountOutFormatted: q.amountOutFormatted, amountOutUsd: q.amountOutUsd, minAmountOut: q.minAmountOut,
+  };
+  if (response.quoteRequest?.dry) return amounts;
+  return {
+    ...amounts,
+    depositAddress: q.depositAddress || undefined, depositMemo: q.depositMemo || undefined,
+    deadline: q.deadline || undefined, timeWhenInactive: q.timeWhenInactive || undefined,
+    timeEstimate: q.timeEstimate || undefined, refundFee: q.refundFee || undefined, withdrawFee: q.withdrawFee || undefined,
+  };
+};
+export function signQuote(response, kp = makerKey()) {
+  const dataString = stringify({ ...signedRequestFields(response.quoteRequest), ...signedQuoteFields(response), timestamp: response.timestamp });
+  const message = Buffer.from(bs58.encode(crypto.createHash('sha256').update(dataString, 'utf8').digest()), 'utf8');
+  const sig = kp ? kp.sign(message).signature : crypto.randomBytes(64);
   return 'ed25519:' + bs58.encode(Buffer.from(sig));
 }
 let _mk; function makerKey() { return _mk; }

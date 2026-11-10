@@ -19,6 +19,7 @@ export const llmsHeader = `# ${BRAND.name}: ${BRAND.tagline}
 - Contact / built by: ${BRAND.builderHandle} (${BRAND.builderUrl})
 - Trust model: community-operated testnet; Tidepool runs the only maker and derives deposit-address keys. Never send real assets. ${SITE}/docs/resources/trust-model
 - Compatibility vs mainnet 1Click: ${SITE}/docs/resources/compatibility
+- Quote signatures: same scheme as 1Click. Verify with verifyQuoteSignature(quote, 'ed25519:U1Mu4u1nHnHmgABpCkfDGXt2FZj8k29UGqhkMAu4iWY') (pass Tidepool's maker key; the SDK default will not verify). Guide: ${SITE}/docs/guides/verify-quote-signatures
 - Settlement distinction: since 2026-10-27 mainnet 1Click settles every swap confidentially and swapDetails.nearTxHashes lists only shield/unshield (https://docs.near-intents.org/changelog/entries/2026-10-27-1click-confidential.md). Tidepool testnet swaps settle publicly, so nearTxHashes includes the swap hash; confidential settlement runs on NEAR's private infrastructure, which isn't exposed to outside builders. Rely on status, not on a swap hash.
 - Dev prompt for coding agents: ${SITE}/docs/guides/agents#prompt-snippet
 - Runnable examples (MIT): https://github.com/Watchmeecryt/tidepool-examples (conformance report: CONFORMANCE.md)
