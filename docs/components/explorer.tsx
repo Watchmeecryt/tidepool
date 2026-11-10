@@ -26,7 +26,7 @@ function TokenIcon({ s }: { s: Side }) {
   return (
     <span className="relative inline-block size-8 shrink-0">
       <img src={`/explorer/tokens/${s.symbol.toLowerCase()}.png`} onError={fallback} alt={s.symbol} width={32} height={32} className="size-8 rounded-full bg-fd-muted" />
-      <img src={`/explorer/chains/${s.chain}.svg`} onError={fallback} alt={s.chainName} title={s.chainName} width={16} height={16} className="absolute -right-1 -bottom-1 size-4 rounded-full border-2 border-fd-card bg-fd-card object-contain" />
+      <img src={`/explorer/chains/${s.chain}.svg`} onError={fallback} alt={s.chainName} title={s.chainName} width={16} height={16} className="absolute -right-1 -bottom-1 size-4 rounded-full border-2 border-fd-card bg-white object-contain p-px" />
     </span>
   );
 }
@@ -74,7 +74,7 @@ export function SwapExplorer() {
       </div>
       {stats && stats.chains.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {stats.chains.map(c => <button key={c.chain} type="button" onClick={() => { setChain(chain === c.chain ? '' : c.chain); setPage(1); }} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition ${chain === c.chain ? 'border-fd-primary bg-[var(--otc-gold-wash)]' : 'bg-fd-card hover:bg-fd-accent'}`}><img src={`/explorer/chains/${c.chain}.svg`} onError={fallback} alt="" width={14} height={14} className="size-3.5 object-contain" />{c.chainName}<span className="text-fd-muted-foreground tabular-nums">{c.swaps}</span></button>)}
+          {stats.chains.map(c => <button key={c.chain} type="button" onClick={() => { setChain(chain === c.chain ? '' : c.chain); setPage(1); }} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition ${chain === c.chain ? 'border-fd-primary bg-[var(--otc-gold-wash)]' : 'bg-fd-card hover:bg-fd-accent'}`}><img src={`/explorer/chains/${c.chain}.svg`} onError={fallback} alt="" width={14} height={14} className="size-3.5 rounded-full bg-white object-contain" />{c.chainName}<span className="text-fd-muted-foreground tabular-nums">{c.swaps}</span></button>)}
         </div>
       )}
       <div className="rounded-2xl border bg-fd-card shadow-[var(--tp-shadow)]">
