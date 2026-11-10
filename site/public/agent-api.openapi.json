@@ -3,7 +3,7 @@
   "info": {
     "title": "Tidepool Agent API (NEAR testnet)",
     "version": "1.0.0",
-    "description": "A testnet implementation of the NEAR Intents Agent API shape, on the same host as the /v0 1Click sandbox. Compatible with @near-intents-agent-api/sdk (set baseUrl to the Tidepool origin; the SDK appends /v1). Owners are NEAR testnet accounts only. Withdrawals go to NEAR accounts or, for bridged tokens, to every testnet /v0 pays out on (including BSC Testnet, chain bsc, when live), with an optional memo on near, stellar, xrp (destination tag) and sol. GET /v1/tokens lists the default /v0 token set (BSC USDC/USDT included when that route is live); Ondo tokenized stocks/RWAs are not listed here — they stay behind GET /v0/tokens?ondoTokens=1 and cannot be used as /v1 asset ids. Confidential mode, passkey/EVM owners, shielding, approvals and scheduled executions are not supported. Get a free key with POST /v1/keys. testnet_faucet on deposit answers 403 site_only; claim tokens at https://app.usetidepool.tech/faucet. Errors are JSON:API: {errors:[{status,code,layer,title,detail,source,meta}],meta:{request_id}}. Docs: /docs/guides/agent-api, /llms.txt."
+    "description": "A testnet implementation of the NEAR Intents Agent API shape, on the same host as the /v0 1Click sandbox. Compatible with @near-intents-agent-api/sdk (set baseUrl to the Tidepool origin; the SDK appends /v1). Owners are NEAR testnet accounts only. Withdrawals go to NEAR accounts or, for bridged tokens, to every testnet /v0 pays out on (including BSC Testnet, chain bsc, when live), with an optional memo on near, stellar, xrp (destination tag) and sol. GET /v1/tokens lists the default /v0 token set (BSC USDC/USDT included when that route is live); Ondo tokenized stocks/RWAs are not listed here — they stay behind GET /v0/tokens?ondoTokens=1 and cannot be used as /v1 asset ids. Owner approvals (owner_approval), timelock_ms and schedule are supported: held work is PENDING_APPROVAL or QUEUED, listed at /v1/agents/{id}/approvals and /v1/agents/{id}/executions/scheduled, voted with approval_vote and cancelled with execution_cancel. Confidential mode, passkey/EVM owners, shielding, containment, native wallets, per-agent releases and proofs are not supported. Get a free key with POST /v1/keys. testnet_faucet on deposit answers 403 site_only; claim tokens at https://app.usetidepool.tech/faucet. Errors are JSON:API: {errors:[{status,code,layer,title,detail,source,meta}],meta:{request_id}}. Docs: /docs/guides/agent-api, /llms.txt."
   },
   "servers": [
     {
@@ -225,7 +225,7 @@
     "/v1/generate-intent": {
       "post": {
         "summary": "Build an owner intent to sign",
-        "description": "Types: agent_create, grant_issue, grant_revoke, policy_update, agent_freeze, agent_unfreeze. Returns a nep413 payload (message, nonce, recipient) and a correlation_id. Sign with the owner ed25519 key, then POST /v1/submit-intent.",
+        "description": "Types: agent_create, grant_issue, grant_revoke, policy_update, agent_freeze, agent_unfreeze, execution_cancel (correlation_id of QUEUED or PENDING_APPROVAL work; 409 execution_not_cancellable otherwise), approval_vote (approval_id + verdict approve|reject; 409 approval_closed when no longer PENDING). Returns a nep413 payload (message, nonce, recipient) and a correlation_id. Sign with the owner ed25519 key, then POST /v1/submit-intent.",
         "security": [
           {
             "bearerAuth": []
@@ -264,7 +264,9 @@
                       "grant_revoke",
                       "policy_update",
                       "agent_freeze",
-                      "agent_unfreeze"
+                      "agent_unfreeze",
+                      "execution_cancel",
+                      "approval_vote"
                     ]
                   },
                   "agent_id": {
@@ -309,6 +311,22 @@
                   },
                   "grant_id": {
                     "type": "string"
+                  },
+                  "correlation_id": {
+                    "type": "string",
+                    "description": "execution_cancel: the QUEUED or PENDING_APPROVAL execution"
+                  },
+                  "approval_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "approval_vote"
+                  },
+                  "verdict": {
+                    "enum": [
+                      "approve",
+                      "reject"
+                    ],
+                    "description": "approval_vote"
                   }
                 }
               }
@@ -860,7 +878,7 @@
     "/v1/agents/{agent_id}/swap": {
       "post": {
         "summary": "Swap (or dry-run quote)",
-        "description": "dry:true needs only the API key and never refuses for policy or balance reasons: it returns warnings[]. A real swap needs x-grant-token and Idempotency-Key and is checked against the policy.",
+        "description": "dry:true needs only the API key and never refuses for policy or balance reasons: it returns warnings[]. A real swap needs x-grant-token and Idempotency-Key and is checked against the policy. With policy.owner_approval the 202 status is PENDING_APPROVAL (details.approval_id); with timelock_ms it is QUEUED (details.execute_after). Budget, limits and actions per hour are charged when held work dispatches.",
         "security": [
           {
             "bearerAuth": []
@@ -964,7 +982,7 @@
     "/v1/agents/{agent_id}/transfer": {
       "post": {
         "summary": "Transfer inside the verifier to another account",
-        "description": "",
+        "description": " With policy.owner_approval the 202 status is PENDING_APPROVAL (details.approval_id); with timelock_ms it is QUEUED (details.execute_after). Budget, limits and actions per hour are charged when held work dispatches.",
         "security": [
           {
             "bearerAuth": []
@@ -1062,7 +1080,7 @@
     "/v1/agents/{agent_id}/withdraw": {
       "post": {
         "summary": "Withdraw to NEAR or a bridged chain",
-        "description": "chain near: NEAR-native tokens to a NEAR account. Otherwise chain is the token blockchain (base, arb, eth, bsc, sol, stellar, sui, xrp, btc, zec: exactly the testnets /v0 pays out on, as listed by GET /v1/tokens) and recipient an address on that chain. Same per-payout caps as /v0. memo: near (ft_withdraw memo, max 128 chars), stellar (uint64 number without leading zeros -> MEMO_ID, else MEMO_TEXT max 28 bytes), xrp (destination tag, 0-4294967295; an X-address recipient whose tag differs is refused), sol (SPL Memo program instruction, max 256 bytes). A memo on base/arb/eth/bsc/sui/btc/zec answers 400 validation_failed at /memo. Policy destinations match on chain, address and memo. dry:true supported. Native ETH (nep141:eth.tp-omft.testnet, base.tp-omft.testnet, arb.tp-omft.testnet) can be withdrawn to an 0x address on Ethereum, Base or Arbitrum Sepolia but is capped at 0.006 ETH (6000000000000000 wei) per withdrawal, the same limit as /v0: more answers 400 route_unavailable at /amount, and 503 while the treasury is low. Ondo tokens are not withdrawable through /v1 (they are not in GET /v1/tokens).",
+        "description": "chain near: NEAR-native tokens to a NEAR account. Otherwise chain is the token blockchain (base, arb, eth, bsc, sol, stellar, sui, xrp, btc, zec: exactly the testnets /v0 pays out on, as listed by GET /v1/tokens) and recipient an address on that chain. Same per-payout caps as /v0. memo: near (ft_withdraw memo, max 128 chars), stellar (uint64 number without leading zeros -> MEMO_ID, else MEMO_TEXT max 28 bytes), xrp (destination tag, 0-4294967295; an X-address recipient whose tag differs is refused), sol (SPL Memo program instruction, max 256 bytes). A memo on base/arb/eth/bsc/sui/btc/zec answers 400 validation_failed at /memo. Policy destinations match on chain, address and memo. dry:true supported. Native ETH (nep141:eth.tp-omft.testnet, base.tp-omft.testnet, arb.tp-omft.testnet) can be withdrawn to an 0x address on Ethereum, Base or Arbitrum Sepolia but is capped at 0.006 ETH (6000000000000000 wei) per withdrawal, the same limit as /v0: more answers 400 route_unavailable at /amount, and 503 while the treasury is low. Ondo tokens are not withdrawable through /v1 (they are not in GET /v1/tokens). With policy.owner_approval the 202 status is PENDING_APPROVAL (details.approval_id); with timelock_ms it is QUEUED (details.execute_after). Budget, limits and actions per hour are charged when held work dispatches.",
         "security": [
           {
             "bearerAuth": []
@@ -1354,6 +1372,210 @@
           }
         ]
       }
+    },
+    "/v1/agents/{agent_id}/approvals": {
+      "get": {
+        "summary": "List requests waiting for approval",
+        "description": "PENDING approvals (policy.owner_approval), oldest first. Vote with an approval_vote owner intent.",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Approval"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "JSON:API error document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/agents/{agent_id}/approvals/{approval_id}": {
+      "get": {
+        "summary": "Get one approval request",
+        "description": "Any status: PENDING, APPROVED, REJECTED or EXPIRED.",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "approval_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Approval"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "JSON:API error document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/agents/{agent_id}/executions/scheduled": {
+      "get": {
+        "summary": "List executions the timelock holds, earliest release first",
+        "description": "QUEUED work with execute_after; state is waiting or dispatching. Follow next_cursor.",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "correlation_id": {
+                            "type": "string"
+                          },
+                          "execute_after": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "state": {
+                            "enum": [
+                              "waiting",
+                              "dispatching"
+                            ]
+                          },
+                          "action": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    "next_cursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "4XX": {
+            "description": "JSON:API error document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDocument"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1402,6 +1624,7 @@
             "enum": [
               "PENDING_SIGNATURE",
               "QUEUED",
+              "PENDING_APPROVAL",
               "PROCESSING",
               "PENDING_DEPOSIT",
               "SUCCESS",
@@ -1419,13 +1642,13 @@
           },
           "details": {
             "type": "object",
-            "description": "tx_hash, amount_out, agent_id, grant, ..."
+            "description": "tx_hash, amount_out, agent_id, grant, ... Held work also carries execute_after, delay_ms and (owner_approval) approval_id."
           }
         }
       },
       "Policy": {
         "type": "object",
-        "description": "Enforced off-chain by the API; changes apply immediately. confidential, owner_approval, timelock and schedule are rejected.",
+        "description": "Enforced off-chain by the API; changes apply immediately. confidential must be false. owner_approval, timelock_ms and schedule are supported (see the guide): held work is PENDING_APPROVAL or QUEUED and is judged again (grant, policy, budget, limits, schedule, balance) when it dispatches.",
         "properties": {
           "frozen": {
             "type": "boolean"
@@ -1547,6 +1770,76 @@
           "budget": {
             "type": "object",
             "description": "USD budget keys (decimal strings, null = off); see the guide"
+          },
+          "owner_approval": {
+            "type": "boolean",
+            "default": false,
+            "description": "true: every swap, transfer and withdraw waits in PENDING_APPROVAL until the owner signs an approval_vote intent (approvals expire after 24 hours, then the work ends FAILED approval_expired). Deposits are never held."
+          },
+          "timelock_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2592000000,
+            "default": 0,
+            "description": "Delay before every money action runs (deposits excepted). The work is QUEUED with details.execute_after and released by the worker; cancel it with an execution_cancel intent."
+          },
+          "schedule": {
+            "type": "object",
+            "required": [
+              "mode",
+              "time_zone",
+              "windows"
+            ],
+            "description": "Optional weekly windows in an IANA time zone. mode only: actions run inside a window; except: outside every window. A request outside the schedule is refused 403 policy_schedule_denied with meta.available_at; held work waits for the next window (execute_after).",
+            "properties": {
+              "mode": {
+                "enum": [
+                  "only",
+                  "except"
+                ]
+              },
+              "time_zone": {
+                "type": "string",
+                "example": "Europe/Berlin"
+              },
+              "windows": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 28,
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "days",
+                    "start",
+                    "end"
+                  ],
+                  "properties": {
+                    "days": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "mon",
+                          "tue",
+                          "wed",
+                          "thu",
+                          "fri",
+                          "sat",
+                          "sun"
+                        ]
+                      }
+                    },
+                    "start": {
+                      "type": "string",
+                      "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$"
+                    },
+                    "end": {
+                      "type": "string",
+                      "pattern": "^(?:(?:[01]\\d|2[0-3]):[0-5]\\d|24:00)$"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       },
@@ -1605,6 +1898,50 @@
                 "type": "string"
               }
             }
+          }
+        }
+      },
+      "Approval": {
+        "type": "object",
+        "properties": {
+          "approval_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "wallet_id": {
+            "type": "string"
+          },
+          "wallet_pubkey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "request_hash": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "PENDING",
+              "APPROVED",
+              "REJECTED",
+              "EXPIRED"
+            ]
+          },
+          "request_type": {
+            "type": "string"
+          },
+          "request_data": {
+            "type": "object",
+            "description": "correlation_id plus the normalized request"
+          },
+          "required_approvals": {
+            "type": "integer",
+            "const": 1
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       }

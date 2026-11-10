@@ -6,7 +6,8 @@ import { AgentApiError, errorDoc, fail } from './errors.js';
 import { authenticate, issueKey, MAX_AGENTS_PER_KEY, REQUESTS_PER_MIN } from './partner-keys.js';
 import { agentView, getAgent, policyView, walletView } from './agents.js';
 import { generateIntent, getOwnerIntent, grantView, submitIntent } from './owner-intents.js';
-import { balances, dryRun, history, KINDS, operationStatus, requireGrant, runAction, tokenList } from './executions.js';
+import { balances, dryRun, history, KINDS, operationStatus, requireGrant, runAction, scheduled, tokenList } from './executions.js';
+import { approvalView, getApproval, listApprovals } from './approvals.js';
 import { VERIFIER, VERIFIER_RELEASE, VERIFIER_WASM_SHA256 } from '../config.mjs';
 
 const send = (res, code, body, extra = {}) => { res.writeHead(code, { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'cache-control': 'no-store', ...extra }); res.end(JSON.stringify(body)); };
@@ -17,7 +18,7 @@ const readJson = (req) => new Promise((ok, no) => {
 });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const TERMINAL = new Set(['SUCCESS', 'FAILED', 'REFUNDED', 'UNCERTAIN', 'NEEDS_REVIEW']);
-const UNSUPPORTED = /^\/(agents\/[^/]+\/(shield|unshield|recover|native|approvals|containment|scheduled-executions|releases|proof)|proof|approvals|containment|scheduled-executions|native)(\/|$)/;
+const UNSUPPORTED = /^\/(agents\/[^/]+\/(shield|unshield|recover|native|containment|releases|proof|operations\/[^/]+\/proof)|proof|containment|native)(\/|$)/;
 
 const RELEASE = () => ({
   version: VERIFIER_RELEASE.split('/').pop(), status: 'active', type: 'standard',
@@ -84,7 +85,7 @@ export async function handleV1(req, res, url, { origin, ip, openapi }) {
       const data = rows.slice(0, lim).map((r) => agentView(agent(r.id)));
       return send(res, 200, { data, next_cursor: rows.length > lim ? data[data.length - 1].created_at : null });
     }
-    if (UNSUPPORTED.test(path)) throw fail(501, 'not_supported', 'api', 'This feature (shielding, native-chain wallets, approvals, containment, scheduled executions, per-agent releases, proofs) is not available on Tidepool testnet');
+    if (UNSUPPORTED.test(path)) throw fail(501, 'not_supported', 'api', 'This feature (shielding, native-chain wallets, containment, per-agent releases, proofs) is not available on Tidepool testnet');
     const m = path.match(/^\/agents\/([^/]+)(?:\/(.+))?$/);
     if (m) {
       const a = agent(decodeURIComponent(m[1])), sub = m[2] || '';
@@ -96,6 +97,9 @@ export async function handleV1(req, res, url, { origin, ip, openapi }) {
         if (sub === 'policy/history') return send(res, 200, { data: sql.prepare('SELECT * FROM policy_revisions WHERE agent_id = ? ORDER BY revision DESC').all(a.id).map((r) => ({ wallet_id: a.id, revision: r.revision, policy_hash: r.policy_hash, status: 'APPLIED', applied_at: r.created_at, transaction_hash: null, policy: JSON.parse(r.policy_json) })), next_cursor: null });
         if (sub === 'grants') return send(res, 200, { data: sql.prepare('SELECT * FROM grants WHERE agent_id = ? ORDER BY issued_at DESC').all(a.id).map((g) => grantView(g, a)), next_cursor: null });
         if (sub === 'history') return send(res, 200, history(a, { cursor: q.get('cursor'), limit: q.get('limit'), include_unpaid: q.get('include_unpaid') }));
+        if (sub === 'executions/scheduled') return send(res, 200, scheduled(a, { cursor: q.get('cursor'), limit: q.get('limit') }));
+        if (sub === 'approvals') return send(res, 200, { data: listApprovals(a.id) });
+        if (sub.startsWith('approvals/')) return send(res, 200, approvalView(getApproval(a.id, decodeURIComponent(sub.slice('approvals/'.length)))));
       }
       if (M === 'POST' && KINDS.includes(sub)) {
         const body = await readJson(req);

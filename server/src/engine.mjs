@@ -1146,7 +1146,7 @@ export function anyInputWithdrawals(depositAddress, depositMemo, { timestampFrom
 }
 
 // internals shared with orders.mjs / intents.mjs
-export const hooks = { tickOrder: async () => {} };
+export const hooks = { tickOrder: async () => {}, tickAgents: async () => {} }; // tickAgents: Agent API held work (timelock / approvals), set by agent-api/executions.js
 // Pays out a bridged token on its own chain after the verifier ft_withdraw (used by the Agent API). Returns the destination tx hashes.
 async function payoutBridged(opId, t, to, amount, memo) {
   const s = { quoteResponse: { correlationId: opId }, txs: [], destTxs: [], releases: [] };
@@ -1175,5 +1175,6 @@ export function startWorker() {
       busy.add(addr);
       tick(addr, s).catch(e => { s.note = String(e.message).slice(0, 300); save(); console.error('tick', addr, e.message); }).finally(() => busy.delete(addr));
     }
+    hooks.tickAgents().catch(e => console.error('agent-api tick', e.message));
   }, 4000));
 }

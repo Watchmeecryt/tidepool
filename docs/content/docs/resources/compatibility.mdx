@@ -62,6 +62,8 @@ Checked against the official Agent API OpenAPI (`https://api.agentsonintents.com
 | --- | --- | --- |
 | Withdrawal `memo` | Any chain that needs one | `near` (text, 128 chars), `stellar` (`MEMO_ID` for a uint64 number, else `MEMO_TEXT` up to 28 bytes), `xrp` (destination tag, uint32; must agree with an X-address tag), `sol` (SPL Memo instruction, 256 bytes). EVM, Sui, Bitcoin and Zcash answer 400 `validation_failed` at `/memo` |
 | Policy destinations | Matched on `chain`, `address` and `memo` | Same |
+| `owner_approval` | `PENDING_APPROVAL`, `GET …/approvals`, `approval_vote` | Same shapes; one owner vote (`required_approvals: 1`); approvals expire after 24 hours |
+| `timelock_ms`, `schedule` | `QUEUED`, `GET …/executions/scheduled`, `execution_cancel`; outside the schedule `policy_schedule_denied` | Same; the off-chain worker releases due work every 4 s and judges grant, policy, budget and balance again at release |
 
 ## Settlement distinction
 

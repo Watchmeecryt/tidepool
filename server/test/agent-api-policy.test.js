@@ -19,7 +19,7 @@ test('validatePolicy fills defaults and rejects unsupported features', () => {
   assert.equal(p.timelock_ms, 0);
   assert.equal(policyHash(p), policyHash(validatePolicy(base)));
   assert.throws(() => validatePolicy({ ...base, confidential: true }), /confidential/);
-  assert.throws(() => validatePolicy({ ...base, owner_approval: true }), /owner_approval/);
+  assert.throws(() => validatePolicy({ ...base, owner_approval: 'yes' }), /owner_approval/);
   assert.throws(() => validatePolicy({ ...base, actions: ['mint'] }), /actions/);
   assert.throws(() => validatePolicy({ ...base, limits: { daily: { [A]: '-1' } } }), /atomic/);
 });

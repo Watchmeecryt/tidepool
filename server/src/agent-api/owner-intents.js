@@ -1,5 +1,5 @@
 // Owner intents: generate-intent -> the owner's NEAR key signs the NEP-413 payload -> submit-intent -> status.
-// Supported: agent_create, policy_update, agent_freeze, agent_unfreeze, grant_issue, grant_revoke.
+// Supported: agent_create, policy_update, agent_freeze, agent_unfreeze, grant_issue, grant_revoke, execution_cancel, approval_vote.
 import crypto from 'node:crypto';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
@@ -9,9 +9,11 @@ import { fail } from './errors.js';
 import { agentWallet, applyPolicy, getAgent, ownerView, policyView, rowToAgent } from './agents.js';
 import { budgetStarts, policyHash, validatePolicy } from './policy.js';
 import { MAX_AGENTS_PER_KEY } from './partner-keys.js';
+import { decideApproval, getApproval } from './approvals.js';
+import { applyCancel, cancelHeld } from './executions.js';
 
-export const TYPES = ['agent_create', 'policy_update', 'agent_freeze', 'agent_unfreeze', 'grant_issue', 'grant_revoke'];
-const OTHER_TYPES = ['execution_cancel', 'agent_archive', 'agent_restore', 'agent_delete', 'approval_vote'];
+export const TYPES = ['agent_create', 'policy_update', 'agent_freeze', 'agent_unfreeze', 'grant_issue', 'grant_revoke', 'execution_cancel', 'approval_vote'];
+const OTHER_TYPES = ['agent_archive', 'agent_restore', 'agent_delete'];
 export const RECIPIENT = 'tidepool-agent-api';
 const TTL_MS = 5 * 60_000;
 const ACCOUNT = /^(([a-z\d]+[-_])*[a-z\d]+\.)*([a-z\d]+[-_])*[a-z\d]+$/;
@@ -59,6 +61,8 @@ function intentStatus(r) {
     agent_unfreeze: { revision: result?.revision ?? null, policy_hash: result?.policy_hash ?? null, transaction_hash: null },
     grant_issue: { grant: result?.grant ?? null },
     grant_revoke: { grant_id: result?.grant_id ?? p.preview.grant_id ?? null, committed_correlation_ids: result?.committed_correlation_ids ?? null, committed_truncated: result ? false : null },
+    execution_cancel: { cancelled_correlation_id: result?.cancelled_correlation_id ?? null },
+    approval_vote: { approval_id: result?.approval_id ?? p.preview.approval?.approval_id ?? null, verdict: result?.verdict ?? p.preview.approval?.verdict ?? null },
   }[r.type];
   return { ...base, details };
 }
@@ -127,6 +131,16 @@ export async function generateIntent(tenantId, body, idemKey) {
       if (sql.prepare('SELECT COUNT(*) n FROM grants WHERE agent_id = ? AND revoked_at IS NULL AND expires_at > ?').get(agentId, now.toISOString()).n >= 50) throw fail(429, 'quota_exceeded', 'request', 'At most 50 live grants per agent');
       details = { label: body.label.trim(), credential: body.credential, expires_at: new Date(exp).toISOString() };
       preview = { summary: `Issue grant "${details.label}" to "${agent.name}" until ${details.expires_at}` };
+    } else if (type === 'execution_cancel') {
+      if (typeof body.correlation_id !== 'string') throw bad('correlation_id is required: the QUEUED or PENDING_APPROVAL execution to cancel', '/correlation_id');
+      const op = cancelHeld(agentId, body.correlation_id);
+      details = { correlation_id: op.id };
+      preview = { summary: `Cancel the ${op.status} ${op.type} ${op.id} of "${agent.name}" before it runs` };
+    } else if (type === 'approval_vote') {
+      if (!['approve', 'reject'].includes(body.verdict)) throw bad('verdict must be "approve" or "reject"', '/verdict');
+      const ap = getApproval(agentId, body.approval_id, { pending: true });
+      details = { approval_id: ap.id, verdict: body.verdict, request_hash: ap.request_hash };
+      preview = { summary: `${body.verdict === 'approve' ? 'Approve' : 'Reject'} the ${ap.request_type} ${ap.operation_id} of "${agent.name}"`, approval: { approval_id: ap.id, request_type: ap.request_type, request_hash: ap.request_hash, verdict: body.verdict } };
     } else {
       const g = sql.prepare('SELECT * FROM grants WHERE id = ? AND agent_id = ?').get(String(body.grant_id), agentId);
       if (!g) throw fail(404, 'grant_not_found', 'request', `No grant ${body.grant_id} on this agent`);
@@ -179,9 +193,11 @@ export function submitIntent(tenantId, body) {
       sql.prepare('INSERT INTO grants (id, agent_id, credential, label, issued_at, expires_at) VALUES (?,?,?,?,?,?)').run(gid, a.id, det.credential, det.label, now, det.expires_at);
       return { grant: grantView(sql.prepare('SELECT * FROM grants WHERE id = ?').get(gid), a) };
     }
+    if (r.type === 'execution_cancel') return applyCancel(a.id, req.correlation_id, now);
+    if (r.type === 'approval_vote') return decideApproval(a.id, req.approval_id, req.verdict, now);
     const gid = req.grant_id;
     sql.prepare('UPDATE grants SET revoked_at = ? WHERE id = ? AND agent_id = ? AND revoked_at IS NULL').run(now, gid, a.id);
-    const inflight = sql.prepare("SELECT id FROM operations WHERE grant_id = ? AND status IN ('PROCESSING','QUEUED')").all(gid).map((x) => x.id);
+    const inflight = sql.prepare("SELECT id FROM operations WHERE grant_id = ? AND status = 'PROCESSING'").all(gid).map((x) => x.id); // held work of this grant fails grant_revoked at dispatch
     return { grant_id: gid, committed_correlation_ids: inflight };
   });
   const result = tx();

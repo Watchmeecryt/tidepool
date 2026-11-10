@@ -3,6 +3,15 @@ title: Changelog
 description: What changed in Tidepool and when.
 icon: ClockCounterClockwise
 ---
+## 2026-11-10 · Agent API: owner approvals, timelock and schedule
+
+- **`owner_approval: true`:** swaps, transfers and withdrawals wait in `PENDING_APPROVAL` (`details.approval_id`) until the owner signs an `approval_vote` intent (`verdict` `approve` or `reject`). New: `GET /v1/agents/{id}/approvals` and `GET /v1/agents/{id}/approvals/{approval_id}` (official shapes: `approval_id`, `request_type`, `request_data`, `request_hash`, `status` `PENDING` / `APPROVED` / `REJECTED` / `EXPIRED`, `required_approvals`, `expires_at`). Unvoted approvals expire after 24 hours (`FAILED` `approval_expired`); a vote on a closed approval answers 409 `approval_closed`.
+- **`timelock_ms`** (up to 30 days): work is `QUEUED` with `details.execute_after` and `delay_ms`, listed at `GET /v1/agents/{id}/executions/scheduled`, and can be cancelled with an `execution_cancel` intent (`FAILED` `execution_cancelled`; 409 `execution_not_cancellable` once dispatched).
+- **`schedule`:** weekly windows in an IANA time zone (`mode` `only` or `except`). A request outside it is refused 403 `policy_schedule_denied` with `meta.available_at`; held work waits for the next window.
+- **Release:** the existing 4 s worker tick releases due work. Grant, agent status, the current policy (including schedule, USD budget, cumulative limits and actions per hour) and the available balance are checked again at release, and the budget is charged at dispatch. Balances report `available` as the balance minus held work.
+- **Still 501:** shielding, native-chain wallets, containment, per-agent releases and proofs.
+- **Docs:** agent API guide, compatibility page, `/v1/openapi.json` and llms files updated.
+
 ## 2026-11-10 · Agent API: withdrawal memos on Stellar, XRP and Solana
 
 - **`POST /v1/agents/{id}/withdraw` `memo`:** now carried on the payout itself. `stellar`: a whole number up to 18446744073709551615 (no leading zeros) is sent as `MEMO_ID`, anything else as `MEMO_TEXT` (at most 28 bytes). `xrp`: the memo is the `DestinationTag` (0 to 4294967295); a recipient X-address that already encodes a different tag answers 400 `validation_failed`, the same tag twice is accepted. `sol`: one SPL Memo program instruction after the transfer (at most 256 bytes). `near` keeps the `ft_withdraw` memo (at most 128 characters).

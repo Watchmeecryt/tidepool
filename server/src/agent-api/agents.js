@@ -27,7 +27,7 @@ export function policyView(a) {
   return {
     wallet_id: a.id, revision: a.policy_revision, policy_hash: rev?.policy_hash ?? null, status: 'APPLIED', applied_at: rev?.created_at ?? null, transaction_hash: null,
     provider_policy_synced: true, cooldowns: { policy_change_available_at: null, unfreeze_available_at: null }, policy: a.policy,
-    usage: { budget: budgetView(a, a.policy), timelock: { delay_ms: 0, scheduled_count: 0 } },
+    usage: { budget: budgetView(a, a.policy), timelock: { delay_ms: a.policy.timelock_ms || 0, scheduled_count: sql.prepare("SELECT COUNT(*) n FROM operations WHERE agent_id = ? AND status = 'QUEUED'").get(a.id).n } },
   };
 }
 

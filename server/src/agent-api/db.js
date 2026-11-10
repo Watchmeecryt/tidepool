@@ -32,4 +32,9 @@ CREATE TABLE IF NOT EXISTS operations (
   dispatch_committed_at TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
 CREATE UNIQUE INDEX IF NOT EXISTS operations_idem ON operations (agent_id, grant_id, idem_key) WHERE idem_key IS NOT NULL;
 CREATE INDEX IF NOT EXISTS operations_agent ON operations (agent_id, created_at);
+CREATE INDEX IF NOT EXISTS operations_status ON operations (status);
+CREATE TABLE IF NOT EXISTS approvals (
+  id TEXT PRIMARY KEY, agent_id TEXT NOT NULL, operation_id TEXT NOT NULL, request_type TEXT NOT NULL, request_json TEXT NOT NULL, request_hash TEXT NOT NULL,
+  status TEXT NOT NULL, expires_at TEXT NOT NULL, created_at TEXT NOT NULL, decided_at TEXT);
+CREATE INDEX IF NOT EXISTS approvals_agent ON approvals (agent_id, status);
 `);
