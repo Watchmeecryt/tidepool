@@ -102,7 +102,7 @@ ME=<your-account>.testnet   # your own NEAR testnet account
    curl -s -X POST $API/v0/faucet -H 'content-type: application/json' \
      -d "{\"accountId\":\"$ME\",\"mode\":\"intents\"}"
    ```
-   See a JSON result with `drips` (the six test tokens) and NearBlocks transaction links (one claim per address every 24 hours). Use `"mode":"wallet"` for NEP-141 balances in your wallet instead. Other chains: `{"chain":"base","address":"<your 0x address>"}` (also `eth`, `arb`, `sol`, `stellar`, `sui`); see [Faucet](https://www.usetidepool.tech/docs/guides/faucet).
+   See a JSON result with `drips` (the six test tokens) and NearBlocks transaction links (one Tokens claim per address every 7 days, 2 claims per IP every 3 hours; NEAR accounts must be at least 3 hours old). Use `"mode":"wallet"` for NEP-141 balances in your wallet instead. Other chains: `{"chain":"base","address":"<your 0x address>"}` (also `eth`, `arb`, `sol`, `stellar`, `sui`); see [Faucet](https://www.usetidepool.tech/docs/guides/faucet).
 4. **Price a swap with a dry quote:**
    ```bash
    curl -s -X POST $API/v0/quote -H 'content-type: application/json' -d "{
@@ -130,7 +130,7 @@ ME=<your-account>.testnet   # your own NEAR testnet account
 2. `npm run first-swap` creates its own throwaway NEAR testnet account (the key stays in a local gitignored file and is never printed), calls `POST /v0/faucet` with `mode: "intents"`, gets a dry quote and then a live quote (`dry: false`, `depositType: "INTENTS"`), deposits with a signed NEP-413 `transfer` intent submitted through `execute_intents`, calls `POST /v0/deposit/submit`, and polls `GET /v0/status` until `SUCCESS`. You should see `SUCCESS` and NearBlocks testnet transaction links.
 3. `npm run failure-cases partial` deposits too little and ends in `REFUNDED`.
 4. The same flow inside this repo: `cd examples && npm ci && TIDEPOOL_URL=https://www.usetidepool.tech node swap.mjs` (it makes a throwaway account if `NEAR_ACCOUNT_ID` and `NEAR_PRIVATE_KEY` are unset).
-5. Rules: get a dry quote first; deposit exactly `quote.amountIn`; poll `/v0/status` every 2 to 5 seconds; the faucet gives one claim per address every 24 hours; testnet only.
+5. Rules: get a dry quote first; deposit exactly `quote.amountIn`; poll `/v0/status` every 2 to 5 seconds; the faucet gives one Tokens claim per address every 7 days (2 claims per IP every 3 hours; NEAR accounts must be at least 3 hours old); testnet only.
 6. More: https://www.usetidepool.tech/docs/guides/agents, https://www.usetidepool.tech/AGENTS.md and https://www.usetidepool.tech/llms-full.txt. The agent prompt snippet lives in [`docs/content/docs/guides/agents.mdx`](docs/content/docs/guides/agents.mdx):
 
 ```text
@@ -206,7 +206,7 @@ Docs: [/docs/guides/agent-api](https://www.usetidepool.tech/docs/guides/agent-ap
 - **Per-chain caps** (a request over the cap answers 400 at quote time): SOL 0.005 per swap, payout or refund; XLM 100; SUI 10; BTC 0.005 (minimum 0.0001); XRP 100. BTC and XRP payout quotes answer 503 while the treasury is low. Native BTC and XRP are never dripped by the faucet.
 - **One maker** with finite inventory sets every price (CoinGecko plus a fixed fee); large quotes fail with `Not enough maker liquidity`.
 - **Confidentiality is not implemented.** The `confidentiality` request parameter is accepted but ignored: every swap settles publicly. `CONFIDENTIAL_INTENTS` deposit, refund and recipient types answer 400. NEAR's confidential settlement runs on NEAR Private Shard, which is not open to outside builders ([NEAR's update](https://docs.near-intents.org/changelog/entries/2026-10-27-1click-confidential.md)). Rely on `status`, not on a swap hash in `swapDetails.nearTxHashes`.
-- Faucet limits: one drip per account per mode per hour, one per address per chain per hour, six per IP per hour. State is a JSON file on one server volume; there is no SLA.
+- Faucet limits: one Tokens claim per address every 7 days, plus a separate Stocks & RWAs slot every 7 days; 2 claims per IP every 3 hours; NEAR accounts must be at least 3 hours old. State is a JSON file on one server volume; there is no SLA.
 - Not affiliated with, endorsed or reviewed by NEAR Foundation, Defuse Labs or 1Click. Full list: [Trust model](https://www.usetidepool.tech/docs/resources/trust-model) and [Compatibility](https://www.usetidepool.tech/docs/resources/compatibility).
 
 ## Libraries, templates and upstream code (Q-005)

@@ -13,8 +13,8 @@ import { resolveIntentAssets, isBridgedToken, CHAIN_ALIASES } from './faucet-ass
 
 const ACCOUNT_COOLDOWN_MS = 7 * 24 * 60 * 60_000; // one claim per address across all faucet variants per 7 days
 const INTENTS_CHUNK = 6;
-const IP_LIMIT = 2; // drips per IP per 24h
-const IP_WINDOW_MS = 24 * 60 * 60_000;
+const IP_LIMIT = 2; // drips per IP per 3 hours
+const IP_WINDOW_MS = 3 * 60 * 60_000;
 const ipHits = new Map();
 
 /** Normalize an address/account so EVM/Sui 0x… compare case-insensitively; NEAR/Sol/Stellar stay as given. */
@@ -38,7 +38,7 @@ function lastClaimFor(addr, variant) {
   return last;
 }
 
-/** Throw 429 if this address claimed within 7 days (see lastClaimFor) or the IP hit its 24h cap. Returns { id, hits, key }. */
+/** Throw 429 if this address claimed within 7 days (see lastClaimFor) or the IP hit its 3-hour cap. Returns { id, hits, key }. */
 function assertClaimAllowed(addr, variant, ip) {
   const id = normAddr(addr);
   const last = lastClaimFor(id, variant);
@@ -52,7 +52,7 @@ function assertClaimAllowed(addr, variant, ip) {
     );
   }
   const hits = (ipHits.get(ip) || []).filter(t => Date.now() - t < IP_WINDOW_MS);
-  if (hits.length >= IP_LIMIT) { const available_at = new Date(hits[0] + IP_WINDOW_MS).toISOString(); throw new BadRequest(`Rate limited: ${IP_LIMIT} faucet claims per IP every 24 hours; try again after ${available_at}.`, 429, { available_at, retryAfter: available_at, retryAfterSeconds: Math.max(1, Math.ceil((hits[0] + IP_WINDOW_MS - Date.now()) / 1000)) }); }
+  if (hits.length >= IP_LIMIT) { const available_at = new Date(hits[0] + IP_WINDOW_MS).toISOString(); throw new BadRequest(`Rate limited: ${IP_LIMIT} faucet claims per IP every 3 hours; try again after ${available_at}.`, 429, { available_at, retryAfter: available_at, retryAfterSeconds: Math.max(1, Math.ceil((hits[0] + IP_WINDOW_MS - Date.now()) / 1000)) }); }
   return { id, hits, key: `${id}:${variant}` };
 }
 

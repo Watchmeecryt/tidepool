@@ -3,7 +3,12 @@
 import { BadRequest } from './engine.mjs';
 import { viewAccount } from './near.mjs';
 
-export const MIN_ACCOUNT_AGE_MS = Number(process.env.FAUCET_MIN_ACCOUNT_AGE_MS || 24 * 60 * 60_000);
+export const MIN_ACCOUNT_AGE_MS = Number(process.env.FAUCET_MIN_ACCOUNT_AGE_MS || 3 * 60 * 60_000);
+function ageLabel(ms = MIN_ACCOUNT_AGE_MS) {
+  const h = ms / (60 * 60_000);
+  const n = Number.isInteger(h) ? h : Number(h.toFixed(1));
+  return `${n} hour${n === 1 ? '' : 's'}`;
+}
 const NEARBLOCKS = process.env.NEARBLOCKS_API || 'https://api-testnet.nearblocks.io';
 
 /** NEAR account creation time in ms, null if NearBlocks has no record, undefined if the lookup failed. */
@@ -31,13 +36,13 @@ const checkers = {
 export function setFaucetCheckers(over) { Object.assign(checkers, over); }
 
 export async function assertNearEligible(accountId) {
-  if (!(await checkers.nearExists(accountId))) throw new BadRequest(`${accountId} does not exist on NEAR testnet. The faucet only serves existing accounts that are at least 24 hours old.`, 403, { reason: 'account_not_found' });
+  if (!(await checkers.nearExists(accountId))) throw new BadRequest(`${accountId} does not exist on NEAR testnet. The faucet only serves existing accounts that are at least ${ageLabel()} old.`, 403, { reason: 'account_not_found' });
   if (/^[0-9a-f]{64}$/.test(accountId)) return; // implicit accounts have no creation record; existence (funded) is enough
   const at = await checkers.nearCreatedAt(accountId);
   if (at === undefined) return; // indexer unavailable: fail open rather than block real builders
   if (at === null || Date.now() - at < MIN_ACCOUNT_AGE_MS) {
     const available_at = at ? new Date(at + MIN_ACCOUNT_AGE_MS).toISOString() : undefined;
-    throw new BadRequest(`${accountId} is too new for the faucet: accounts must be at least 24 hours old${available_at ? ` (eligible after ${available_at})` : ''}.`, 403, { reason: 'account_too_new', available_at });
+    throw new BadRequest(`${accountId} is too new for the faucet: accounts must be at least ${ageLabel()} old${available_at ? ` (eligible after ${available_at})` : ''}.`, 403, { reason: 'account_too_new', available_at });
   }
 }
 

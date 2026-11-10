@@ -155,7 +155,7 @@ See [POST /v0/faucet](/docs/api-reference/tidepool-faucet) for the full response
 
 - **One Tokens claim per address every 7 days**, across every non-Ondo variant (NEAR wallet, NEAR intents, bridged intents, and every other chain). Claiming on Base blocks the same `0x` on Ethereum Sepolia, and a NEAR `wallet` drip blocks `intents` for that account until the window ends.
 - **A separate Stocks & RWAs slot** (up to 5 Ondo tokens on BSC Testnet) can be claimed once per address every 7 days, independently of the Tokens slot.
-- **Wallet age and IP cap:** NEAR accounts must exist and be at least 24 hours old, and EVM addresses must have sent a transaction or hold a native balance on Ethereum Sepolia (or on BSC Testnet for a `bsc` claim); otherwise you get `403` with a `reason`. Each IP can claim twice every 24 hours. Over the limit returns **HTTP 429** with `available_at` / `retryAfter` (and a `Retry-After` header). If a transfer fails, the limit is not consumed. If captcha is enabled, the site sends `turnstileToken`.
+- **Wallet age and IP cap:** NEAR accounts must exist and be at least 3 hours old, and EVM addresses must have sent a transaction or hold a native balance on Ethereum Sepolia (or on BSC Testnet for a `bsc` claim); otherwise you get `403` with a `reason`. Each IP can claim twice every 3 hours. Over the limit returns **HTTP 429** with `available_at` / `retryAfter` (and a `Retry-After` header). If a transfer fails, the limit is not consumed. If captcha is enabled, the site sends `turnstileToken`.
 - Global daily caps protect the treasuries: Solana (it pays for token accounts), Stellar and Sui (it pays gas). Over the cap returns `429`.
 - Do not loop the faucet; every drip is a fixed amount.
 

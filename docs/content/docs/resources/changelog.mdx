@@ -3,6 +3,13 @@ title: Changelog
 description: What changed in Tidepool and when.
 icon: ClockCounterClockwise
 ---
+## 2026-11-10 · Faucet: 3-hour account age and IP window
+
+- **Account age:** NEAR accounts must now be at least 3 hours old (was 24 hours). New testnet accounts were getting `403` `account_too_new`; the wait is shorter. The `account_not_found` and `account_too_new` reasons are unchanged.
+- **IP cap:** 2 claims per IP every 3 hours (was every 24 hours).
+- **Unchanged:** one Tokens claim per address every 7 days, plus a separate Stocks & RWAs slot every 7 days. Agent API key issuance stays at 5 keys per IP per 24 hours.
+- **Docs:** faucet guide, API reference, `/openapi.json`, README and llms files updated.
+
 ## 2026-11-10 · Agent API: EVM and passkey owners, archive, restore and delete
 
 - **EVM owners:** `owner: { "type": "evm", "address", "chain_id", "public_key" }`. Owner intents come back as `intent.standard: "eip712"` (`primaryType` `OwnerIntent`, `message: { intent, nonce, recipient }`) and are signed with `eth_signTypedData_v4`. An ERC-191 `personal_sign` of `payload.message.intent` is accepted too (`signed_data.standard: "erc191"`). The signature must recover to `address`; `public_key` must belong to it.
