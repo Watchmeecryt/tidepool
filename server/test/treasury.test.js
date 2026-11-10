@@ -56,6 +56,7 @@ test('short addresses and per-chain explorer links', () => {
   assert.equal(addressExplorer('btc', 'tb1qy2tthlq2ntnjvk40payyuwpnzaf365h02ze0qr'), 'https://mempool.space/testnet4/address/tb1qy2tthlq2ntnjvk40payyuwpnzaf365h02ze0qr');
   assert.equal(addressExplorer('zec', 'tmQHJUqvNXfXD4DqVm2ohTtfCKCZa83EPt5'), 'https://testnet.zcashexplorer.app/address/tmQHJUqvNXfXD4DqVm2ohTtfCKCZa83EPt5');
   assert.equal(addressExplorer('xrp', 'rwJx1hzscZ6THJwhDwmtPQj4YjhvysFyLd'), 'https://testnet.xrpl.org/accounts/rwJx1hzscZ6THJwhDwmtPQj4YjhvysFyLd');
+  assert.equal(addressExplorer('hypercore', '0x55F2c8044D790e1b8369508c31c756c0c2Ca0E93'), 'https://app.hyperliquid-testnet.xyz/explorer/address/0x55F2c8044D790e1b8369508c31c756c0c2Ca0E93');
   assert.ok(FAUCET_SOURCES.includes('tidepool-f1.testnet') && FAUCET_SOURCES.length === 4);
 });
 

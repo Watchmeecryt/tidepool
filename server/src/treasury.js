@@ -2,9 +2,9 @@
 // Fetched on the server with a short cache so /admin does not hammer RPCs. Never logs secrets or RPC URLs.
 import {
   ROOT, MAKER, VERIFIER, TOKENS, ONDO_TOKENS, EVM_CHAINS,
-  SOL_CHAIN, STELLAR_CHAIN, SUI_CHAIN, BTC_CHAIN, ZEC_CHAIN, XRP_CHAIN,
+  SOL_CHAIN, STELLAR_CHAIN, SUI_CHAIN, BTC_CHAIN, ZEC_CHAIN, XRP_CHAIN, HYPERCORE_CHAIN,
   ETH_CAP_WEI, ETH_RESERVE_WEI, SOL_PAYOUT_CAP_LAMPORTS, SOL_RENT_MIN_LAMPORTS,
-  XLM_CAP_STROOPS, SUI_CAP_MIST, XRP_CAP_DROPS, XRP_RESERVE_DROPS,
+  XLM_CAP_STROOPS, SUI_CAP_MIST, XRP_CAP_DROPS, XRP_RESERVE_DROPS, HYPERCORE_USDC_CAP, HYPERCORE_DECIMALS,
   BTC_CAP_SATS, ZEC_CAP_ZAT, STELLAR_DECIMALS, SUI_DECIMALS, XRP_DECIMALS,
   toUnits, fromUnits, chainOf,
 } from './config.mjs';
@@ -14,6 +14,7 @@ import * as sol from './solana.mjs';
 import * as stellar from './stellar.mjs';
 import * as sui from './sui.mjs';
 import * as xrp from './xrp.mjs';
+import * as hl from './hyperliquid.js';
 import * as btc from './btc.mjs';
 import * as zec from './zec.mjs';
 
@@ -67,6 +68,7 @@ export function addressExplorer(chainKey, addr) {
   if (chainKey === 'btc') return btc.addrUrl(addr);
   if (chainKey === 'zec') return zec.addrUrl(addr);
   if (chainKey === 'xrp') return xrp.accountUrl(addr);
+  if (chainKey === 'hypercore') return hl.addrUrl(addr);
   const c = chainOf(chainKey);
   return c?.explorer ? `${c.explorer}/address/${addr}` : null;
 }
@@ -102,6 +104,7 @@ function tokenCap(t) {
   if (t.symbol === 'XRP' && t.native) return XRP_CAP_DROPS;
   if (t.symbol === 'BTC' && t.native) return BTC_CAP_SATS;
   if (t.symbol === 'ZEC' && t.native) return ZEC_CAP_ZAT;
+  if (t.kind === 'hypercore') return HYPERCORE_USDC_CAP;
   return 0n;
 }
 
@@ -283,9 +286,24 @@ async function utxoRows(chain, mod) {
   }
 }
 
+
+async function hypercoreRows() {
+  if (!HYPERCORE_CHAIN.treasury) return [];
+  const addr = HYPERCORE_CHAIN.treasury;
+  const t = (HYPERCORE_CHAIN.tokens || [])[0];
+  const threshold = tokenThreshold(t);
+  try {
+    const bal = await hl.treasuryBalance();
+    if (bal === null) return [rowOf({ chain: 'hypercore', chainName: HYPERCORE_CHAIN.name, account: addr, role: 'treasury', token: 'USDC', kind: 'perps', decimals: HYPERCORE_DECIMALS, assetId: t?.assetId, threshold, error: 'treasury key not configured' })];
+    return [rowOf({ chain: 'hypercore', chainName: HYPERCORE_CHAIN.name, account: addr, role: 'treasury', token: 'USDC', kind: 'perps', decimals: HYPERCORE_DECIMALS, assetId: t?.assetId, balance: bal, threshold })];
+  } catch (e) {
+    return [rowOf({ chain: 'hypercore', chainName: HYPERCORE_CHAIN.name, account: addr, role: 'treasury', token: 'USDC', kind: 'perps', decimals: HYPERCORE_DECIMALS, assetId: t?.assetId, threshold, error: e })];
+  }
+}
+
 export async function collectTreasury() {
   const groups = await Promise.allSettled([
-    nearRows(), evmRows(), solRows(), stellarRows(), suiRows(), xrpRows(),
+    nearRows(), evmRows(), solRows(), stellarRows(), suiRows(), xrpRows(), hypercoreRows(),
     utxoRows(BTC_CHAIN, btc), utxoRows(ZEC_CHAIN, zec),
   ]);
   const rows = [];

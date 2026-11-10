@@ -236,7 +236,26 @@ if (ONDO_DEP.live && ONDO_DEP.chain === 'bsc' && ONDO_DEP.tokens) {
 }
 // Ondo tokens are NOT pushed into TOKENS by default; tokens() adds them when ondoTokens=1.
 
-export const chainOf = (key) => key === 'sol' ? SOL_CHAIN : key === 'stellar' ? STELLAR_CHAIN : key === 'sui' ? SUI_CHAIN : key === 'btc' ? BTC_CHAIN : key === 'zec' ? ZEC_CHAIN : key === 'xrp' ? XRP_CHAIN : EVM_CHAINS.find(c => c.key === key);
+
+// ---- Hyperliquid testnet (HyperCore) destination (trusted relayer run by Tidepool; testnet only) ----
+// Destination only: a swap into this asset pays USDC into the recipient's HyperCore perps balance via a gasless
+// EIP-712 usdSend from the existing EVM relayer. No ORIGIN_CHAIN deposits. blockchain is "hypercore", matching
+// 1Click's TokenResponse enum. The NEAR-side OMFT id is nep141:hypercore.tp-omft.testnet (6 decimals, like other USDC).
+export const HYPERCORE_DECIMALS = 6;
+export const HYPERCORE_USDC_CAP = BigInt(process.env.HYPERCORE_USDC_CAP || 100_000_000); // 100 USDC cap on a HyperCore payout or swap leg
+export const HYPERCORE_CHAIN = { key: 'hypercore', blockchain: 'hypercore', kind: 'hypercore', name: 'Hyperliquid Testnet', network: 'testnet', explorer: 'https://app.hyperliquid-testnet.xyz', faucet: 'https://app.hyperliquid-testnet.xyz/drip', symbol: 'USDC' };
+const HD = DEPLOYED.hypercore;
+HYPERCORE_CHAIN.deployed = Boolean(HD?.treasury && HD.live);
+if (HD?.treasury) {
+  HYPERCORE_CHAIN.treasury = HD.treasury;
+  HYPERCORE_CHAIN.tokens = [];
+  const usdc = { chain: 'hypercore', kind: 'hypercore', blockchain: 'hypercore', sub: 'hypercore', symbol: 'USDC', decimals: HYPERCORE_DECIMALS, coingeckoId: 'usd-coin', fallback: 1, drip: '0', inventory: HD.inventory?.USDC || '200000',
+    nearContract: `hypercore.${OMFT}`, assetId: `nep141:hypercore.${OMFT}`, name: 'Tidepool Testnet USDC on Hyperliquid Testnet (HyperCore, no value)', destinationOnly: true };
+  if (HYPERCORE_CHAIN.deployed) TOKENS.push(usdc);
+  HYPERCORE_CHAIN.tokens.push(usdc);
+}
+
+export const chainOf = (key) => key === 'sol' ? SOL_CHAIN : key === 'stellar' ? STELLAR_CHAIN : key === 'sui' ? SUI_CHAIN : key === 'btc' ? BTC_CHAIN : key === 'zec' ? ZEC_CHAIN : key === 'xrp' ? XRP_CHAIN : key === 'hypercore' ? HYPERCORE_CHAIN : EVM_CHAINS.find(c => c.key === key);
 export const isEvmAddress = (s) => typeof s === 'string' && /^0x[0-9a-fA-F]{40}$/.test(s);
 
 export const toUnits = (s, d) => { const [i, f = ''] = String(s).split('.'); return BigInt(i + (f + '0'.repeat(d)).slice(0, d)); };

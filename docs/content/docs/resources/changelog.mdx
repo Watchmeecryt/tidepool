@@ -3,6 +3,13 @@ title: Changelog
 description: What changed in Tidepool and when.
 icon: ClockCounterClockwise
 ---
+## 2026-11-10 · Hyperliquid testnet (HyperCore) destination
+
+- **New destination:** `blockchain: "hypercore"`, asset id `nep141:hypercore.tp-omft.testnet` (USDC, 6 decimals). A swap with `recipientType: "DESTINATION_CHAIN"` pays USDC into the recipient's HyperCore perps balance via a gasless EIP-712 `usdSend`. Recipients are `0x` addresses.
+- **Destination only:** `ORIGIN_CHAIN` deposits and refunds on HyperCore are refused. `ANY_INPUT` payouts are refused. Capped at 100 USDC per swap or payout; a short treasury answers `503`.
+- **/admin** shows the treasury's HyperCore USDC balance with Low/Empty flags. The Tidepool faucet does not drip this asset; claim mock USDC at [the Hyperliquid testnet faucet](https://app.hyperliquid-testnet.xyz/drip).
+- **Docs:** route guide, tokens and compatibility pages, `/openapi.json`, `/v1/openapi.json` and llms files updated.
+
 ## 2026-11-10 · Admin: treasury balances
 
 - **/admin** now has a Treasury balances panel (and `GET /admin/treasury`, admin session only). It shows spendable NEAR for the root, maker, verifier and faucet-source accounts, the maker's intents inventories (including Ondo), and gas plus every token on the payout and faucet treasuries: Ethereum, Base and Arbitrum Sepolia, BSC Testnet, Solana devnet, Stellar, Sui, XRP, Bitcoin testnet4 and Zcash testnet.

@@ -101,4 +101,12 @@ Current minters: `tidepool-sandbox.testnet` (wallet faucet) and `maker.tidepool-
 
 ## Ondo tokenized stocks/RWAs (BSC Testnet)
 
+## Hyperliquid testnet / HyperCore (listed only while the route is live)
+
+| Token | Asset id | Description | Decimals | Tidepool faucet | External faucet |
+| --- | --- | --- | --- | --- | --- |
+| USDC | `nep141:hypercore.tp-omft.testnet` | USDC in a HyperCore testnet perps balance | 6 (capped at 100 USDC per swap) | none | [Hyperliquid testnet faucet](https://app.hyperliquid-testnet.xyz/drip) (mock USDC) |
+
+Destination only: there are no ORIGIN_CHAIN deposits on HyperCore. Recipients are `0x` addresses. See the [Hyperliquid testnet bridge](/docs/guides/bridge-hyperliquid-testnet).
+
 Request with [`GET /v0/tokens?ondoTokens=1`](/docs/api-reference/get-tokens). Same 28 symbols as mainnet 1Click (AAPLon, TSLAon, NVDAon, … USDon), `blockchain: "bsc"`, asset ids `nep141:bnb-<erc20>.tp-omdep.testnet`. ERC-20s live on BSC Testnet (chain id 97). Without the query flag they are omitted. See [BSC Testnet bridge](/docs/guides/bridge-bsc-testnet).

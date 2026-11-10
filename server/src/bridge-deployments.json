@@ -962,5 +962,44 @@
     "vault": "0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2",
     "forwarderInitCodeHash": "0xabeef3d43fe26bb56bcef8e9101184837bf1f6f3ec95c97710a6f90f73033454",
     "live": true
+  },
+  "hypercore": {
+    "name": "Hyperliquid Testnet",
+    "network": "testnet",
+    "treasury": "0x55F2c8044D790e1b8369508c31c756c0c2Ca0E93",
+    "inventory": {
+      "USDC": "200000"
+    },
+    "live": true,
+    "txs": [
+      {
+        "label": "fund tp-omft.testnet",
+        "hash": "F8G1T8c6zsSa9R9C2avoW7QbAau6Tvjs87Gxq8S7vhcy"
+      },
+      {
+        "label": "create hypercore.tp-omft.testnet",
+        "hash": "AyuWKqixshbuc1qQiE6NvnaearpNAJaEyp8AXjs7nJE"
+      },
+      {
+        "label": "deploy hypercore.tp-omft.testnet",
+        "hash": "7uw9vpNQa8CCZwqgPboY65Tum6cF7Fc1MmWq8GxdSANH"
+      },
+      {
+        "label": "init hypercore.tp-omft.testnet",
+        "hash": "CLNCjhRaxLYQq7aSkfqDHUJj3J2z2T2mSStgRDN5HtWU"
+      },
+      {
+        "label": "storage verifier.tidepool-sandbox.testnet on USDC",
+        "hash": "HXeYTMRf22XGWaKR9kMANhiVCoEykDRzAR7t2B48FKjz"
+      },
+      {
+        "label": "mint maker inventory USDC",
+        "hash": "CohPsrLQtEtPbhAG51rSsDrTLuGo4Fp6kt3Zt6PF6Rd1"
+      },
+      {
+        "label": "deposit maker inventory USDC",
+        "hash": "3EH6AG2S38yRnFfQHzCwR46tjBGmJXMsbjMqnqXWAMJ4"
+      }
+    ]
   }
 }

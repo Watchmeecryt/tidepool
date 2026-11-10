@@ -313,7 +313,7 @@
     },
     "/v0/tokens": {
       "get": {
-        "description": "Retrieves a list of tokens currently supported by the 1Click API for asset swaps.\n\nEach token entry includes its blockchain, contract address (if available), price in USD, and other metadata such as symbol and decimals.\n\nNative ETH is listed for eth, base and arb (assetIds nep141:eth.tp-omft.testnet, nep141:base.tp-omft.testnet, nep141:arb.tp-omft.testnet; 18 decimals, no contractAddress), supports ORIGIN_CHAIN deposits and DESTINATION_CHAIN payouts, and is capped at 0.006 ETH per swap.\n\nPass `?ondoTokens=1` to include Tidepool's 28 Ondo test tokens on BSC Testnet (`blockchain: \"bsc\"`, `nep141:bnb-\u2026.tp-omdep.testnet`). Without the flag they are omitted.",
+        "description": "Retrieves a list of tokens currently supported by the 1Click API for asset swaps.\n\nEach token entry includes its blockchain, contract address (if available), price in USD, and other metadata such as symbol and decimals.\n\nNative ETH is listed for eth, base and arb (assetIds nep141:eth.tp-omft.testnet, nep141:base.tp-omft.testnet, nep141:arb.tp-omft.testnet; 18 decimals, no contractAddress), supports ORIGIN_CHAIN deposits and DESTINATION_CHAIN payouts, and is capped at 0.006 ETH per swap.\n\nPass `?ondoTokens=1` to include Tidepool's 28 Ondo test tokens on BSC Testnet (`blockchain: \"bsc\"`, `nep141:bnb-\u2026.tp-omdep.testnet`). Without the flag they are omitted.\n\nHyperliquid testnet (HyperCore) USDC is listed when the route is live (`blockchain: \"hypercore\"`, `nep141:hypercore.tp-omft.testnet`, destination only, capped at 100 USDC per payout).",
         "operationId": "getTokens",
         "parameters": [
           {

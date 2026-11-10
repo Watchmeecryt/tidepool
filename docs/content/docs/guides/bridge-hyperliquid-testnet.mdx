@@ -1,0 +1,44 @@
+---
+title: Hyperliquid testnet (HyperCore)
+description: Pay USDC out to a HyperCore testnet perps balance with a Tidepool quote. Destination only, capped at 100 USDC.
+icon: Bridge
+---
+
+<Callout type="warn">**This is a trusted relayer run by Tidepool, on Hyperliquid testnet only.** It is not 1Click infrastructure and not Hyperliquid's official bridge. Test USDC has no value.</Callout>
+
+Tidepool can pay **USDC** into a recipient's HyperCore **perps** balance on Hyperliquid testnet. The asset id is `nep141:hypercore.tp-omft.testnet`, `blockchain: "hypercore"` (the same blockchain value 1Click uses). Recipients are `0x` addresses. The route is **destination only**: there are no ORIGIN_CHAIN deposits or refunds on HyperCore.
+
+It is listed in `/v0/tokens` only while the route is live.
+
+## Limits
+
+- **100 USDC** per swap or payout. A larger quote answers `400` at quote time.
+- `ANY_INPUT` cannot pay out on HyperCore.
+- If the treasury is short of test USDC, a live quote answers `503`. Claim mock USDC to the treasury at the [Hyperliquid testnet faucet](https://app.hyperliquid-testnet.xyz/drip).
+
+## Quote and payout
+
+Quote with a HyperCore `destinationAsset`, `recipient: "0x…"`, and `recipientType: "DESTINATION_CHAIN"`. Deposit on NEAR Intents (or another supported origin) as usual. After settlement the relayer sends a gasless EIP-712 `usdSend` from Tidepool's HyperCore treasury, so the USDC appears in the recipient's perps balance. No gas is needed on Hyperliquid, and there is no memo.
+
+```bash
+curl -X POST "https://www.usetidepool.tech/v0/quote" \
+  -H 'content-type: application/json' \
+  -d '{
+  "dry": true,
+  "swapType": "EXACT_INPUT",
+  "slippageTolerance": 100,
+  "originAsset": "nep141:usdc.tidepool-sandbox.testnet",
+  "depositType": "INTENTS",
+  "destinationAsset": "nep141:hypercore.tp-omft.testnet",
+  "amount": "1000000",
+  "recipient": "0x0000000000000000000000000000000000000001",
+  "recipientType": "DESTINATION_CHAIN",
+  "refundTo": "user.testnet",
+  "refundType": "INTENTS",
+  "deadline": "2030-01-01T00:00:00.000Z"
+}'
+```
+
+Quotes are signed with the same scheme as 1Click. See [Verify quote signatures](/docs/guides/verify-quote-signatures).
+
+The Tidepool faucet does not drip HyperCore USDC.

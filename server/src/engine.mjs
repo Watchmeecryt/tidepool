@@ -6,11 +6,12 @@ import { KeyPair } from 'near-api-js';
 import bs58 from 'bs58';
 import stringify from 'json-stable-stringify';
 import { rpc, call, view, viewAccount, sendNear, signIntents, deriveDepositKey, keyStore, NETWORK, TGAS, parseNear, txUrl } from './near.mjs';
-import { ROOT, VERIFIER, MAKER, TOKENS, fromUnits, chainOf, isEvmAddress, isSolAddress, isStellarAddress, STELLAR_CHAIN, XLM_CAP_STROOPS, isSuiAddress, SUI_CHAIN, SUI_CAP_MIST, BTC_CHAIN, ZEC_CHAIN, XRP_CHAIN, XRP_CAP_DROPS, XRP_DECIMALS, isXrpAddress, isBtcAddress, isZecAddress, BTC_CAP_SATS, BTC_MIN_SATS, ZEC_CAP_ZAT, ZEC_MIN_ZAT, BRIDGE_ACCOUNT, ETH_CAP_WEI, ETH_RESERVE_WEI, SOL_PAYOUT_CAP_LAMPORTS, SOL_RENT_MIN_LAMPORTS, ONDO_TOKENS } from './config.mjs';
+import { ROOT, VERIFIER, MAKER, TOKENS, fromUnits, chainOf, isEvmAddress, isSolAddress, isStellarAddress, STELLAR_CHAIN, XLM_CAP_STROOPS, isSuiAddress, SUI_CHAIN, SUI_CAP_MIST, BTC_CHAIN, ZEC_CHAIN, XRP_CHAIN, XRP_CAP_DROPS, XRP_DECIMALS, HYPERCORE_CHAIN, HYPERCORE_USDC_CAP, HYPERCORE_DECIMALS, isXrpAddress, isBtcAddress, isZecAddress, BTC_CAP_SATS, BTC_MIN_SATS, ZEC_CAP_ZAT, ZEC_MIN_ZAT, BRIDGE_ACCOUNT, ETH_CAP_WEI, ETH_RESERVE_WEI, SOL_PAYOUT_CAP_LAMPORTS, SOL_RENT_MIN_LAMPORTS, ONDO_TOKENS } from './config.mjs';
 import * as evm from './evm.mjs';
 import * as sol from './solana.mjs';
 import * as stellar from './stellar.mjs';
 import * as xrp from './xrp.mjs';
+import * as hl from './hyperliquid.js';
 import * as sui from './sui.mjs';
 import * as btc from './btc.mjs';
 import * as zec from './zec.mjs';
@@ -250,6 +251,16 @@ export function xrpLimits(req, inT, outT, amountIn, amountOut) {
 // Sui testnet limits. SUI is capped at SUI_CAP_MIST (0.005 SUI) on any swap leg, payout or refund: the treasury is funded from the
 // Sui testnet faucet, which hands out small amounts. Enforced at quote time so users get a clear error instead of a stuck swap.
 const CAP_SUI = () => fromUnits(SUI_CAP_MIST, 9);
+export function hypercoreLimits(req, inT, outT, amountIn, amountOut) {
+  const cap = () => fromUnits(HYPERCORE_USDC_CAP, HYPERCORE_DECIMALS);
+  const hintCap = (why, extra = {}) => hint(`USDC on Tidepool's Hyperliquid testnet (HyperCore) is capped at ${cap()} USDC per swap or payout. ${why}`, req, { capUnits: HYPERCORE_USDC_CAP.toString(), ...extra });
+  if (inT.kind === 'hypercore' && (req.depositType === 'ORIGIN_CHAIN' || req.refundType === 'ORIGIN_CHAIN')) throw new BadRequest('Hyperliquid testnet USDC is a destination only: Tidepool does not accept ORIGIN_CHAIN deposits or refunds on HyperCore. Deposit from NEAR Intents or another supported origin.');
+  if (outT.kind === 'hypercore') {
+    if (amountOut > HYPERCORE_USDC_CAP) throw new BadRequest(`HyperCore USDC is capped at ${cap()} USDC (${HYPERCORE_USDC_CAP} units) per swap on Tidepool's Hyperliquid testnet bridge; this quote would pay out ${fromUnits(amountOut, HYPERCORE_DECIMALS)} USDC. Lower the amount.`, 400, hintCap('Lower amount (or the EXACT_OUTPUT amount) so the USDC payout is at most the cap.', { field: 'amount' }));
+    if (req.recipientType === 'DESTINATION_CHAIN' && req.swapType === 'ANY_INPUT') throw new BadRequest(`ANY_INPUT quotes cannot pay out USDC on Hyperliquid Testnet (each deposit would be converted separately and could exceed the ${cap()} USDC cap); use EXACT_INPUT, EXACT_OUTPUT or FLEX_INPUT`);
+  }
+  if (inT.kind === 'hypercore' && amountIn > HYPERCORE_USDC_CAP) throw new BadRequest(`HyperCore USDC is capped at ${cap()} USDC (${HYPERCORE_USDC_CAP} units) per swap on Tidepool's Hyperliquid testnet bridge; this quote would take ${fromUnits(amountIn, HYPERCORE_DECIMALS)} USDC. Lower the amount.`, 400, hintCap('Lower amount so the USDC leg is at most the cap.', { field: 'amount' }));
+}
 export function suiLimits(req, inT, outT, amountIn, amountOut) {
   const capHint = (why, extra = {}) => hint(`SUI on Sui Testnet is capped at ${CAP_SUI()} SUI per swap, payout or refund (the testnet treasury is funded from the Sui faucet). ${why}`, req, { capMist: SUI_CAP_MIST.toString(), ...extra });
   if (outT.kind === 'sui' && outT.native) {
@@ -301,7 +312,7 @@ export async function quote(req, { authed, maxDeadlineMs = 24 * 3600_000 } = {})
   if (req.swapType === 'ANY_INPUT' && memoMode) throw new BadRequest('ANY_INPUT quotes use depositMode SIMPLE');
   // Address formats follow 1Click: chain-native addresses for *_CHAIN types, NEAR accounts for INTENTS.
   const addrOk = (t, onChain, v) => (onChain && t.chain ? (t.kind === 'sol' ? isSolAddress(v) : t.kind === 'stellar' ? isStellarAddress(v) : t.kind === 'sui' ? isSuiAddress(v) : t.kind === 'btc' ? isBtcAddress(v) : t.kind === 'zec' ? isZecAddress(v) : t.kind === 'xrp' ? isXrpAddress(v) : isEvmAddress(v)) : isAccount(v));
-  const what = (t, onChain) => (onChain && t.chain ? `a ${chainOf(t.chain).name} address (${t.kind === 'sol' ? 'base58 public key' : t.kind === 'stellar' ? 'G... public key' : t.kind === 'sui' ? '0x + 64 hex characters' : t.kind === 'btc' ? 'tb1... testnet4 address' : t.kind === 'zec' ? 'tm... transparent testnet address' : t.kind === 'xrp' ? 'r... classic address or T... testnet X-address' : '0x...'})` : 'a NEAR testnet account id');
+  const what = (t, onChain) => (onChain && t.chain ? `a ${chainOf(t.chain).name} address (${t.kind === 'sol' ? 'base58 public key' : t.kind === 'stellar' ? 'G... public key' : t.kind === 'sui' ? '0x + 64 hex characters' : t.kind === 'btc' ? 'tb1... testnet4 address' : t.kind === 'zec' ? 'tm... transparent testnet address' : t.kind === 'xrp' ? 'r... classic address or T... testnet X-address' : t.kind === 'hypercore' ? '0x... HyperCore / EVM address' : '0x...'})` : 'a NEAR testnet account id');
   for (const f of ['recipient', 'refundTo']) if (isMainnetAcct(req[f])) throw new BadRequest(`${f} ${req[f]} is a mainnet account; Tidepool runs on NEAR testnet. Use a .testnet account such as alice.testnet`, 400, hint('Use a NEAR testnet account (ending in .testnet), or an implicit testnet account. Create one free at https://testnet.mynearwallet.com.', req, { field: f }));
   if (!addrOk(outT, req.recipientType === 'DESTINATION_CHAIN', req.recipient)) throw new BadRequest(`recipient must be ${what(outT, req.recipientType === 'DESTINATION_CHAIN')}`);
   if (!addrOk(inT, req.refundType === 'ORIGIN_CHAIN', req.refundTo)) throw new BadRequest(`refundTo must be ${what(inT, req.refundType === 'ORIGIN_CHAIN')}`);
@@ -336,6 +347,7 @@ export async function quote(req, { authed, maxDeadlineMs = 24 * 3600_000 } = {})
   ethLimits(req, inT, outT, amountIn, amountOut);
   stellarLimits(req, inT, outT, amountIn, amountOut);
   xrpLimits(req, inT, outT, amountIn, amountOut);
+  hypercoreLimits(req, inT, outT, amountIn, amountOut);
   suiLimits(req, inT, outT, amountIn, amountOut);
   utxoLimits(req, inT, outT, amountIn, amountOut);
   if (outT.kind === 'stellar' && req.recipientType === 'DESTINATION_CHAIN') { const e = await stellar.checkDestination(req.recipient, outT, amountOut, 'recipient'); if (e) throw new BadRequest(e, 400, hint(e, req, { field: 'recipient' })); }
@@ -383,6 +395,11 @@ export async function quote(req, { authed, maxDeadlineMs = 24 * 3600_000 } = {})
     if (outT.kind === 'xrp' && req.recipientType === 'DESTINATION_CHAIN') {
       const have = await xrp.spendable();
       if (have !== null && have < amountOut + 2_000_000n) throw new BadRequest('The XRP Ledger testnet treasury is low on XRP right now (it refills from the official faucet automatically). Try again in a few minutes.', 503);
+    }
+    if ((inT.kind === 'hypercore' || outT.kind === 'hypercore') && !hl.relayerConfigured()) throw new BadRequest('Hyperliquid testnet (HyperCore) payouts are not configured on this server', 503);
+    if (outT.kind === 'hypercore' && req.recipientType === 'DESTINATION_CHAIN') {
+      const have = await hl.treasuryBalance().catch(() => 0n);
+      if (have === null || have < amountOut) throw new BadRequest('The Hyperliquid testnet treasury is low on USDC right now (claim mock USDC to the treasury from the Hyperliquid testnet faucet). Try again later or use a smaller amount.', 503);
     }
     if (outT.kind === 'stellar' && req.recipientType === 'DESTINATION_CHAIN' && await stellar.treasuryLow()) throw new BadRequest('The Stellar testnet treasury is low on XLM right now (it refills from Friendbot automatically). Try again in a few minutes.', 503);
     if (inT.native && inT.kind === 'evm' && req.depositType === 'ORIGIN_CHAIN' && !evm.relayerAddress()) throw new BadRequest(`${chainOf(inT.chain).name} native ETH deposits are not configured on this server`, 503);
@@ -439,7 +456,7 @@ const newMemo = () => String(crypto.randomInt(100000000, 999999999)) + String(cr
 const acctOf = (addr, s) => s.intentsAccount || addr;
 // explorer link for a tx hash recorded on a swap (NEAR by default, EVM when tagged)
 // (evmTxs holds every non-NEAR hash -> chain key; 'sol' is Solana)
-const urlOf = (s, h) => (s.evmTxs?.[h] === 'sol' ? sol.txUrl(h) : s.evmTxs?.[h] === 'sui' ? sui.txUrl(h) : UTXO[s.evmTxs?.[h]] ? UTXO[s.evmTxs[h]].txUrl(h) : s.evmTxs?.[h] === 'stellar' ? stellar.txUrl(h) : s.evmTxs?.[h] === 'xrp' ? xrp.txUrl(h) : s.evmTxs?.[h] ? evm.evmTxUrl(s.evmTxs[h], h) : txUrl(h));
+const urlOf = (s, h) => (s.evmTxs?.[h] === 'sol' ? sol.txUrl(h) : s.evmTxs?.[h] === 'sui' ? sui.txUrl(h) : UTXO[s.evmTxs?.[h]] ? UTXO[s.evmTxs[h]].txUrl(h) : s.evmTxs?.[h] === 'stellar' ? stellar.txUrl(h) : s.evmTxs?.[h] === 'xrp' ? xrp.txUrl(h) : s.evmTxs?.[h] === 'hypercore' ? hl.txUrl(h) : s.evmTxs?.[h] ? evm.evmTxUrl(s.evmTxs[h], h) : txUrl(h));
 export const txExplorerUrl = (s, h) => urlOf(s, h);
 const tagEvm = (s, chain, h) => { (s.evmTxs ||= {})[h] = chain; return h; };
 
@@ -624,6 +641,7 @@ function queueRelease(s, tag, t, to, amount, memo) { // memo: Stellar/XRP/Solana
   if (UTXO[t.kind]) Object.assign(rel, { id: `${t.kind}:${s.quoteResponse.correlationId}:${tag}`, token: undefined, assetId: t.assetId, tx: {} });
   if (t.kind === 'xrp') Object.assign(rel, { id: `xrp:${s.quoteResponse.correlationId}:${tag}`, token: undefined, assetId: t.assetId, tx: {} });
   if (t.kind === 'stellar') Object.assign(rel, { id: `stellar:${s.quoteResponse.correlationId}:${tag}`, token: undefined, assetId: t.assetId, tx: {} });
+  if (t.kind === 'hypercore') Object.assign(rel, { id: `hypercore:${s.quoteResponse.correlationId}:${tag}`, token: undefined, assetId: t.assetId, tx: {} });
   (s.releases ||= []).push(rel);
 }
 const releasing = new WeakSet();
@@ -670,6 +688,13 @@ async function processReleasesOnce(s) {
       const build = async () => stellar.prepare(stellar.payoutOps(t, r.to, BigInt(r.amount), t.native ? Boolean(await stellar.account(r.to)) : true, r.memo));
       if ((await stellar.drive(r.tx ||= {}, build, save)) !== 'confirmed') continue;
       const h = tagEvm(s, 'stellar', r.tx.hash);
+      s.txs.push({ label: `${r.tag} payout on ${chainOf(r.chain).name}`, hash: h });
+      s.destTxs.push(h);
+      r.done = true; save(); continue;
+    }
+    if (r.chain === 'hypercore') { // sign-first: the signed usdSend is persisted before it is posted
+      if ((await hl.drive(r.tx ||= {}, () => hl.prepare(r.to, BigInt(r.amount)), save)) !== 'confirmed') continue;
+      const h = tagEvm(s, 'hypercore', r.tx.hash);
       s.txs.push({ label: `${r.tag} payout on ${chainOf(r.chain).name}`, hash: h });
       s.destTxs.push(h);
       r.done = true; save(); continue;

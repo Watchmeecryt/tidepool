@@ -1,12 +1,12 @@
 ---
 title: Test bridges
-description: How Tidepool's testnet bridges to Base, Arbitrum and Ethereum Sepolia, BSC Testnet, Solana devnet, Stellar testnet, Sui testnet, Bitcoin testnet4 and XRP Ledger testnet work, and exactly what you trust when you use them.
+description: How Tidepool's testnet bridges to Base, Arbitrum and Ethereum Sepolia, BSC Testnet, Solana devnet, Stellar testnet, Sui testnet, Bitcoin testnet4, XRP Ledger testnet and Hyperliquid testnet work, and exactly what you trust when you use them.
 icon: Bridge
 ---
 
 <Callout type="warn">**These bridges are a trusted relayer run by Tidepool, on testnets only.** Tidepool runs them as its own testnet service. They are not NEAR's Omni Bridge, not POA bridge and not 1Click infrastructure. The tokens on both sides are Tidepool test tokens with no value.</Callout>
 
-Tidepool can swap between NEAR testnet and four EVM testnets (below), plus Solana devnet, Stellar testnet, Sui testnet, Bitcoin testnet4 and XRP Ledger testnet (after the table), with the same API shape as 1Click mainnet cross-chain swaps:
+Tidepool can swap between NEAR testnet and four EVM testnets (below), plus Solana devnet, Stellar testnet, Sui testnet, Bitcoin testnet4, XRP Ledger testnet and Hyperliquid testnet (after the table), with the same API shape as 1Click mainnet cross-chain swaps:
 
 | Chain | `blockchain` | Chain id | Route guide |
 | --- | --- | --- | --- |
@@ -28,6 +28,8 @@ Sui testnet is another separate bridge (SUI capped at 0.005 SUI, per-quote depos
 Bitcoin testnet4 (native tBTC capped at 0.005 BTC, native segwit `tb1q…` per-quote deposit addresses, no memo): [Bitcoin testnet4 bridge](/docs/guides/bridge-bitcoin-testnet). It is native-coin only (no stablecoins), custodial, testnet only and listed in `/v0/tokens` only while live. The faucet never drips BTC: get tBTC from the external faucets linked in the guide.
 
 XRP Ledger testnet (native XRP capped at 100 XRP, deposits use `depositMode: "MEMO"` with the numeric `depositMemo` as the Payment's destination tag): [XRP Ledger testnet bridge](/docs/guides/bridge-xrp-testnet). It is native-coin only (no issued tokens, like 1Click), custodial, testnet only and listed in `/v0/tokens` only while live. The faucet never drips XRP: use the official XRPL testnet faucet linked in the guide.
+
+Hyperliquid testnet / HyperCore (USDC into a perps balance, destination only, capped at 100 USDC): [Hyperliquid testnet bridge](/docs/guides/bridge-hyperliquid-testnet). Recipients are `0x` addresses. Listed in `/v0/tokens` only while live. The Tidepool faucet never drips HyperCore USDC: claim mock USDC from the official testnet faucet linked in the guide.
 
 ## What matches 1Click (EVM chains)
 
