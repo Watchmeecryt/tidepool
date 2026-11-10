@@ -6,6 +6,7 @@ import { TOKENS, ONDO_TOKENS, fromUnits, chainOf } from './config.mjs';
 import { log, isOurs, ourList, ourCount, save as saveLog } from './analytics.mjs';
 import { sql } from './agent-api/db.js';
 import { txExplorerUrl, isExpiredUnpaid } from './engine.mjs';
+import { fetchTreasury } from './treasury.js';
 
 const PW = process.env.ADMIN_PASSWORD || '';
 const KEY = crypto.createHash('sha256').update('tidepool-admin-session:' + PW).digest();
@@ -43,7 +44,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}.stat b{display:block;font-size:22px;color:var(--ink);font-weight:600}.stat small{color:var(--mute)}
 table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}th{color:var(--mute);font-weight:500;position:sticky;top:0;background:var(--card)}tr:hover td{background:var(--hover)}
 .mono{font-family:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,monospace}.mute{color:var(--mute)}.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}
-.pill{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:var(--wash);font-size:11px}.btn,button{background:var(--btn);color:var(--onbtn);border:0;border-radius:999px;padding:8px 16px;font-weight:600;cursor:pointer}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:var(--wash);font-size:11px}.pill.ok{color:var(--ok);border-color:var(--ok)}.pill.low{color:var(--warn);border-color:var(--warn)}.pill.empty,.pill.error{color:var(--bad);border-color:var(--bad)}.btn,button{background:var(--btn);color:var(--onbtn);border:0;border-radius:999px;padding:8px 16px;font-weight:600;cursor:pointer}
 .btn.ghost{background:var(--card);color:var(--ink);border:1px solid var(--line2)}input{background:var(--bg);border:1px solid var(--line2);color:var(--ink);border-radius:10px;padding:10px 12px;width:100%;font-size:15px}
 .legend span{margin-right:12px;font-size:12px}.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:middle}svg text{fill:var(--mute);font-size:10px}.scroll{max-height:520px;overflow:auto}td.wrapcell{white-space:normal;overflow-wrap:anywhere;min-width:220px}td.ua{white-space:normal;overflow-wrap:anywhere;min-width:160px;max-width:320px}@media(max-width:900px){.wrap{padding:12px}}`;
 const page = (title, body) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${esc(title)} · Tidepool admin</title><link rel="icon" href="/favicon.ico"><style>${CSS}</style></head><body><div class="wrap">${body}</div></body></html>`;
@@ -156,6 +157,7 @@ function dashboard(all, fo = false) {
   return page('Usage', `<header><h1>Tide<span>pool</span> usage</h1><div style="display:flex;gap:8px;align-items:center"><a class="btn ghost" href="/admin${qs(!all, fo)}">${all ? 'Hide' : 'Show'} our wallets</a><a class="btn ghost" href="/admin${qs(all, !fo)}">${fo ? 'Hide' : 'Show'} inactive wallets</a><form method="post" action="/admin/logout" style="margin:0"><button class="btn ghost" type="submit">Sign out</button></form></div></header>
 <p class="mute" style="margin-top:-8px">${all ? 'Showing <b>all</b> wallets, including ours.' : `Hiding our own wallets (${ourList().slice(0, 2 + 3 + 1).map(esc).join(', ')}, and ${ourCount()} listed treasury, relayer, example and test addresses).`} Request log since ${fmtT(Date.parse(log.since))}; swaps and faucet backfilled from the db. ${fo ? 'Showing inactive wallets.' : `Hiding ${hidden.length} inactive wallets: ${nFo} faucet-only (claims but no quotes, dry quotes or swaps) and ${hidden.length - nFo} with no activity at all.`}</p>
 <div class="stats">${stat(shown.length, 'wallets')}${stat(swaps.length, 'live quotes')}${stat(D.reduce((a, r) => a + r.dryQuotes, 0), 'dry quotes (30d)')}${stat(swaps.filter(s => s.status !== 'PENDING_DEPOSIT').length, 'swaps (deposit seen)')}${stat(`<span class="ok">${cnt('SUCCESS')}</span>`, 'success')}${stat(`<span class="warn">${cnt('REFUNDED')}</span>`, 'refunded')}${stat(`<span class="bad">${cnt('FAILED')}</span>`, 'failed')}${stat(expired, 'expired (unpaid)')}${stat(shown.reduce((a, w) => a + w.faucet, 0), 'faucet claims')}${stat(reqTotal, 'logged requests')}</div>
+<div class="card" id="treasury-panel"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px"><h2 style="margin:0">Treasury balances</h2><button type="button" class="btn ghost" id="treasury-refresh">Refresh</button></div><p class="mute" id="treasury-note" style="margin:0 0 12px">Low means fewer than about 10 faucet claims or max-size payouts remain. Balances are cached for 60s. Spendable NEAR is the account balance minus storage stake.</p><div class="scroll" id="treasury-body"><p class="mute">Loading…</p></div></div>
 <div class="grid"><div class="card"><h2>Swaps by status (by quote day)</h2>${bars(D, [{ k: 'SUCCESS', n: 'success', c: '#2f9e6a' }, { k: 'REFUNDED', n: 'refunded', c: '#ffad24' }, { k: 'FAILED', n: 'failed', c: '#d9534f' }, { k: 'PENDING', n: 'pending/expired', c: '#8a8278' }])}</div>
 <div class="card"><h2>Quotes</h2>${bars(D, [{ k: 'quotes', n: 'live', c: '#a65f0c' }])}</div>
 <div class="card"><h2>Dry quotes (logged)</h2>${bars(D, [{ k: 'dryQuotes', n: 'dry', c: '#ffd078' }])}</div>
@@ -169,7 +171,36 @@ ${agentSummary()}
 <div class="card"><h2>Wallets (${shown.length})</h2><div class="scroll"><table><tr><th>Wallet</th><th>First seen</th><th>Last seen</th><th>Live quotes</th><th>Dry quotes</th><th>Swaps</th><th>Success</th><th>Refunded</th><th>Failed</th><th>Faucet</th><th>Volume in (success)</th><th>Agent transfers (ok/all)</th><th>Agent volume (ok)</th><th>Agent faucet (ok/failed)</th><th>Agent other ops</th><th></th></tr>
 ${shown.map(w => `<tr><td class="mono">${nb(w.wallet)}${w.ours ? ' <span class="pill">ours</span>' : ''}</td><td>${fmtT(w.first)}</td><td>${fmtT(w.last)}</td><td>${w.quotes}</td><td>${w.dryQuotes}</td><td>${w.swaps}</td><td class="ok">${w.success || ''}</td><td class="warn">${w.refunded || ''}</td><td class="bad">${w.failed || ''}</td><td>${w.faucet}</td><td>${esc(w.volumeFmt)}</td><td>${w.agentTransfers ? `${w.agentTransfersOk || 0}/${w.agentTransfers}` : ''}</td><td>${esc(w.agentVolumeFmt || '')}</td><td>${w.agent ? `${w.agentFaucet || 0}/${w.agentFaucetFailed || 0}` : ''}</td><td>${w.agentOther || ''}</td><td><a href="/admin/wallet/${encodeURIComponent(w.wallet)}${q}">details →</a></td></tr>`).join('')}</table></div></div>
 <div class="card"><h2>Top endpoints (all traffic)</h2><table><tr><th>Endpoint</th><th>Requests</th></tr>${Object.entries(ep).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<tr><td class="mono">${esc(k)}</td><td>${v}</td></tr>`).join('')}</table></div>
-<div class="card"><h2>Recent events</h2><div class="scroll" style="max-height:420px">${events(recent)}</div></div>`);
+<div class="card"><h2>Recent events</h2><div class="scroll" style="max-height:420px">${events(recent)}</div></div>
+<script>
+(function(){
+  const body = document.getElementById('treasury-body');
+  const note = document.getElementById('treasury-note');
+  const btn = document.getElementById('treasury-refresh');
+  if (!body) return;
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const badge = (s) => '<span class="pill ' + esc(s) + '">' + esc(s === 'ok' ? 'OK' : s === 'low' ? 'Low' : s === 'empty' ? 'Empty' : 'Error') + '</span>';
+  const acct = (r) => r.explorer ? '<a href="' + esc(r.explorer) + '" target="_blank" rel="noopener">' + esc(r.accountShort || r.account) + '</a>' : esc(r.accountShort || r.account);
+  async function load(refresh){
+    if (btn) btn.disabled = true;
+    body.innerHTML = '<p class="mute">Loading…</p>';
+    try {
+      const res = await fetch('/admin/treasury' + (refresh ? '?refresh=1' : ''), { credentials: 'same-origin' });
+      if (!res.ok) { body.innerHTML = '<p class="bad">Could not load treasury balances.</p>'; return; }
+      const d = await res.json();
+      const c = d.counts || {};
+      const issues = (c.empty || 0) + (c.low || 0) + (c.error || 0);
+      note.textContent = (issues ? (c.empty || 0) + ' empty, ' + (c.low || 0) + ' low' + (c.error ? ', ' + c.error + ' error' : '') + ' of ' + (c.total || 0) + '. ' : 'All ' + (c.total || 0) + ' balances OK. ') + 'Low means fewer than about 10 faucet claims or max-size payouts remain. Checked ' + String(d.at || '').replace('T',' ').slice(0, 19) + ' UTC' + (d.cached ? ' (cached).' : '.');
+      const rows = (d.rows || []).map(r => '<tr><td>' + esc(r.chainName || r.chain) + '</td><td class="mono">' + acct(r) + '</td><td>' + esc(r.role) + '</td><td>' + esc(r.token) + (r.kind && r.kind !== 'native' ? ' <span class="mute">(' + esc(r.kind) + ')</span>' : '') + '</td><td class="mono ' + (r.status === 'ok' ? 'ok' : r.status === 'low' ? 'warn' : 'bad') + '">' + esc(r.balance == null ? '—' : r.balance) + '</td><td class="mono mute">' + esc(r.threshold) + '</td><td>' + badge(r.status) + (r.error ? ' <span class="mute">' + esc(r.error) + '</span>' : '') + '</td></tr>').join('');
+      body.innerHTML = '<table><tr><th>Chain</th><th>Account</th><th>Role</th><th>Token</th><th>Balance</th><th>Low at</th><th>Status</th></tr>' + rows + '</table>';
+    } catch (e) {
+      body.innerHTML = '<p class="bad">Could not load treasury balances.</p>';
+    } finally { if (btn) btn.disabled = false; }
+  }
+  if (btn) btn.addEventListener('click', () => load(true));
+  load(false);
+})();
+</script>`);
 }
 const events = (list) => `<table><tr><th>Time</th><th>Method</th><th>Endpoint</th><th>Status</th><th>Reason</th><th>Wallets</th><th>IP hash</th><th>User agent</th></tr>${list.map(e => `<tr><td>${fmtT(e.t)}</td><td>${e.m}</td><td class="mono">${esc(e.ep)}${e.dry ? ' <span class="pill">dry</span>' : ''}</td><td class="${e.s < 400 ? 'ok' : 'bad'}">${e.s}</td><td class="mute wrapcell">${esc(e.err || '')}</td><td class="mono">${(e.w || []).map(w => `<a href="/admin/wallet/${encodeURIComponent(w)}">${esc(w)}</a>`).join(', ')}</td><td class="mono mute">${e.ip}</td><td class="mute ua">${esc(e.ua)}</td></tr>`).join('')}</table>`;
 
@@ -206,6 +237,7 @@ export async function admin(req, res, p, url) {
   const all = url.searchParams.get('all') === '1';
   if (p === '/admin' || p === '/admin/') { res.writeHead(200, H); res.end(dashboard(all, url.searchParams.get('fo') === '1')); return true; }
   if (p === '/admin/purge-inactive' && req.method === 'POST') { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify(purgeInactive())); return true; }
+  if (p === '/admin/treasury' && req.method === 'GET') { res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' }); res.end(JSON.stringify(await fetchTreasury({ refresh: url.searchParams.get('refresh') === '1' }))); return true; }
   const m = p.match(/^\/admin\/wallet\/(.+)$/);
   if (m) { res.writeHead(200, H); res.end(walletPage(decodeURIComponent(m[1]))); return true; }
   res.writeHead(404, H); res.end('Not found'); return true;

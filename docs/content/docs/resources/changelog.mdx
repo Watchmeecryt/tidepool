@@ -3,6 +3,11 @@ title: Changelog
 description: What changed in Tidepool and when.
 icon: ClockCounterClockwise
 ---
+## 2026-11-10 · Admin: treasury balances
+
+- **/admin** now has a Treasury balances panel (and `GET /admin/treasury`, admin session only). It shows spendable NEAR for the root, maker, verifier and faucet-source accounts, the maker's intents inventories (including Ondo), and gas plus every token on the payout and faucet treasuries: Ethereum, Base and Arbitrum Sepolia, BSC Testnet, Solana devnet, Stellar, Sui, XRP, Bitcoin testnet4 and Zcash testnet.
+- **Low / Empty:** a balance is Low when fewer than about 10 faucet claims or max-size payouts remain (using the existing drip amounts and payout caps, plus any reserve). Empty and Low rows sort to the top. Balances are fetched on the server and cached for 60 seconds.
+
 ## 2026-11-10 · Faucet: 3-hour account age and IP window
 
 - **Account age:** NEAR accounts must now be at least 3 hours old (was 24 hours). New testnet accounts were getting `403` `account_too_new`; the wait is shorter. The `account_not_found` and `account_too_new` reasons are unchanged.
