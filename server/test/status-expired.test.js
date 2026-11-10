@@ -77,6 +77,16 @@ test('status: wrongly marked unpaid FAILED is restored to PENDING_DEPOSIT', () =
   assert.equal(out.tidepool.note, EXPIRED_UNPAID_NOTE);
 });
 
+
+test('status: unpaid FAILED with a tick-error note (HTTP 429) is restored', () => {
+  const addr = '33'.repeat(32);
+  plant(addr, { status: 'FAILED', deadline: past, extra: { note: 'HTTP 429' } });
+  assert.equal(isExpiredUnpaidMarkedFailed(db.swaps[addr]), true);
+  const out = statusOf(addr);
+  assert.equal(out.status, 'PENDING_DEPOSIT');
+  assert.equal(db.swaps[addr].status, 'PENDING_DEPOSIT');
+  assert.equal(out.tidepool.note, EXPIRED_UNPAID_NOTE);
+});
 test('restoreExpiredUnpaidFailed: flips only unpaid-expired FAILED rows', () => {
   const unpaid = 'ee'.repeat(32);
   const sim = 'ff'.repeat(32);

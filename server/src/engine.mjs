@@ -428,9 +428,11 @@ export function isExpiredUnpaidMarkedFailed(s) {
   if (s.deposited || s.refunded || s.refundReason) return false;
   if (s.txs?.length || s.originTxs?.length || s.bridgeIn?.length) return false;
   if (s.memoTxs?.some(t => t.stage !== 'rejected')) return false;
+  // A tick error (HTTP 429, "no available upstreams") may have overwritten the unpaid-deadline note
+  // before statusOf persisted FAILED. No deposit evidence means this is still an unpaid quote.
   const note = String(s.note || '');
   if (fundedFailNote.test(note)) return false;
-  return !note || /Deadline passed with no deposit/i.test(note);
+  return true;
 }
 function failedCause(s) {
   const note = String(s.note || '');
@@ -466,7 +468,7 @@ export function restoreExpiredUnpaidFailed() {
   for (const s of Object.values(db.swaps)) {
     if (!isExpiredUnpaidMarkedFailed(s)) continue;
     s.status = 'PENDING_DEPOSIT';
-    if (!s.note) s.note = EXPIRED_UNPAID_NOTE;
+    if (!/Deadline passed with no deposit/i.test(s.note || '')) s.note = EXPIRED_UNPAID_NOTE;
     repaired++;
   }
   if (repaired) save();
@@ -489,7 +491,7 @@ export function statusOf(depositAddress, depositMemo) {
   // 1Click keeps an unpaid quote at PENDING_DEPOSIT after the deadline (no EXPIRED status). Undo the old FAILED flip if we persisted it.
   if (isExpiredUnpaidMarkedFailed(s)) {
     s.status = 'PENDING_DEPOSIT';
-    if (!s.note) s.note = EXPIRED_UNPAID_NOTE;
+    if (!/Deadline passed with no deposit/i.test(s.note || '')) s.note = EXPIRED_UNPAID_NOTE;
     save();
   }
   expireUncredited(s);
