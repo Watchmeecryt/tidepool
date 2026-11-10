@@ -21,7 +21,7 @@ Tidepool uses the 1Click status values (`PENDING_DEPOSIT`, `KNOWN_DEPOSIT_TX`, `
 | [Late deposit](#late-deposit) | Deposit the full amount after `deadline` | `REFUNDED` with `refundReason: DEADLINE_PASSED` |
 | [Overpay](#overpay) | Deposit more than `amountIn` | `SUCCESS`, with the excess in `swapDetails.refundedAmount` |
 | [Stuck or failed swap (simulated outage)](#stuck-or-failed-swap-simulated-outage) | Add `simulate: "STUCK"` or `"FAILED"` to the quote (Tidepool-only, testnet) | `STUCK`: `PROCESSING`, then `REFUNDED` (`DEADLINE_PASSED`) at the deadline. `FAILED`: `PROCESSING`, then `FAILED` (`SWAP_FAILED`), deposit refunded |
-| [Unpaid quote past the deadline](#unpaid-quote-past-the-deadline) | Let the deadline pass with no deposit | `FAILED`, `tidepool.note`: `Deadline passed with no deposit` |
+| [Unpaid quote past the deadline](#unpaid-quote-past-the-deadline) | Let the deadline pass with no deposit | Stays `PENDING_DEPOSIT` (matching 1Click); `tidepool.note` may say `Deadline passed with no deposit`. Stop polling and request a new quote. |
 | [Uncredited `KNOWN_DEPOSIT_TX`](#uncredited-known_deposit_tx) | Submit a deposit tx hash that never credits (for example a reverted EVM tx) | `FAILED` right after the deadline if every submitted EVM deposit tx reverted, otherwise 24 hours after the deadline |
 | [API errors](#api-errors) | A bad deadline, or an unknown deposit address | HTTP 400 or 404 before any funds move |
 
@@ -686,7 +686,7 @@ Run on 2026-10-28 with `node failure-cases.mjs failed`: a 10 minute deadline, th
 
 ## Unpaid quote past the deadline
 
-If you never deposit, `/v0/status` does not stay `PENDING_DEPOSIT` after the deadline. The first poll at or past the deadline persists `FAILED`, with `tidepool.note` set to `Deadline passed with no deposit`. Expired unpaid quotes are checked once a minute (a late deposit is still refunded).
+If you never deposit, `/v0/status` stays `PENDING_DEPOSIT` after the deadline, the same as 1Click (there is no `EXPIRED` status). `tidepool.note` may say `Deadline passed with no deposit`. Stop polling once the deadline has passed, or request a new quote. A late deposit is still refunded (`DEADLINE_PASSED`). Expired unpaid quotes are checked once a minute.
 
 ## Uncredited `KNOWN_DEPOSIT_TX`
 
@@ -725,5 +725,5 @@ A 404 from `/v0/status` means Tidepool never issued that deposit address. Funds 
 - **Show `INCOMPLETE_DEPOSIT` to the user.** Show `depositedAmount` against `minAmountIn`, with a countdown to `deadline`, so they can top up in time.
 - **Pick deadlines that fit the deposit.** Live quotes need 60 s to 24 h. Allow for wallet confirmation and block time: 5–30 minutes suits interactive flows. Never reuse an expired deposit address. Get a new quote instead.
 - **Make it idempotent.** One live quote is one deposit address is one swap. Key your records by `depositAddress` (or `correlationId`). Retrying `/v0/deposit/submit` or polling `/v0/status` is safe. Don't create a new quote on a retry, or you end up with two addresses for one payment.
-- **Handle `FAILED`.** On 1Click it usually means the swap could not complete. Tidepool also uses it for an unpaid quote past its deadline, for a `KNOWN_DEPOSIT_TX` swap that was never credited, for a refund that could not be completed, and for `simulate: "FAILED"` (deposit refunded with `refundReason: SWAP_FAILED`). Log `correlationId` and `tidepool.note`. Contact support only when funds moved and neither a payout nor a refund is recorded.
+- **Handle `FAILED`.** On 1Click it means the swap encountered an error. Tidepool uses it for a `KNOWN_DEPOSIT_TX` swap that was never credited, for a refund that could not be completed, and for `simulate: "FAILED"` (deposit refunded with `refundReason: SWAP_FAILED`). An unpaid quote past its deadline stays `PENDING_DEPOSIT`, as on 1Click. Log `correlationId` and `tidepool.note`. Contact support only when funds moved and neither a payout nor a refund is recorded.
 - **Time out on `PROCESSING`.** A swap that stays in `PROCESSING` for longer than `timeEstimate` plus a margin is a slow or down 1Click as far as your user can tell. Show "taking longer than expected" and keep polling. If an `execute_intents` call timed out after landing, the worker recovers it and the swap still finishes `SUCCESS` or `REFUNDED`. At the deadline an unfinished funded swap is refunded (`DEADLINE_PASSED`). Test the late refund with `simulate: "STUCK"`.

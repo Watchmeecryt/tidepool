@@ -3,6 +3,13 @@ title: Changelog
 description: What changed in Tidepool and when.
 icon: ClockCounterClockwise
 ---
+## 2026-11-10 · Status: unpaid expired quotes are not FAILED
+
+- **Fix:** an unpaid quote past its deadline stays `PENDING_DEPOSIT`, matching 1Click (the 1Click status enum has no `EXPIRED` value; `FAILED` means the swap encountered an error). Tidepool had been persisting those quotes as `FAILED` ("Deadline passed with no deposit"), which inflated the failed count with quotes nobody ever funded.
+- **Repair:** existing unpaid-expired rows that were marked `FAILED` are restored to `PENDING_DEPOSIT` on startup. Real failures stay `FAILED`: `simulate: "FAILED"` tests, uncredited `KNOWN_DEPOSIT_TX` (reverted EVM deposit or 24 hours after the deadline), and settlement or refund execution failures.
+- **Counters:** `GET /v0/health`, the docs status page and `/admin` now report `expired` (unpaid quotes past the deadline) separately from `failed`. `active` no longer includes those expired quotes.
+- **Clients:** poll `/v0/status` after you deposit until `SUCCESS`, `REFUNDED` or `FAILED`. Also stop if the status is still `PENDING_DEPOSIT` and the quote deadline has passed with no deposit, then request a new quote. A late deposit is still refunded.
+
 ## 2026-11-10 · Settlement: swaps no longer stick in PROCESSING when the RPC errors
 
 - **Fix:** when every NEAR RPC answered the swap's `execute_intents` with a timeout or 429 although the transaction had landed, the swap stayed `PROCESSING` forever and a bridged payout (e.g. Solana) was never sent. The server now records the intent nonce before each execute and, on the next worker pass, asks the verifier (`is_nonce_used`): if it landed, the payout is released and the swap finishes `SUCCESS` (or `REFUNDED`); if not, it retries normally after the intent deadline.

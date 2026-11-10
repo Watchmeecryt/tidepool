@@ -8,13 +8,13 @@ icon: FlowArrow
 
 | Status | Meaning | Final |
 | --- | --- | --- |
-| `PENDING_DEPOSIT` | Live quote created. Nothing deposited yet. Past the deadline with no deposit, this becomes `FAILED`. | |
+| `PENDING_DEPOSIT` | Live quote created. Nothing deposited yet. Past the deadline with no deposit, this stays `PENDING_DEPOSIT` (1Click has no `EXPIRED` status); `tidepool.note` may say the deadline passed with no deposit. Stop polling and request a new quote. | |
 | `KNOWN_DEPOSIT_TX` | You called `/v0/deposit/submit`, but the funds have not landed in the verifier yet. If nothing is credited, this ends `FAILED`: right after the deadline when the submitted EVM deposit tx reverted, otherwise 24 hours after the deadline. | |
 | `INCOMPLETE_DEPOSIT` | Something arrived, but less than `minAmountIn`. Top up before the deadline or it is refunded. | |
 | `PROCESSING` | Enough arrived. Settlement transaction is being sent. | |
 | `SUCCESS` | Swapped. `swapDetails` has amounts, tx hashes and intent hashes. | ✓ |
 | `REFUNDED` | Deposit returned to `refundTo`. `swapDetails.refundReason` says why. | ✓ |
-| `FAILED` | Terminal, with nothing more to do. Used when an unpaid quote passes its deadline, when a `KNOWN_DEPOSIT_TX` swap is never credited (reverted EVM deposit, or 24 hours after the deadline), when settlement and refund both fail (rare; contact the maintainer with the deposit address), or when a quote with `simulate: "FAILED"` is refunded (`refundReason: SWAP_FAILED`). Read `tidepool.note`. | ✓ |
+| `FAILED` | Terminal, with nothing more to do. Used when a `KNOWN_DEPOSIT_TX` swap is never credited (reverted EVM deposit, or 24 hours after the deadline), when settlement and refund both fail (rare; contact the maintainer with the deposit address), or when a quote with `simulate: "FAILED"` is refunded (`refundReason: SWAP_FAILED`). Read `tidepool.note`. An unpaid quote past its deadline is not `FAILED`. | ✓ |
 
 ## Polling
 
@@ -104,7 +104,7 @@ Real, complete response for a swap that settled (`SUCCESS`), from the live deplo
 }
 ```
 
-Poll every 2–5 seconds and stop on a final status. The worker checks each active address about every 4 seconds. Expired unpaid quotes (`PENDING_DEPOSIT` past the deadline) are checked once a minute — a late deposit is still refunded. The worker stops watching 24 hours after the deadline, and a `KNOWN_DEPOSIT_TX` swap that was never credited is then marked `FAILED` (or earlier, right after the deadline, if every submitted EVM deposit tx reverted).
+Poll every 2–5 seconds after you deposit and stop on a final status (`SUCCESS`, `REFUNDED` or `FAILED`). Also stop if the status is still `PENDING_DEPOSIT` and the quote deadline has passed with no deposit — that is not a failed swap, and 1Click reports it the same way. The worker checks each active address about every 4 seconds. Expired unpaid quotes (`PENDING_DEPOSIT` past the deadline) are checked once a minute — a late deposit is still refunded. The worker stops watching 24 hours after the deadline, and a `KNOWN_DEPOSIT_TX` swap that was never credited is then marked `FAILED` (or earlier, right after the deadline, if every submitted EVM deposit tx reverted).
 
 If an `execute_intents` call times out after the transaction has already landed, the next worker pass recovers it and the swap still finishes `SUCCESS` or `REFUNDED`; `tidepool.note` may mention a retry. A swap that stays `PROCESSING` with nothing left to settle is flagged for operators in `/admin`. That flag is not part of the public `/v0/status` body.
 

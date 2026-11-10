@@ -129,7 +129,7 @@ export function StatusWidget() {
         {cards.map(([t, ok, d]) => <div key={t} className="rounded-xl border bg-fd-card p-4"><div className="flex items-center gap-2 text-sm text-fd-muted-foreground"><Dot ok={ok} />{t}</div><div className="mt-1 font-medium">{d}</div></div>)}
       </div>
       {c.makerInventory?.balances && <div className="rounded-xl border bg-fd-card p-4"><div className="mb-2 text-sm text-fd-muted-foreground">Maker inventory (intents balances)</div><div className="grid grid-cols-3 gap-2 font-mono text-sm sm:grid-cols-6">{Object.entries(c.makerInventory.balances).map(([k, v]) => <div key={k}><b>{k}</b><br />{Number(v).toLocaleString()}</div>)}</div></div>}
-      <div className="rounded-xl border bg-fd-card p-4 text-sm"><b>Swaps:</b> {h.swaps.total} total · {h.swaps.success} success · {h.swaps.refunded} refunded · {h.swaps.active} active
+      <div className="rounded-xl border bg-fd-card p-4 text-sm"><b>Swaps:</b> {h.swaps.total} total · {h.swaps.success} success · {h.swaps.refunded} refunded · {h.swaps.failed} failed · {h.swaps.expired} expired (unpaid) · {h.swaps.active} active
         {h.recent?.length > 0 && <ul className="mt-2 space-y-1">{h.recent.map(r => <li key={r.updatedAt}><code>{r.status}</code> {r.pair} · {new Date(r.updatedAt).toUTCString()} {r.tx && <a className="underline" href={r.tx} target="_blank" rel="noreferrer">tx</a>}</li>)}</ul>}
       </div>
     </div>

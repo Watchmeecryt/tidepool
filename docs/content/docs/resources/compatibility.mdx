@@ -44,7 +44,7 @@ Checked against the official 1Click OpenAPI (`https://1click.chaindefuser.com/do
 | generate-intent | All standards | `INTENTS`-deposit quotes only; `webauthn`/`ton_connect` submit-only |
 | `swapDetails.slippage` | "Actual slippage", unit not stated in the spec (example `50`) | A fraction, for example `0.0012` for 0.12% |
 | `/v0/account/balances` | Private + public | Verifier balances, `source: private` |
-| Unpaid / uncredited quotes | (not specified the same way) | An unpaid quote (`PENDING_DEPOSIT`) becomes `FAILED` at its deadline. A `KNOWN_DEPOSIT_TX` swap with nothing credited becomes `FAILED` right after the deadline if the submitted EVM deposit tx reverted, otherwise 24 hours after the deadline. Expired unpaid quotes are checked once a minute. |
+| Unpaid / uncredited quotes | An unpaid quote stays `PENDING_DEPOSIT` after the deadline (1Click has no `EXPIRED` status). `FAILED` means the swap encountered an error. | Same for unpaid quotes: they stay `PENDING_DEPOSIT` past the deadline (`tidepool.note` may say the deadline passed with no deposit). A `KNOWN_DEPOSIT_TX` swap with nothing credited becomes `FAILED` right after the deadline if the submitted EVM deposit tx reverted, otherwise 24 hours after the deadline. Expired unpaid quotes are checked once a minute. |
 | Extras | — | `POST /v0/faucet` (site-only: direct calls answer 403 `site_only`; claim at https://app.usetidepool.tech/faucet), `GET /v0/health`, the quote field `simulate` (`STUCK` or `FAILED`) and `tidepool` objects in responses |
 
 ## Accepted but no effect

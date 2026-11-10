@@ -410,14 +410,86 @@ const urlOf = (s, h) => (s.evmTxs?.[h] === 'sol' ? sol.txUrl(h) : s.evmTxs?.[h] 
 export const txExplorerUrl = (s, h) => urlOf(s, h);
 const tagEvm = (s, chain, h) => { (s.evmTxs ||= {})[h] = chain; return h; };
 
+
+// 1Click has no EXPIRED status: an unpaid quote stays PENDING_DEPOSIT after its deadline.
+// FAILED is reserved for a swap that encountered an error (uncredited submitted deposit, refund/settlement failure, simulate=FAILED).
+export const EXPIRED_UNPAID_NOTE = 'Deadline passed with no deposit';
+const fundedFailNote = /^(refund failed:|ANY_INPUT conversion failed|settlement failed:)|reverted on the origin chain|No deposit was credited within 24 hours/i;
+export function isExpiredUnpaid(s, now = Date.now()) {
+  if (!s || s.status !== 'PENDING_DEPOSIT') return false;
+  if (s.deposited || s.txs?.length || s.originTxs?.length || s.bridgeIn?.length) return false;
+  if (s.memoTxs?.some(t => t.stage !== 'rejected')) return false;
+  const dl = Date.parse(s.quoteResponse?.quote?.deadline);
+  return Number.isFinite(dl) && now >= dl;
+}
+// Quotes that were wrongly persisted as FAILED by the old unpaid-deadline path (commit 456ccf8).
+export function isExpiredUnpaidMarkedFailed(s) {
+  if (!s || s.status !== 'FAILED' || s.simulate) return false;
+  if (s.deposited || s.refunded || s.refundReason) return false;
+  if (s.txs?.length || s.originTxs?.length || s.bridgeIn?.length) return false;
+  if (s.memoTxs?.some(t => t.stage !== 'rejected')) return false;
+  const note = String(s.note || '');
+  if (fundedFailNote.test(note)) return false;
+  return !note || /Deadline passed with no deposit/i.test(note);
+}
+function failedCause(s) {
+  const note = String(s.note || '');
+  if (s.simulate === 'FAILED') return 'simulate_FAILED';
+  if (/^refund failed:/i.test(note)) return 'refund_failed';
+  if (/^ANY_INPUT conversion failed/i.test(note) || /^settlement failed:/i.test(note)) return 'execution_failed';
+  if (/reverted on the origin chain/i.test(note)) return 'uncredited_reverted';
+  if (/No deposit was credited within 24 hours/i.test(note)) return 'uncredited_grace';
+  if (isExpiredUnpaidMarkedFailed(s)) return 'unpaid_expired_quote';
+  if (s.deposited || s.refunded) return s.refunded ? 'funded_failed_refunded' : 'funded_failed_no_refund';
+  if (s.originTxs?.length && !s.deposited) return 'uncredited_other';
+  return 'other';
+}
+export function restoreExpiredUnpaidFailed() {
+  const failed = Object.entries(db.swaps).filter(([, s]) => s.status === 'FAILED');
+  const counts = {};
+  const examples = {};
+  for (const [id, s] of failed) {
+    const b = failedCause(s);
+    counts[b] = (counts[b] || 0) + 1;
+    (examples[b] ||= []).length < 5 && examples[b].push({
+      depositAddress: id.slice(0, 16),
+      correlationId: s.quoteResponse?.correlationId,
+      note: String(s.note || '').slice(0, 120),
+      simulate: s.simulate || null,
+      deposited: s.deposited || null,
+      refunded: s.refunded || null,
+      refundReason: s.refundReason || null,
+      updatedAt: s.updatedAt,
+    });
+  }
+  let repaired = 0;
+  for (const s of Object.values(db.swaps)) {
+    if (!isExpiredUnpaidMarkedFailed(s)) continue;
+    s.status = 'PENDING_DEPOSIT';
+    if (!s.note) s.note = EXPIRED_UNPAID_NOTE;
+    repaired++;
+  }
+  if (repaired) save();
+  const leftover = Object.values(db.swaps).filter(s => s.status === 'FAILED').length;
+  const summary = { beforeFailed: failed.length, repaired, leftoverFailed: leftover, counts, examples };
+  console.log('status-repair unpaid-expired', JSON.stringify(summary));
+  return summary;
+}
+export function swapStats(now = Date.now()) {
+  const all = Object.values(db.swaps);
+  const count = (st) => all.filter(x => x.status === st).length;
+  const expired = all.filter(s => isExpiredUnpaid(s, now)).length;
+  const active = all.filter(x => ['PENDING_DEPOSIT', 'KNOWN_DEPOSIT_TX', 'INCOMPLETE_DEPOSIT', 'PROCESSING'].includes(x.status) && !isExpiredUnpaid(x, now)).length;
+  return { total: all.length, success: count('SUCCESS'), refunded: count('REFUNDED'), failed: count('FAILED'), expired, active };
+}
+
 export function statusOf(depositAddress, depositMemo) {
   const s = db.swaps[keyOf(depositAddress, depositMemo)];
   if (!s) { if (!depositMemo && depositAddress && (depositAddress === (MASTER && memoKey().accountId) || (STELLAR_CHAIN.treasury && depositAddress === STELLAR_CHAIN.treasury) || (XRP_CHAIN.treasury && depositAddress === XRP_CHAIN.treasury))) throw new BadRequest('depositMemo is required for this depositAddress (depositMode MEMO)'); return null; }
-  // Unpaid quote past deadline: terminal FAILED (persist). Funded swaps leave PENDING_DEPOSIT once a deposit is seen.
-  if (s.status === 'PENDING_DEPOSIT' && Date.now() >= new Date(s.quoteResponse.quote.deadline).getTime()) {
-    s.status = 'FAILED';
-    s.updatedAt = new Date().toISOString();
-    if (!s.note) s.note = 'Deadline passed with no deposit';
+  // 1Click keeps an unpaid quote at PENDING_DEPOSIT after the deadline (no EXPIRED status). Undo the old FAILED flip if we persisted it.
+  if (isExpiredUnpaidMarkedFailed(s)) {
+    s.status = 'PENDING_DEPOSIT';
+    if (!s.note) s.note = EXPIRED_UNPAID_NOTE;
     save();
   }
   expireUncredited(s);
@@ -435,6 +507,7 @@ export function statusOf(depositAddress, depositMemo) {
   d.withdrawFee = '0';
   const tp = { explorer: s.txs.map(t => ({ label: t.label, url: urlOf(s, t.hash) })), intentsAccount: acctOf(depositAddress, s), note: s.note };
   if (s.simulate) { tp.simulate = s.simulate; if (!tp.note) tp.note = SIM_NOTE[s.simulate]; }
+  if (isExpiredUnpaid(s) && !tp.note) tp.note = EXPIRED_UNPAID_NOTE;
   if (s.appFeePaid?.length) tp.appFees = s.appFeePaid;
   if (s.withdrawals?.length) tp.anyInputWithdrawals = s.withdrawals.length;
   return { correlationId: qr.correlationId, quoteResponse: qr, status: s.status, updatedAt: s.updatedAt, swapDetails: d, tidepool: tp };
@@ -1088,6 +1161,7 @@ export function startWorker() {
   const warmUtxo = () => { if (BTC_CHAIN.deployed) btc.warm(); if (ZEC_CHAIN.deployed) zec.warm(); };
   warmUtxo(); setInterval(warmUtxo, 60_000);
   const slow = new Map(); // expired unpaid quotes: checked once a minute (still refunds a late deposit) instead of every 4 s
+  restoreExpiredUnpaidFailed();
   (MASTER ? runRepairs() : Promise.resolve()).finally(() => setInterval(() => {
     if (!MASTER) return;
     for (const [addr, s] of Object.entries(db.swaps)) {

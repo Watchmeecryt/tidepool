@@ -30,7 +30,7 @@ if (sw) {
         <div class="check"><b>NEAR testnet RPC</b>${d(c.rpc.ok)}${c.rpc.ok ? 'block ' + c.rpc.height : 'down'}</div>
         <div class="check"><b>Verifier code</b>${d(c.verifier.ok)}${c.verifier.ok ? 'matches release' : 'mismatch'}</div>
         <div class="check"><b>Price feed</b>${d(c.prices.ok, true)}${esc(c.prices.source)}</div>
-        <div class="check"><b>Swaps</b>${d(true)}${h.swaps.success} done · ${h.swaps.refunded} refunded · ${h.swaps.active} active</div></div>
+        <div class="check"><b>Swaps</b>${d(true)}${h.swaps.success} done · ${h.swaps.refunded} refunded · ${h.swaps.failed} failed · ${h.swaps.expired} expired · ${h.swaps.active} active</div></div>
         <h3>Maker inventory</h3><table><tr>${Object.keys(c.makerInventory.balances || {}).map(k => `<th>${esc(k)}</th>`).join('')}</tr><tr>${Object.values(c.makerInventory.balances || {}).map(v => `<td>${esc(Number(v).toLocaleString())}</td>`).join('')}</tr></table>
         ${h.recent?.length ? `<h3>Recent swaps</h3><table><tr><th>Pair</th><th>Status</th><th>When (UTC)</th><th>Tx</th></tr>${h.recent.map(r => `<tr><td>${esc(r.pair)}</td><td>${esc(r.status)}</td><td>${esc(r.updatedAt.replace('T', ' ').slice(0, 19))}</td><td>${r.tx ? `<a target="_blank" href="${esc(r.tx)}">NearBlocks</a>` : ''}</td></tr>`).join('')}</table>` : ''}
         <p style="font-size:13px;color:#557471">Verifier ${esc(h.verifier)} · sha256 <code>${esc(h.verifierWasmSha256)}</code></p>`;

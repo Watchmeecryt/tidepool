@@ -5,7 +5,7 @@ import { db, save as saveDb } from './store.mjs';
 import { TOKENS, ONDO_TOKENS, fromUnits, chainOf } from './config.mjs';
 import { log, isOurs, ourList, ourCount, save as saveLog } from './analytics.mjs';
 import { sql } from './agent-api/db.js';
-import { txExplorerUrl } from './engine.mjs';
+import { txExplorerUrl, isExpiredUnpaid } from './engine.mjs';
 
 const PW = process.env.ADMIN_PASSWORD || '';
 const KEY = crypto.createHash('sha256').update('tidepool-admin-session:' + PW).digest();
@@ -142,6 +142,7 @@ function dashboard(all, fo = false) {
   const shown = base.filter(w => !hide.has(w.wallet));
   const swaps = Object.values(db.swaps).filter(s => all || swapWallets(s).some(w => !isOurs(w)));
   const cnt = (st) => swaps.filter(s => s.status === st).length;
+  const expired = swaps.filter(s => isExpiredUnpaid(s)).length;
   const entries = Object.entries(db.swaps).filter(([, s]) => all || swapWallets(s).some(w => !isOurs(w)));
   const funded = entries.filter(([, s]) => s.status !== 'PENDING_DEPOSIT' && !(s.status === 'FAILED' && !s.deposited && !s.txs.length)).sort((a, b) => String(b[1].updatedAt).localeCompare(String(a[1].updatedAt)));
   const recentSwaps = funded.slice(0, 100);
@@ -154,7 +155,7 @@ function dashboard(all, fo = false) {
   const stat = (n, l) => `<div class="stat"><b>${n}</b><small>${l}</small></div>`;
   return page('Usage', `<header><h1>Tide<span>pool</span> usage</h1><div style="display:flex;gap:8px;align-items:center"><a class="btn ghost" href="/admin${qs(!all, fo)}">${all ? 'Hide' : 'Show'} our wallets</a><a class="btn ghost" href="/admin${qs(all, !fo)}">${fo ? 'Hide' : 'Show'} inactive wallets</a><form method="post" action="/admin/logout" style="margin:0"><button class="btn ghost" type="submit">Sign out</button></form></div></header>
 <p class="mute" style="margin-top:-8px">${all ? 'Showing <b>all</b> wallets, including ours.' : `Hiding our own wallets (${ourList().slice(0, 2 + 3 + 1).map(esc).join(', ')}, and ${ourCount()} listed treasury, relayer, example and test addresses).`} Request log since ${fmtT(Date.parse(log.since))}; swaps and faucet backfilled from the db. ${fo ? 'Showing inactive wallets.' : `Hiding ${hidden.length} inactive wallets: ${nFo} faucet-only (claims but no quotes, dry quotes or swaps) and ${hidden.length - nFo} with no activity at all.`}</p>
-<div class="stats">${stat(shown.length, 'wallets')}${stat(swaps.length, 'live quotes')}${stat(D.reduce((a, r) => a + r.dryQuotes, 0), 'dry quotes (30d)')}${stat(swaps.filter(s => s.status !== 'PENDING_DEPOSIT').length, 'swaps (deposit seen)')}${stat(`<span class="ok">${cnt('SUCCESS')}</span>`, 'success')}${stat(`<span class="warn">${cnt('REFUNDED')}</span>`, 'refunded')}${stat(`<span class="bad">${cnt('FAILED')}</span>`, 'failed')}${stat(shown.reduce((a, w) => a + w.faucet, 0), 'faucet claims')}${stat(reqTotal, 'logged requests')}</div>
+<div class="stats">${stat(shown.length, 'wallets')}${stat(swaps.length, 'live quotes')}${stat(D.reduce((a, r) => a + r.dryQuotes, 0), 'dry quotes (30d)')}${stat(swaps.filter(s => s.status !== 'PENDING_DEPOSIT').length, 'swaps (deposit seen)')}${stat(`<span class="ok">${cnt('SUCCESS')}</span>`, 'success')}${stat(`<span class="warn">${cnt('REFUNDED')}</span>`, 'refunded')}${stat(`<span class="bad">${cnt('FAILED')}</span>`, 'failed')}${stat(expired, 'expired (unpaid)')}${stat(shown.reduce((a, w) => a + w.faucet, 0), 'faucet claims')}${stat(reqTotal, 'logged requests')}</div>
 <div class="grid"><div class="card"><h2>Swaps by status (by quote day)</h2>${bars(D, [{ k: 'SUCCESS', n: 'success', c: '#2f9e6a' }, { k: 'REFUNDED', n: 'refunded', c: '#ffad24' }, { k: 'FAILED', n: 'failed', c: '#d9534f' }, { k: 'PENDING', n: 'pending/expired', c: '#8a8278' }])}</div>
 <div class="card"><h2>Quotes</h2>${bars(D, [{ k: 'quotes', n: 'live', c: '#a65f0c' }])}</div>
 <div class="card"><h2>Dry quotes (logged)</h2>${bars(D, [{ k: 'dryQuotes', n: 'dry', c: '#ffd078' }])}</div>
