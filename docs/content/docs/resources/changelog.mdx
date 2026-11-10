@@ -3,6 +3,14 @@ title: Changelog
 description: What changed in Tidepool and when.
 icon: ClockCounterClockwise
 ---
+## 2026-11-10 · Agent API: withdrawal memos on Stellar, XRP and Solana
+
+- **`POST /v1/agents/{id}/withdraw` `memo`:** now carried on the payout itself. `stellar`: a whole number up to 18446744073709551615 (no leading zeros) is sent as `MEMO_ID`, anything else as `MEMO_TEXT` (at most 28 bytes). `xrp`: the memo is the `DestinationTag` (0 to 4294967295); a recipient X-address that already encodes a different tag answers 400 `validation_failed`, the same tag twice is accepted. `sol`: one SPL Memo program instruction after the transfer (at most 256 bytes). `near` keeps the `ft_withdraw` memo (at most 128 characters).
+- **Still refused:** a memo on EVM chains (`base`, `arb`, `eth`, `bsc`), Sui, Bitcoin and Zcash answers 400 `validation_failed` at `/memo`, because those payouts have no memo field.
+- **Policy:** `destinations` entries match on `chain`, `address` and `memo`, as in the official API (`memo: null` matches only a withdrawal without one).
+- **`/v0`:** unchanged. 1Click's quote request has no recipient memo field; XRP payouts already take a destination tag through an X-address `recipient`.
+- **Docs:** agent API guide, compatibility page, `/v1/openapi.json` and llms files updated.
+
 ## 2026-11-10 · Status: unpaid expired quotes are not FAILED
 
 - **Fix:** an unpaid quote past its deadline stays `PENDING_DEPOSIT`, matching 1Click (the 1Click status enum has no `EXPIRED` value; `FAILED` means the swap encountered an error). Tidepool had been persisting those quotes as `FAILED` ("Deadline passed with no deposit"), which inflated the failed count with quotes nobody ever funded.

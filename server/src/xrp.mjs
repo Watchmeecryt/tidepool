@@ -93,7 +93,8 @@ export async function checkDestination(to, amount, field) {
 }
 
 // ---- sign-first transaction driver ----
-export async function prepare(to, amount, from = relayer()) {
+/** tag (optional): a DestinationTag for a classic address; must agree with a tag an X-address already encodes. */
+export async function prepare(to, amount, from = relayer(), { tag } = {}) {
   if (!from) throw new XrpError('XRP treasury key is not configured');
   const p = parseXrpAddress(to); if (!p) throw new XrpError('invalid XRP destination');
   const [acc, fee] = await Promise.all([account(from.address), rpc('fee')]);
@@ -101,7 +102,9 @@ export async function prepare(to, amount, from = relayer()) {
   const lastLedger = fee.ledger_current_index + LLS_WINDOW;
   const open = Number(fee.drops?.open_ledger_fee || 10);
   const tx = { TransactionType: 'Payment', Account: from.address, Destination: p.address, Amount: dropsStr(amount), Fee: String(Math.min(5000, Math.max(12, open * 2))), Sequence: acc.Sequence, LastLedgerSequence: lastLedger };
+  if (tag !== undefined && tag !== null && p.tag !== undefined && Number(p.tag) !== Number(tag)) throw new XrpError(`destination tag ${tag} conflicts with the X-address tag ${p.tag}`);
   if (p.tag !== undefined) tx.DestinationTag = p.tag;
+  else if (tag !== undefined && tag !== null) tx.DestinationTag = Number(tag);
   const signed = from.w.sign(tx);
   return { hash: signed.hash, blob: signed.tx_blob, lastLedger, seq: acc.Sequence };
 }

@@ -13,6 +13,7 @@ import { fail } from './errors.js';
 import { agentWallet, walletView } from './agents.js';
 import { budgetView, evaluate, tokenById, usdValue } from './policy.js';
 import { sha256 } from './partner-keys.js';
+import { withdrawMemo } from './memos.js';
 
 const bad = (detail, pointer) => fail(400, 'validation_failed', 'request', detail, pointer ? { pointer } : undefined);
 const nid = () => `exec_${crypto.randomBytes(12).toString('hex')}`;
@@ -86,12 +87,12 @@ async function normalize(kind, body, agent) {
       if (chain === 'near') {
         if (t.chain) throw fail(400, 'route_unavailable', 'request', `${t.symbol} (${t.blockchain}) is a bridged asset; ${t.kind === 'evm' ? `withdraw it with chain "${t.chain}" to an EVM address, or ` : ''}withdraw a NEAR-native test token with chain "near"`, { pointer: '/asset' });
         recipient = await recipientOf(body.recipient);
-        if (body.memo !== undefined && body.memo !== null) { if (typeof body.memo !== 'string' || body.memo.length > 128) throw bad('memo must be a string of at most 128 characters', '/memo'); memo = body.memo; }
+        memo = withdrawMemo('near', body.memo, recipient, 'NEAR');
       } else if (evmChain) {
         if (t.chain !== chain) throw fail(400, 'route_unavailable', 'request', `${t.symbol} (${t.blockchain}) cannot be withdrawn to ${evmChain.name}; use the bridged token whose blockchain is "${chain}" (see GET /v1/tokens)`, { pointer: '/asset' });
         if (!isEvmAddress(body.recipient)) throw fail(400, 'invalid_address', 'request', `${body.recipient} is not a valid 0x EVM address`, { pointer: '/recipient' });
         recipient = body.recipient;
-        if (body.memo) throw bad('memo is not supported for EVM withdrawals', '/memo');
+        withdrawMemo(chain, body.memo, recipient, evmChain.name);
         if (t.native) { // native ETH: same cap and treasury floor as /v0
           if (amount > ETH_CAP_WEI) throw fail(400, 'route_unavailable', 'request', `ETH on ${evmChain.name} is capped at ${fromUnits(ETH_CAP_WEI, t.decimals)} ETH per payout (same limit as /v0)`, { pointer: '/amount' });
           if ((await evm.nativeShortfall(chain, amount).catch(() => 0n)) !== null) throw fail(503, 'route_unavailable', 'provider', `The ${evmChain.name} treasury is low on ETH right now; try again later or use a smaller amount`);
@@ -101,7 +102,7 @@ async function normalize(kind, body, agent) {
         if (t.chain !== chain) throw fail(400, 'route_unavailable', 'request', `${t.symbol} (${t.blockchain}) cannot be withdrawn to ${chainOf(chain).name}; use a token whose blockchain is "${chain}" (see GET /v1/tokens)`, { pointer: '/asset' });
         if (!o.ok(body.recipient)) throw fail(400, 'invalid_address', 'request', `${body.recipient} is not a valid ${chainOf(chain).name} address`, { pointer: '/recipient' });
         recipient = chain === 'sui' ? normSuiAddress(body.recipient) : body.recipient;
-        if (body.memo) throw bad(`memo is not supported for ${chainOf(chain).name} withdrawals`, '/memo');
+        memo = withdrawMemo(chain, body.memo, recipient, chainOf(chain).name);
         if (t.symbol === o.native) {
           if (amount > o.cap) throw fail(400, 'route_unavailable', 'request', `${o.native} on ${chainOf(chain).name} is capped at ${fromUnits(o.cap, t.decimals)} ${o.native} per payout (same limit as /v0)`, { pointer: '/amount' });
           if (o.min && amount < o.min) throw fail(400, 'route_unavailable', 'request', `The minimum ${o.native} payout on ${chainOf(chain).name} is ${fromUnits(o.min, t.decimals)} ${o.native} (same limit as /v0)`, { pointer: '/amount' });
@@ -126,7 +127,7 @@ function opDoc(r, agent) {
   return {
     correlation_id: r.id, agent_id: r.agent_id, status: r.status, failure_code: r.failure_code, created_at: r.created_at, updated_at: r.updated_at, dispatch_committed_at: r.dispatch_committed_at, grant: g, type: r.type,
     details: { action: r.type, request: req, near_account_id: agent.wallet_account, provider_status: d.provider_status ?? null, intent_hash: d.intent_hash ?? null, tx_hash: d.tx_hash ?? null, destination_tx_hash: d.destination_tx_hash ?? d.tx_hash ?? null, ...(d.destination_chain ? { destination_chain: d.destination_chain, destination_tx_url: d.destination_tx_url ?? null } : {}),
-      amount_out: d.amount_out ?? null, expected_amount_out: d.expected_amount_out ?? null, deposit_address: d.deposit_address ?? null, memo: null, min_amount: null, expires_at: d.expires_at ?? null, refund_to: null, failure_reason: r.failure_detail ?? null,
+      amount_out: d.amount_out ?? null, expected_amount_out: d.expected_amount_out ?? null, deposit_address: d.deposit_address ?? null, memo: d.memo ?? req.memo ?? null, min_amount: null, expires_at: d.expires_at ?? null, refund_to: null, failure_reason: r.failure_detail ?? null,
       ...(d.instructions ? { instructions: d.instructions } : {}) },
   };
 }
@@ -139,7 +140,7 @@ export async function dryRun(agent, kind, body) {
   const feeUsd = n.usd != null && kind === 'swap' ? (n.usd * n.fee) / 10000 : 0;
   const quote = kind === 'swap'
     ? { origin_asset: n.asset, destination_asset: n.outT.assetId, amount_in: n.amount.toString(), amount_out: n.out.toString(), min_amount_out: n.minOut?.toString() ?? n.out.toString(), fee_bps: n.fee, price_in_usd: n.prices[n.asset], price_out_usd: n.prices[n.outT.assetId], expires_at: new Date(Date.now() + 60_000).toISOString() }
-    : { asset: n.asset, amount: n.amount.toString(), chain: n.request.chain, recipient: n.request.recipient, network_fee: '0' };
+    : { asset: n.asset, amount: n.amount.toString(), chain: n.request.chain, recipient: n.request.recipient, memo: n.request.memo, network_fee: '0' };
   if (kind === 'swap' && n.minOut !== null && n.out < n.minOut) warnings.push({ code: 'min_amount_out_not_met', detail: `The quote returns ${n.out}, below min_amount_out ${n.minOut}` });
   return { dry: true, type: kind, quote, spend: { amount_usd: n.usd, budget: budgetView(agent, agent.policy) }, owner_approval: false, fee: { amount_usd: feeUsd, percent: kind === 'swap' ? n.fee / 100 : 0 }, warnings };
 }
@@ -225,7 +226,7 @@ async function settle(id, agent, n, ip) {
         if (n.token.kind === 'evm' && !n.token.native) {
           const rid = evm.releaseId(`agent-api:${id}`);
           if (!(await evm.isReleased(n.token.chain, rid))) dest = await evm.release(n.token.chain, rid, n.token.evmAddress, n.recipient, n.amount);
-        } else dest = (await internals.payoutBridged(id, n.token, n.recipient, n.amount))[0];
+        } else dest = (await internals.payoutBridged(id, n.token, n.recipient, n.amount, n.destination.memo))[0];
       } catch (e) {
         return finish(id, 'NEEDS_REVIEW', { tx_hash: r.txHash ?? null }, { code: 'release_failed', detail: `The NEAR side settled but the ${n.token.chain} payout failed: ${String(e.message || e).slice(0, 200)}` });
       }

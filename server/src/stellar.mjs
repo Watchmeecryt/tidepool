@@ -88,8 +88,10 @@ export async function prepare(addOps) {
   const tx = b.build(); tx.sign(r.kp);
   return { hash: tx.hash().toString('hex'), xdr: tx.toEnvelope().toXDR('base64'), maxTime };
 }
-export function payoutOps(t, to, amount, destExists) {
+/** memo (optional): a uint64 number becomes MEMO_ID, anything else MEMO_TEXT (at most 28 bytes). */
+export function payoutOps(t, to, amount, destExists, memo) {
   return (b) => {
+    if (memo) b.addMemo(/^(0|[1-9]\d{0,19})$/.test(memo) && BigInt(memo) <= 18446744073709551615n ? Memo.id(memo) : Memo.text(memo));
     if (t.native && !destExists) b.addOperation(Operation.createAccount({ destination: to, startingBalance: amountStr(amount) }));
     else b.addOperation(Operation.payment({ destination: to, asset: assetOf(t), amount: amountStr(amount) }));
   };

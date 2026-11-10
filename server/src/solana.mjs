@@ -69,6 +69,7 @@ const b58 = (s) => bs58.decode(s);
 export const SYSTEM_PROGRAM = b58('11111111111111111111111111111111');
 export const TOKEN_PROGRAM = b58('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
 export const ATA_PROGRAM = b58('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
+export const MEMO_PROGRAM = b58('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
 const P = 2n ** 255n - 19n;
 const mod = (a) => ((a % P) + P) % P;
 function pow(b, e) { let r = 1n; b = mod(b); while (e > 0n) { if (e & 1n) r = mod(r * b); b = mod(b * b); e >>= 1n; } return r; }
@@ -107,6 +108,7 @@ export const ix = {
   initializeMint2: (mint, decimals, authority) => ({ programId: TOKEN_PROGRAM, keys: [meta(mint, false, true)], data: Buffer.concat([Buffer.from([20, decimals]), Buffer.from(typeof authority === 'string' ? b58(authority) : authority), Buffer.from([0])]) }),
   createAtaIdempotent: (payer, owner, mint) => ({ programId: ATA_PROGRAM, keys: [meta(payer, true, true), meta(ataOf(owner, mint), false, true), meta(owner, false, false), meta(mint, false, false), meta(SYSTEM_PROGRAM, false, false), meta(TOKEN_PROGRAM, false, false)], data: Buffer.from([1]) }),
   transferChecked: (source, mint, dest, owner, amount, decimals) => ({ programId: TOKEN_PROGRAM, keys: [meta(source, false, true), meta(mint, false, false), meta(dest, false, true), meta(owner, true, false)], data: Buffer.concat([Buffer.from([12]), u64(amount), Buffer.from([decimals])]) }),
+  memo: (text) => ({ programId: MEMO_PROGRAM, keys: [], data: Buffer.from(String(text), 'utf8') }), // SPL Memo v2: no signer keys needed
   mintTo: (mint, dest, authority, amount) => ({ programId: TOKEN_PROGRAM, keys: [meta(mint, false, true), meta(dest, false, true), meta(authority, true, false)], data: Buffer.concat([Buffer.from([7]), u64(amount)]) }),
 };
 const hex = (k) => Buffer.from(k).toString('hex');
@@ -228,14 +230,14 @@ export function sweepInstructions(t, dep, amount) {
   return [ix.transferChecked(ataOf(dep.address, t.mint), t.mint, ataOf(r.address, t.mint), dep.publicKey, amount, t.decimals)];
 }
 /** Pay `amount` of t to `to` from the treasury. SPL: creates the recipient ATA (treasury pays rent) then transferChecked, minting the shortfall (we hold the mint authority). */
-export async function payoutInstructions(t, to, amount) {
-  const r = relayer();
-  if (t.native) return [ix.systemTransfer(r.publicKey, to, amount)];
+export async function payoutInstructions(t, to, amount, memo) {
+  const r = relayer(), tail = memo ? [ix.memo(memo)] : [];
+  if (t.native) return [ix.systemTransfer(r.publicKey, to, amount), ...tail];
   const have = await treasuryBalance(t);
   const dest = ataOf(to, t.mint), out = [ix.createAtaIdempotent(r.publicKey, to, t.mint)];
   if (have >= BigInt(amount)) out.push(ix.transferChecked(ataOf(r.address, t.mint), t.mint, dest, r.publicKey, amount, t.decimals));
   else out.push(ix.mintTo(t.mint, dest, r.publicKey, amount));
-  return out;
+  return [...out, ...tail];
 }
 /** Faucet: mint test SPL tokens straight to a wallet (creating its ATAs). The relayer is the mint authority. */
 export async function faucetMint(to, tokens) {

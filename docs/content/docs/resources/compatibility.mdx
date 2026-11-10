@@ -54,6 +54,15 @@ Checked against the official 1Click OpenAPI (`https://1click.chaindefuser.com/do
 | `confidentiality` | Accepted and ignored; swaps settle publicly (see the [settlement distinction](#settlement-distinction) below and [NEAR's Oct 27, 2026 update](https://docs.near-intents.org/changelog/entries/2026-10-27-1click-confidential.md)). The `CONFIDENTIAL_INTENTS` deposit, refund and recipient types are not supported and return 400. |
 | `referral`, `rebates`, `insured`, `virtualChain*`, `connectedWallets`, `sessionId`, `quoteWaitingTimeMs` | Accepted and echoed, no effect |
 
+## Agent API (`/v1`)
+
+Checked against the official Agent API OpenAPI (`https://api.agentsonintents.com/openapi.json`) and `@near-intents-agent-api/sdk`.
+
+| Feature | Official Agent API | Tidepool testnet |
+| --- | --- | --- |
+| Withdrawal `memo` | Any chain that needs one | `near` (text, 128 chars), `stellar` (`MEMO_ID` for a uint64 number, else `MEMO_TEXT` up to 28 bytes), `xrp` (destination tag, uint32; must agree with an X-address tag), `sol` (SPL Memo instruction, 256 bytes). EVM, Sui, Bitcoin and Zcash answer 400 `validation_failed` at `/memo` |
+| Policy destinations | Matched on `chain`, `address` and `memo` | Same |
+
 ## Settlement distinction
 
 On mainnet, 1Click now settles every swap confidentially on the NEAR Private Shard, so `swapDetails.nearTxHashes` lists only the public shield and unshield transactions ([NEAR changelog, Oct 27, 2026](https://docs.near-intents.org/changelog/entries/2026-10-27-1click-confidential.md)). Tidepool testnet swaps settle publicly on the testnet verifier, so `nearTxHashes` also includes the swap's own hash. This is not a choice by Tidepool: confidential settlement (NEAR Private Shard / Confidential Intents) runs on NEAR's private infrastructure, which isn't exposed to outside builders. Rely on `status` (`SUCCESS` means delivered), not on the presence of a swap hash, so the same code works on both.

@@ -582,9 +582,9 @@ function outIntent(kind, account, t, amount) {
   return { intent: 'ft_withdraw', token: t.nearContract, receiver_id: account, amount: amount.toString() };
 }
 // Queue an EVM payout for a bridged token that was withdrawn to the bridge account.
-function queueRelease(s, tag, t, to, amount) {
+function queueRelease(s, tag, t, to, amount, memo) { // memo: Stellar/XRP/Solana payout memo (Agent API withdrawals only)
   if (!t.chain || amount <= 0n) return;
-  const rel = { id: evm.releaseId(`${s.quoteResponse.correlationId}:${tag}`), chain: t.chain, token: t.evmAddress, to, amount: amount.toString(), tag, done: false };
+  const rel = { id: evm.releaseId(`${s.quoteResponse.correlationId}:${tag}`), chain: t.chain, token: t.evmAddress, to, amount: amount.toString(), tag, done: false, ...(memo ? { memo } : {}) };
   if (t.kind === 'evm' && t.native) Object.assign(rel, { id: `evm-eth:${s.quoteResponse.correlationId}:${tag}`, token: undefined, native: true, assetId: t.assetId, tx: {} }); // native ETH: sign-first transfer from the relayer
   if (t.kind === 'sol') Object.assign(rel, { id: `sol:${s.quoteResponse.correlationId}:${tag}`, token: t.mint, assetId: t.assetId, tx: {} });
   if (t.kind === 'sui') Object.assign(rel, { id: `sui:${s.quoteResponse.correlationId}:${tag}`, token: undefined, assetId: t.assetId, tx: {} });
@@ -603,7 +603,7 @@ async function processReleasesOnce(s) {
   for (const r of s.releases.filter(r => !r.done)) {
     if (r.chain === 'sol') { // sign-first: the signature is persisted before sending; retries check it and only re-sign after the blockhash expires
       const t = byAsset[r.assetId];
-      if ((await sol.drive(r.tx ||= {}, async () => sol.prepare(await sol.payoutInstructions(t, r.to, BigInt(r.amount))), save)) !== 'confirmed') continue;
+      if ((await sol.drive(r.tx ||= {}, async () => sol.prepare(await sol.payoutInstructions(t, r.to, BigInt(r.amount), r.memo)), save)) !== 'confirmed') continue;
       const h = tagEvm(s, 'sol', r.tx.sig);
       s.txs.push({ label: `${r.tag} payout on ${chainOf(r.chain).name}`, hash: h });
       s.destTxs.push(h);
@@ -626,7 +626,7 @@ async function processReleasesOnce(s) {
       r.done = true; save(); continue;
     }
     if (r.chain === 'xrp') { // sign-first and idempotent (see xrp.drive): the signed Payment is persisted before it is submitted
-      if ((await xrp.drive(r.tx ||= {}, () => xrp.prepare(r.to, BigInt(r.amount)), save)) !== 'confirmed') continue;
+      if ((await xrp.drive(r.tx ||= {}, () => xrp.prepare(r.to, BigInt(r.amount), undefined, { tag: r.memo }), save)) !== 'confirmed') continue;
       const h = tagEvm(s, 'xrp', r.tx.hash);
       s.txs.push({ label: `${r.tag} payout on ${chainOf(r.chain).name}`, hash: h });
       s.destTxs.push(h);
@@ -634,7 +634,7 @@ async function processReleasesOnce(s) {
     }
     if (r.chain === 'stellar') { // sign-first and idempotent (see stellar.drive): the signed tx is persisted before it is submitted
       const t = byAsset[r.assetId];
-      const build = async () => stellar.prepare(stellar.payoutOps(t, r.to, BigInt(r.amount), t.native ? Boolean(await stellar.account(r.to)) : true));
+      const build = async () => stellar.prepare(stellar.payoutOps(t, r.to, BigInt(r.amount), t.native ? Boolean(await stellar.account(r.to)) : true, r.memo));
       if ((await stellar.drive(r.tx ||= {}, build, save)) !== 'confirmed') continue;
       const h = tagEvm(s, 'stellar', r.tx.hash);
       s.txs.push({ label: `${r.tag} payout on ${chainOf(r.chain).name}`, hash: h });
@@ -1148,9 +1148,9 @@ export function anyInputWithdrawals(depositAddress, depositMemo, { timestampFrom
 // internals shared with orders.mjs / intents.mjs
 export const hooks = { tickOrder: async () => {} };
 // Pays out a bridged token on its own chain after the verifier ft_withdraw (used by the Agent API). Returns the destination tx hashes.
-async function payoutBridged(opId, t, to, amount) {
+async function payoutBridged(opId, t, to, amount, memo) {
   const s = { quoteResponse: { correlationId: opId }, txs: [], destTxs: [], releases: [] };
-  queueRelease(s, 'agent-api', t, to, amount);
+  queueRelease(s, 'agent-api', t, to, amount, memo);
   for (let i = 0; i < 90 && s.releases.some((r) => !r.done); i++) { await processReleases(s); if (s.releases.some((r) => !r.done)) await new Promise((r) => setTimeout(r, 2000)); }
   if (s.releases.some((r) => !r.done)) throw new Error(`payout on ${chainOf(t.chain).name} is still confirming`);
   return s.destTxs;
