@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { loadKeys, view, viewAccount, rpc } from './near.mjs';
 import { ROOT, VERIFIER, MAKER, TOKENS, VERIFIER_WASM_SHA256, VERIFIER_RELEASE, fromUnits } from './config.mjs';
-import { quote, tokens, statusOf, submitDeposit, startWorker, initEngine, BadRequest, makerBalance, anyInputWithdrawals } from './engine.mjs';
+import { quote, tokens, statusOf, submitDeposit, startWorker, initEngine, BadRequest, makerBalance, anyInputWithdrawals, txExplorerUrl } from './engine.mjs';
 import { generateIntent, submitIntent } from './intents.mjs';
 import { authenticate, refresh, balances, history, sessionOf } from './auth.mjs';
 import { createOrder, getOrder, listOrders, cancelOrder, ApiError, errorDoc } from './orders.mjs';
@@ -108,8 +108,7 @@ async function health() {
   const all = Object.values(db.swaps);
   const count = (s) => all.filter(x => x.status === s).length;
   out.swaps = { total: all.length, success: count('SUCCESS'), refunded: count('REFUNDED'), failed: count('FAILED'), active: all.filter(x => ['PENDING_DEPOSIT', 'KNOWN_DEPOSIT_TX', 'INCOMPLETE_DEPOSIT', 'PROCESSING'].includes(x.status)).length };
-  out.recent = all.filter(x => ['SUCCESS', 'REFUNDED'].includes(x.status)).slice(-5).reverse().map(x => ({ status: x.status, pair: `${x.quoteResponse.quoteRequest.originAsset.split(':')[1].split('.')[0]} → ${x.quoteResponse.quoteRequest.destinationAsset.split(':')[1].split('.')[0]}`, updatedAt: x.updatedAt, tx: x.txs.at(-1) && `https://testnet.nearblocks.io/txns/${x.txs.at(-1).hash}` }));
-  out.recent.forEach(r => { if (r.tx?.includes('/txns/0x')) r.tx = undefined; });
+  out.recent = all.filter(x => ['SUCCESS', 'REFUNDED'].includes(x.status)).slice(-5).reverse().map(x => ({ status: x.status, pair: `${x.quoteResponse.quoteRequest.originAsset.split(':')[1].split('.')[0]} → ${x.quoteResponse.quoteRequest.destinationAsset.split(':')[1].split('.')[0]}`, updatedAt: x.updatedAt, tx: x.txs.at(-1) && txExplorerUrl(x, x.txs.at(-1).hash) }));
   out.ok = Object.values(out.checks).every(c => c.ok || c.source === 'fallback' || c.source === 'coingecko-stale');
   return out;
 }

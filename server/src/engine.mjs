@@ -407,6 +407,7 @@ const acctOf = (addr, s) => s.intentsAccount || addr;
 // explorer link for a tx hash recorded on a swap (NEAR by default, EVM when tagged)
 // (evmTxs holds every non-NEAR hash -> chain key; 'sol' is Solana)
 const urlOf = (s, h) => (s.evmTxs?.[h] === 'sol' ? sol.txUrl(h) : s.evmTxs?.[h] === 'sui' ? sui.txUrl(h) : UTXO[s.evmTxs?.[h]] ? UTXO[s.evmTxs[h]].txUrl(h) : s.evmTxs?.[h] === 'stellar' ? stellar.txUrl(h) : s.evmTxs?.[h] === 'xrp' ? xrp.txUrl(h) : s.evmTxs?.[h] ? evm.evmTxUrl(s.evmTxs[h], h) : txUrl(h));
+export const txExplorerUrl = (s, h) => urlOf(s, h);
 const tagEvm = (s, chain, h) => { (s.evmTxs ||= {})[h] = chain; return h; };
 
 export function statusOf(depositAddress, depositMemo) {
@@ -419,6 +420,7 @@ export function statusOf(depositAddress, depositMemo) {
     if (!s.note) s.note = 'Deadline passed with no deposit';
     save();
   }
+  expireUncredited(s);
   const { quoteResponse: qr } = s;
   const inT = byAsset[qr.quoteRequest.originAsset], outT = byAsset[qr.quoteRequest.destinationAsset];
   const d = { intentHashes: [...new Set(s.intentHashes)], nearTxHashes: s.txs.map(t => t.hash).filter(h => !s.evmTxs?.[h]), originChainTxHashes: s.originTxs.map(h => ({ hash: h, explorerUrl: urlOf(s, h) })), destinationChainTxHashes: s.destTxs.map(h => ({ hash: h, explorerUrl: urlOf(s, h) })) };
@@ -458,6 +460,30 @@ function submitDepositCommon(s, depositAddress, memo, txHash, nearSenderAccount)
   if (s.status === 'PENDING_DEPOSIT') { s.status = 'KNOWN_DEPOSIT_TX'; s.updatedAt = new Date().toISOString(); }
   save();
   return statusOf(depositAddress, memo);
+}
+
+// KNOWN_DEPOSIT_TX (a deposit tx hash was submitted) but nothing was ever credited: terminal FAILED once the worker
+// stops watching (deadline + 24 h), or earlier (past the deadline) when every submitted origin tx is confirmed reverted.
+export const UNCREDITED_GRACE_MS = 24 * 3600_000;
+const uncredited = (s) => s.status === 'KNOWN_DEPOSIT_TX' && !s.deposited && !s.bridgeIn?.length && !s.txs.length && !s.memoTxs?.some(t => t.stage !== 'rejected');
+export function expireUncredited(s, { reverted = false, now = Date.now() } = {}) {
+  if (!uncredited(s)) return false;
+  const dl = new Date(s.quoteResponse.quote.deadline).getTime();
+  if (now < dl || (!reverted && now < dl + UNCREDITED_GRACE_MS)) return false;
+  s.status = 'FAILED'; s.updatedAt = new Date(now).toISOString();
+  s.note = reverted ? 'Deposit tx reverted on the origin chain; nothing was credited' : 'No deposit was credited within 24 hours after the deadline';
+  save();
+  return true;
+}
+// Past the deadline with nothing credited: if every submitted EVM origin tx has a receipt with status 0, fail now.
+async function failIfDepositReverted(s) {
+  if (!uncredited(s) || Date.now() < new Date(s.quoteResponse.quote.deadline).getTime()) return false;
+  const evmHashes = s.originTxs.filter(h => s.evmTxs?.[h] && chainOf(s.evmTxs[h])?.chainId && /^0x[0-9a-fA-F]{64}$/.test(h));
+  if (!evmHashes.length || evmHashes.length !== s.originTxs.length) return false;
+  if ((s.revertCheckedAt || 0) > Date.now() - 60_000) return false; // at most one receipt lookup a minute
+  s.revertCheckedAt = Date.now();
+  for (const h of evmHashes) { const r = await internals.evmReceipt(s.evmTxs[h], h); if (!r || r.status !== 0) return false; }
+  return expireUncredited(s, { reverted: true });
 }
 
 // ---------- settlement worker ----------
@@ -856,6 +882,7 @@ async function tick(addr, s) {
   const req = s.quoteResponse.quoteRequest, q = s.quoteResponse.quote;
   const inT = byAsset[req.originAsset], outT = byAsset[req.destinationAsset];
   const deadline = new Date(q.deadline).getTime();
+  if (await failIfDepositReverted(s)) return;
   if (s.pendingExec) return recoverExec(addr, s); // an execute_intents threw: find out whether it landed before doing anything else
   if (s.releases?.some(r => !r.done) || s.final) return processReleases(s); // settled on NEAR, EVM payout pending
   if (inT.kind === 'stellar' && req.depositType === 'ORIGIN_CHAIN') await bridgeInStellar(addr, s, inT);
@@ -1053,7 +1080,7 @@ async function payoutBridged(opId, t, to, amount) {
   if (s.releases.some((r) => !r.done)) throw new Error(`payout on ${chainOf(t.chain).name} is still confirming`);
   return s.destTxs;
 }
-export const internals = { rpc, view, recoverExec: (...a) => recoverExec(...a), tick: (...a) => tick(...a), payoutBridged, convert, invert, grossUp, settle: (...a) => settle(...a), refund: (...a) => refund(...a), intentsBal, deriveDepositKey: (id) => deriveDepositKey(MASTER, id), execute, hashesFrom, byAsset, isAccount, set, MASTER: () => MASTER, feeBps, usd };
+export const internals = { evmReceipt: (chain, h) => evm.provider(chain).getTransactionReceipt(h), rpc, view, recoverExec: (...a) => recoverExec(...a), tick: (...a) => tick(...a), payoutBridged, convert, invert, grossUp, settle: (...a) => settle(...a), refund: (...a) => refund(...a), intentsBal, deriveDepositKey: (id) => deriveDepositKey(MASTER, id), execute, hashesFrom, byAsset, isAccount, set, MASTER: () => MASTER, feeBps, usd };
 
 const ACTIVE = ['PENDING_DEPOSIT', 'KNOWN_DEPOSIT_TX', 'INCOMPLETE_DEPOSIT', 'PROCESSING'];
 export function startWorker() {
@@ -1067,7 +1094,7 @@ export function startWorker() {
       const anyLive = s.quoteResponse.quoteRequest.swapType === 'ANY_INPUT' && s.status === 'SUCCESS' && Date.now() < new Date(s.quoteResponse.quote.deadline).getTime() + 60_000;
       const orderLive = s.order && !['FILLED', 'CANCELED', 'EXPIRED'].includes(s.order.fillStatus);
       if (!(ACTIVE.includes(s.status) || anyLive || orderLive) || busy.has(addr)) continue;
-      if (Date.now() > new Date(s.quoteResponse.quote.deadline).getTime() + 24 * 3600_000) continue; // stop watching stale quotes
+      if (Date.now() > new Date(s.quoteResponse.quote.deadline).getTime() + 24 * 3600_000) { expireUncredited(s); continue; } // stop watching stale quotes
       if (s.status === 'PENDING_DEPOSIT' && Date.now() > new Date(s.quoteResponse.quote.deadline).getTime()) { if ((slow.get(addr) || 0) > Date.now()) continue; slow.set(addr, Date.now() + 60_000); }
       busy.add(addr);
       tick(addr, s).catch(e => { s.note = String(e.message).slice(0, 300); save(); console.error('tick', addr, e.message); }).finally(() => busy.delete(addr));

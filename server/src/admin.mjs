@@ -5,6 +5,7 @@ import { db, save as saveDb } from './store.mjs';
 import { TOKENS, ONDO_TOKENS, fromUnits, chainOf } from './config.mjs';
 import { log, isOurs, ourList, ourCount, save as saveLog } from './analytics.mjs';
 import { sql } from './agent-api/db.js';
+import { txExplorerUrl } from './engine.mjs';
 
 const PW = process.env.ADMIN_PASSWORD || '';
 const KEY = crypto.createHash('sha256').update('tidepool-admin-session:' + PW).digest();
@@ -26,7 +27,7 @@ const byAny = Object.fromEntries([...TOKENS, ...ONDO_TOKENS].map(t => [t.assetId
 // "NEAR USDC → Solana Devnet USDC": the chain each side lives on (bridged tokens carry a chain key; the rest are NEAR) plus the asset.
 const side = (a) => { const t = byAny[a]; return t ? `${t.chain ? chainOf(t.chain)?.name || t.chain : 'NEAR'} ${t.symbol}` : String(a).replace(/^nep141:/, ''); };
 const direction = (s) => { const q = s.quoteResponse.quoteRequest; return `${esc(side(q.originAsset))} → ${esc(side(q.destinationAsset))}`; };
-const lastTxLink = (s) => { const tx = s.txs.at(-1); return tx ? `<a href="https://testnet.nearblocks.io/txns/${encodeURIComponent(tx.hash)}" target="_blank" rel="noopener">${esc(tx.label || 'tx')}</a>` : ''; };
+const lastTxLink = (s) => { const tx = s.txs.at(-1); return tx ? `<a href="${esc(txExplorerUrl(s, tx.hash))}" target="_blank" rel="noopener">${esc(tx.label || 'tx')}</a>` : ''; };
 const walletsOf = (s) => swapWallets(s).map(w => `<a href="/admin/wallet/${encodeURIComponent(w)}">${esc(w.length > 24 ? w.slice(0, 10) + '…' + w.slice(-6) : w)}</a>`).join(', ');
 // Swaps table for the overview: newest first by last update, from the swap db itself (not the request log, which
 // heavy /v0/status polling pushes past its last 150 events in minutes).
@@ -180,7 +181,7 @@ function walletPage(w) {
   return page(w, `<header><h1><a href="/admin">←</a> <span class="mono">${esc(w)}</span>${r.ours ? ' <span class="pill">ours</span>' : ''}</h1>${walletUrl(w) ? `<a class="btn ghost" href="${walletUrl(w)}" target="_blank" rel="noopener">${walletUrl(w).includes("suiscan") ? "suiscan" : "nearblocks"} ↗</a>` : ""}</header>
 <div class="stats"><div class="stat"><b>${fmtT(r.first)}</b><small>first seen</small></div><div class="stat"><b>${fmtT(r.last)}</b><small>last seen</small></div><div class="stat"><b>${r.quotes}</b><small>live quotes</small></div><div class="stat"><b>${r.dryQuotes}</b><small>dry quotes</small></div><div class="stat"><b>${r.swaps}</b><small>swaps</small></div><div class="stat"><b class="ok">${r.success}</b><small>success</small></div><div class="stat"><b class="warn">${r.refunded}</b><small>refunded</small></div><div class="stat"><b>${r.faucet}</b><small>faucet claims</small></div></div>
 <div class="card"><h2>Volume in (successful swaps)</h2>${esc(r.volumeFmt) || '<span class="mute">none</span>'}${r.uas?.length ? `<h2 style="margin-top:14px">User agents</h2>${r.uas.map(u => `<div class="mono mute">${esc(u)}</div>`).join('')}` : ''}</div>
-<div class="card"><h2>Swaps (${sw.length})</h2><table><tr><th>Quoted</th><th>Updated</th><th>Status</th><th>Direction</th><th>Amount in</th><th>Amount out</th><th>Role</th><th>Deposit address</th><th>Last tx</th></tr>${sw.map(([da, s]) => { const q = s.quoteResponse.quoteRequest, qq = s.quoteResponse.quote; const role = [q.refundTo === w && 'refundTo', q.recipient === w && 'recipient', s.sender === w && 'sender'].filter(Boolean).join(', '); const tx = s.txs.at(-1); return `<tr><td>${fmtT(Date.parse(s.quoteResponse.timestamp))}</td><td>${fmtT(Date.parse(s.updatedAt))}</td><td class="${statusCls(s.status)}">${s.status}</td><td>${direction(s)}</td><td>${esc(qq.amountInFormatted)}</td><td>${esc(qq.amountOutFormatted)}</td><td class="mute">${role}</td><td class="mono">${nb(da)}</td><td>${tx ? `<a href="https://testnet.nearblocks.io/txns/${encodeURIComponent(tx.hash)}" target="_blank" rel="noopener">${esc(tx.label || 'tx')}</a>` : ''}</td></tr>`; }).join('')}</table></div>
+<div class="card"><h2>Swaps (${sw.length})</h2><table><tr><th>Quoted</th><th>Updated</th><th>Status</th><th>Direction</th><th>Amount in</th><th>Amount out</th><th>Role</th><th>Deposit address</th><th>Last tx</th></tr>${sw.map(([da, s]) => { const q = s.quoteResponse.quoteRequest, qq = s.quoteResponse.quote; const role = [q.refundTo === w && 'refundTo', q.recipient === w && 'recipient', s.sender === w && 'sender'].filter(Boolean).join(', '); return `<tr><td>${fmtT(Date.parse(s.quoteResponse.timestamp))}</td><td>${fmtT(Date.parse(s.updatedAt))}</td><td class="${statusCls(s.status)}">${s.status}</td><td>${direction(s)}</td><td>${esc(qq.amountInFormatted)}</td><td>${esc(qq.amountOutFormatted)}</td><td class="mute">${role}</td><td class="mono">${nb(da)}</td><td>${lastTxLink(s)}</td></tr>`; }).join('')}</table></div>
 <div class="card"><h2>Faucet (last claim per mode)</h2><table><tr><th>Mode</th><th>Last claim</th></tr>${fc.map(([k, t]) => `<tr><td>${esc(k.slice(k.lastIndexOf(':') + 1))}</td><td>${fmtT(t)}</td></tr>`).join('')}</table></div>
 <div class="card"><h2>Recent events</h2>${events(evs)}</div>`);
 }

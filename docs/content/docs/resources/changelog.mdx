@@ -8,6 +8,8 @@ icon: ClockCounterClockwise
 - **Fix:** when every NEAR RPC answered the swap's `execute_intents` with a timeout or 429 although the transaction had landed, the swap stayed `PROCESSING` forever and a bridged payout (e.g. Solana) was never sent. The server now records the intent nonce before each execute and, on the next worker pass, asks the verifier (`is_nonce_used`): if it landed, the payout is released and the swap finishes `SUCCESS` (or `REFUNDED`); if not, it retries normally after the intent deadline.
 - **Repaired:** one swap affected on Nov 10 (NEAR USDC → Solana Devnet USDC) was completed and paid out.
 - **Load:** expired, unpaid quotes are checked once a minute instead of every 4 s (a late deposit is still refunded), which cuts NEAR RPC rate limiting.
+- **Status:** a `KNOWN_DEPOSIT_TX` swap with nothing credited now ends `FAILED`: right after the deadline when the submitted EVM deposit tx reverted, otherwise 24 hours after the deadline.
+- **Explorer links:** the status page's recent swaps (`GET /v0/health` `recent[].tx`) link each tx to its own chain's explorer (Solana devnet, EVM testnets, NEAR) instead of always NearBlocks.
 
 ## 2026-11-09 · Ondo tokenized stocks/RWAs on BSC Testnet (`ondoTokens=1`)
 
