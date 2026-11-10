@@ -28,6 +28,7 @@ import { admin } from './admin.mjs';
 import { runDemo, demoInfo, DemoRefused } from './demo.mjs';
 import { renderPage, docs, llmsTxt, llmsFull, agentsMd } from './site.mjs';
 import { handleV1 } from './agent-api/router.js';
+import { explorerSwaps, explorerStats, explorerLimited } from './explorer.js';
 
 await loadKeys({ env: process.env.TIDEPOOL_KEYS, dir: process.env.TIDEPOOL_KEYS ? null : new URL('../../.secrets', import.meta.url).pathname });
 await initEngine();
@@ -154,6 +155,11 @@ const server = http.createServer(async (req, res) => {
       if (process.env.TURNSTILE_SECRET) { try { authenticatePartnerKey(req); keyOk = true; } catch {} }
       await assertHuman(body, ip(req), keyOk);
       return json(res, 200, await drip(body, ip(req)));
+    }
+    if (p.startsWith('/v0/explorer/') && req.method === 'GET') {
+      if (explorerLimited(String(req.headers['x-forwarded-for'] || '').split(',').map(x => x.trim()).filter(Boolean).at(-1) || req.socket.remoteAddress)) { res.setHeader('retry-after', '60'); return json(res, 429, { message: 'Too many requests: the explorer API allows 120 requests per minute per IP' }); }
+      if (p === '/v0/explorer/swaps') return json(res, 200, explorerSwaps(url.searchParams));
+      if (p === '/v0/explorer/stats') return json(res, 200, explorerStats());
     }
     if (p === '/v0/health') { if (Date.now() - healthCache.at > 10_000) healthCache = { at: Date.now(), body: await health() }; return json(res, 200, healthCache.body); }
     if (p === '/v0/any-input/withdrawals' && req.method === 'GET') { const q = url.searchParams; if (!q.get('depositAddress')) throw new BadRequest('depositAddress is required'); const w = anyInputWithdrawals(q.get('depositAddress'), q.get('depositMemo'), { timestampFrom: q.get('timestampFrom'), page: q.get('page'), limit: q.get('limit'), sortOrder: q.get('sortOrder') || 'desc' }); return w ? json(res, 200, w) : json(res, 404, { message: 'Deposit address not found' }); }
