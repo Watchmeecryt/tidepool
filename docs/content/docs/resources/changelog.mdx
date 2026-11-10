@@ -3,6 +3,16 @@ title: Changelog
 description: What changed in Tidepool and when.
 icon: ClockCounterClockwise
 ---
+## 2026-11-10 · Agent API: EVM and passkey owners, archive, restore and delete
+
+- **EVM owners:** `owner: { "type": "evm", "address", "chain_id", "public_key" }`. Owner intents come back as `intent.standard: "eip712"` (`primaryType` `OwnerIntent`, `message: { intent, nonce, recipient }`) and are signed with `eth_signTypedData_v4`. An ERC-191 `personal_sign` of `payload.message.intent` is accepted too (`signed_data.standard: "erc191"`). The signature must recover to `address`; `public_key` must belong to it.
+- **Passkey owners:** `owner: { "type": "passkey", "credential_id", "public_key", "rp_id", "origin" }` (P-256 / ES256). Owner intents are `intent.standard: "webauthn"` with a `challenge` for `navigator.credentials.get`; `signed_data.credential.response` carries `clientDataJSON`, `authenticatorData` and `signature`. Origin, `rp_id`, user presence and user verification are checked.
+- **`agent_archive` / `agent_restore`:** archive stops actions (409 `agent_archived`) and keeps the wallet readable; restore brings the agent back. Status `details.archived`. Both refuse (409 `executions_pending`) while work is queued, pending approval or running.
+- **`agent_delete`:** refused with 409 `wallet_not_empty` while the agent wallet holds any token, checked at generate and at submit. An empty agent is deleted (`DELETED`, grants revoked, 410 `agent_deleted`).
+- **`GET /v1/network`:** `supported_owner_types` is now `near`, `evm`, `passkey`. `GET /v1/agents` lists active and archived agents.
+- **Still 501:** shielding, native-chain wallets, containment, per-agent releases and proofs. Confidential mode stays 400.
+- **Docs:** agent API guide, compatibility page, `/v1/openapi.json` and llms files updated.
+
 ## 2026-11-10 · Agent API: owner approvals, timelock and schedule
 
 - **`owner_approval: true`:** swaps, transfers and withdrawals wait in `PENDING_APPROVAL` (`details.approval_id`) until the owner signs an `approval_vote` intent (`verdict` `approve` or `reject`). New: `GET /v1/agents/{id}/approvals` and `GET /v1/agents/{id}/approvals/{approval_id}` (official shapes: `approval_id`, `request_type`, `request_data`, `request_hash`, `status` `PENDING` / `APPROVED` / `REJECTED` / `EXPIRED`, `required_approvals`, `expires_at`). Unvoted approvals expire after 24 hours (`FAILED` `approval_expired`); a vote on a closed approval answers 409 `approval_closed`.

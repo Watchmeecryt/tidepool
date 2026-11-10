@@ -38,3 +38,5 @@ CREATE TABLE IF NOT EXISTS approvals (
   status TEXT NOT NULL, expires_at TEXT NOT NULL, created_at TEXT NOT NULL, decided_at TEXT);
 CREATE INDEX IF NOT EXISTS approvals_agent ON approvals (agent_id, status);
 `);
+// Non-NEAR owners (evm, passkey) keep their full owner wallet here; NEAR owners use owner_account/owner_public_key.
+if (!sql.prepare('PRAGMA table_info(agents)').all().some((c) => c.name === 'owner_json')) sql.exec('ALTER TABLE agents ADD COLUMN owner_json TEXT');

@@ -45,9 +45,9 @@ const op = (id) => sql.prepare('SELECT * FROM operations WHERE id = ?').get(id);
 const settled = async (id) => { for (let i = 0; i < 100 && ['PROCESSING', 'QUEUED'].includes(op(id).status); i++) await new Promise((r) => setTimeout(r, 20)); return op(id); };
 const owned = (type, body) => {
   const g = generateIntent(TENANT, { type, ...body });
-  return g.then((gen) => {
+  return g.then(async (gen) => {
     const p = gen.intent.payload, sig = nacl.sign.detached(nep413Hash(p.message, Buffer.from(p.nonce, 'base64'), p.recipient), owner.secretKey);
-    return { gen, status: submitIntent(TENANT, { type, correlation_id: gen.correlation_id, signed_data: { standard: 'nep413', payload: p, public_key: ownerPk, signature: Buffer.from(sig).toString('base64') } }) };
+    return { gen, status: await submitIntent(TENANT, { type, correlation_id: gen.correlation_id, signed_data: { standard: 'nep413', payload: p, public_key: ownerPk, signature: Buffer.from(sig).toString('base64') } }) };
   });
 };
 

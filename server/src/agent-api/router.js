@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import { sql } from './db.js';
 import { AgentApiError, errorDoc, fail } from './errors.js';
 import { authenticate, issueKey, MAX_AGENTS_PER_KEY, REQUESTS_PER_MIN } from './partner-keys.js';
-import { agentView, getAgent, policyView, walletView } from './agents.js';
+import { agentView, getAgent, policyView, requireActive, walletView } from './agents.js';
 import { generateIntent, getOwnerIntent, grantView, submitIntent } from './owner-intents.js';
 import { balances, dryRun, history, KINDS, operationStatus, requireGrant, runAction, scheduled, tokenList } from './executions.js';
 import { approvalView, getApproval, listApprovals } from './approvals.js';
@@ -58,7 +58,7 @@ export async function handleV1(req, res, url, { origin, ip, openapi }) {
       return send(res, 200, { revision: 1, overrides: {}, limits: { daily_agents: MAX_AGENTS_PER_KEY, api_keys: 1, requests_per_minute: REQUESTS_PER_MIN, key_requests_per_minute: REQUESTS_PER_MIN },
         usage: { agents_last_24_hours: n, api_keys: 1, requests_this_minute: auth.requestsThisMinute ?? 0 }, observed_at: new Date().toISOString() });
     }
-    if (path === '/network' && M === 'GET') return send(res, 200, { network: 'near-testnet', contract_id: VERIFIER, supported_owner_types: ['near'], status: { overall: 'operational', checked_at: new Date().toISOString(), components: [{ name: 'near-testnet', status: 'operational' }, { name: 'tidepool-maker', status: 'operational' }] } });
+    if (path === '/network' && M === 'GET') return send(res, 200, { network: 'near-testnet', contract_id: VERIFIER, supported_owner_types: ['near', 'evm', 'passkey'], status: { overall: 'operational', checked_at: new Date().toISOString(), components: [{ name: 'near-testnet', status: 'operational' }, { name: 'tidepool-maker', status: 'operational' }] } });
     if (M === 'GET' && (path === '/releases' || path === '/releases/latest' || path.startsWith('/releases/'))) {
       const rel = RELEASE(), v = path.slice('/releases/'.length);
       if (path === '/releases') return send(res, 200, { data: [rel], next_cursor: null });
@@ -67,7 +67,7 @@ export async function handleV1(req, res, url, { origin, ip, openapi }) {
     }
     if (path === '/tokens' && M === 'GET') return send(res, 200, { data: await tokenList() });
     if (path === '/generate-intent' && M === 'POST') return send(res, 201, await generateIntent(tenant, await readJson(req), req.headers['idempotency-key']));
-    if (path === '/submit-intent' && M === 'POST') return send(res, 202, submitIntent(tenant, await readJson(req)));
+    if (path === '/submit-intent' && M === 'POST') return send(res, 202, await submitIntent(tenant, await readJson(req)));
     if (path === '/status' && M === 'GET') {
       const corr = q.get('correlation_id');
       if (!corr) throw fail(400, 'validation_failed', 'request', 'correlation_id is required', { pointer: '/correlation_id' });
@@ -81,7 +81,7 @@ export async function handleV1(req, res, url, { origin, ip, openapi }) {
     }
     if (path === '/agents' && M === 'GET') {
       const lim = Math.min(Math.max(parseInt(q.get('limit'), 10) || 50, 1), 100), cur = q.get('cursor'), ext = q.get('external_user_id');
-      const rows = sql.prepare(`SELECT id FROM agents WHERE tenant_id = ? AND status = 'ACTIVE' ${ext ? 'AND external_user_id = ?' : ''} ${cur ? 'AND created_at < ?' : ''} ORDER BY created_at DESC LIMIT ?`).all(...[tenant, ...(ext ? [ext] : []), ...(cur ? [cur] : []), lim + 1]);
+      const rows = sql.prepare(`SELECT id FROM agents WHERE tenant_id = ? AND status IN ('ACTIVE','ARCHIVED') ${ext ? 'AND external_user_id = ?' : ''} ${cur ? 'AND created_at < ?' : ''} ORDER BY created_at DESC LIMIT ?`).all(...[tenant, ...(ext ? [ext] : []), ...(cur ? [cur] : []), lim + 1]);
       const data = rows.slice(0, lim).map((r) => agentView(agent(r.id)));
       return send(res, 200, { data, next_cursor: rows.length > lim ? data[data.length - 1].created_at : null });
     }
@@ -102,6 +102,7 @@ export async function handleV1(req, res, url, { origin, ip, openapi }) {
         if (sub.startsWith('approvals/')) return send(res, 200, approvalView(getApproval(a.id, decodeURIComponent(sub.slice('approvals/'.length)))));
       }
       if (M === 'POST' && KINDS.includes(sub)) {
+        requireActive(a); // archived or deleted agents get no quote and no action
         const body = await readJson(req);
         if (sub !== 'deposit' && body?.dry === true) return send(res, 200, await dryRun(a, sub, body));
         const grant = sub === 'deposit' && !req.headers['x-grant-token'] ? { id: 'api-key' } : requireGrant(a, req.headers['x-grant-token']); // deposits need no grant, like the official API

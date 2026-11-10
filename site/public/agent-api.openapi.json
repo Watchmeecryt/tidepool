@@ -266,7 +266,10 @@
                       "agent_freeze",
                       "agent_unfreeze",
                       "execution_cancel",
-                      "approval_vote"
+                      "approval_vote",
+                      "agent_archive",
+                      "agent_restore",
+                      "agent_delete"
                     ]
                   },
                   "agent_id": {
@@ -276,21 +279,94 @@
                     "type": "string"
                   },
                   "owner": {
-                    "type": "object",
-                    "properties": {
-                      "type": {
-                        "enum": [
-                          "near"
-                        ]
+                    "description": "Owner wallet for agent_create. Owner intents are then signed as nep413 (near), eip712 or erc191 (evm), or webauthn (passkey).",
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "title": "NEAR owner",
+                        "required": [
+                          "type",
+                          "account_id",
+                          "public_key"
+                        ],
+                        "properties": {
+                          "type": {
+                            "enum": [
+                              "near"
+                            ]
+                          },
+                          "account_id": {
+                            "type": "string"
+                          },
+                          "public_key": {
+                            "type": "string",
+                            "description": "ed25519:<base58>, a full-access key of account_id"
+                          }
+                        }
                       },
-                      "account_id": {
-                        "type": "string"
+                      {
+                        "type": "object",
+                        "title": "EVM owner",
+                        "required": [
+                          "type",
+                          "address",
+                          "chain_id",
+                          "public_key"
+                        ],
+                        "properties": {
+                          "type": {
+                            "enum": [
+                              "evm"
+                            ]
+                          },
+                          "address": {
+                            "type": "string",
+                            "description": "0x EVM address"
+                          },
+                          "chain_id": {
+                            "type": "integer",
+                            "description": "Goes into the EIP-712 domain"
+                          },
+                          "public_key": {
+                            "type": "string",
+                            "description": "secp256k1 public key as 0x hex (compressed or uncompressed); must belong to address"
+                          }
+                        }
                       },
-                      "public_key": {
-                        "type": "string",
-                        "description": "ed25519:<base58>"
+                      {
+                        "type": "object",
+                        "title": "Passkey owner",
+                        "required": [
+                          "type",
+                          "credential_id",
+                          "public_key",
+                          "rp_id",
+                          "origin"
+                        ],
+                        "properties": {
+                          "type": {
+                            "enum": [
+                              "passkey"
+                            ]
+                          },
+                          "credential_id": {
+                            "type": "string",
+                            "description": "base64url credential id"
+                          },
+                          "public_key": {
+                            "type": "string",
+                            "description": "P-256 key: base64url SPKI, or the uncompressed point 04... (hex or base64url)"
+                          },
+                          "rp_id": {
+                            "type": "string"
+                          },
+                          "origin": {
+                            "type": "string",
+                            "description": "Origin on rp_id, e.g. https://app.example.com"
+                          }
+                        }
                       }
-                    }
+                    ]
                   },
                   "policy": {
                     "$ref": "#/components/schemas/Policy"
@@ -390,26 +466,63 @@
                     "type": "object",
                     "required": [
                       "standard",
-                      "payload",
-                      "public_key",
-                      "signature"
+                      "payload"
                     ],
+                    "description": "nep413: payload, public_key, signature (base64 ed25519 of the NEP-413 hash). eip712: payload (as generated), signature (eth_signTypedData_v4). erc191: payload {message: intent.payload.message.intent}, signature (personal_sign). webauthn: payload (as generated), credential (navigator.credentials.get result, base64url fields).",
                     "properties": {
                       "standard": {
                         "enum": [
-                          "nep413"
+                          "nep413",
+                          "eip712",
+                          "erc191",
+                          "webauthn"
                         ]
                       },
                       "payload": {
                         "type": "object",
-                        "description": "The payload returned by generate-intent, unchanged"
+                        "description": "The payload returned by generate-intent, unchanged (erc191: {message})"
                       },
                       "public_key": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "nep413 only"
                       },
                       "signature": {
                         "type": "string",
-                        "description": "base64 ed25519 signature of the NEP-413 hash"
+                        "description": "nep413: base64 ed25519; eip712/erc191: 0x secp256k1 signature"
+                      },
+                      "credential": {
+                        "type": "object",
+                        "description": "webauthn only",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "enum": [
+                              "public-key"
+                            ]
+                          },
+                          "response": {
+                            "type": "object",
+                            "required": [
+                              "clientDataJSON",
+                              "authenticatorData",
+                              "signature"
+                            ],
+                            "properties": {
+                              "clientDataJSON": {
+                                "type": "string"
+                              },
+                              "authenticatorData": {
+                                "type": "string"
+                              },
+                              "signature": {
+                                "type": "string",
+                                "description": "DER ECDSA P-256, base64url"
+                              }
+                            }
+                          }
+                        }
                       }
                     }
                   }

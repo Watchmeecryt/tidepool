@@ -1,25 +1,39 @@
 // Agent rows, their derived wallets and the public views of agents, wallets and policies.
 import { internals } from '../engine.mjs';
+import { TOKENS, VERIFIER } from '../config.mjs';
 import { sql } from './db.js';
 import { fail } from './errors.js';
 import { budgetView, policyHash } from './policy.js';
 
 export const rowToAgent = (r) => r && { ...r, frozen: !!r.frozen, policy: JSON.parse(r.policy_json), budget_started: JSON.parse(r.budget_started_json) };
 
+/** Reads an agent of this tenant: ACTIVE, ARCHIVED and DELETED agents can be read; PENDING ones only with allowPending. */
 export function getAgent(tenantId, id, { allowPending = false } = {}) {
   const a = rowToAgent(sql.prepare('SELECT * FROM agents WHERE id = ?').get(String(id)));
-  if (!a || a.tenant_id !== tenantId || (a.status !== 'ACTIVE' && !allowPending)) throw fail(404, 'agent_not_found', 'request', `No agent ${id} for this API key`);
+  if (!a || a.tenant_id !== tenantId || (a.status === 'PENDING' && !allowPending)) throw fail(404, 'agent_not_found', 'request', `No agent ${id} for this API key`);
   return a;
+}
+/** Refuses actions and owner changes on an agent that is not ACTIVE. */
+export function requireActive(a) {
+  if (a.status === 'ARCHIVED') throw fail(409, 'agent_archived', 'request', 'This agent is archived: restore it with an agent_restore owner intent first');
+  if (a.status === 'DELETED') throw fail(410, 'agent_deleted', 'request', 'This agent was deleted');
+  if (a.status !== 'ACTIVE') throw fail(404, 'agent_not_found', 'request', `No agent ${a.id} for this API key`);
+  return a;
+}
+/** Non-zero verifier balances of the agent wallet: [{ asset_id, symbol, decimals, blockchain, balance_raw }]. */
+export async function walletHoldings(a) {
+  const raw = await internals.view(VERIFIER, 'mt_batch_balance_of', { account_id: a.wallet_account, token_ids: TOKENS.map((t) => t.assetId) });
+  return TOKENS.map((t, i) => ({ asset_id: t.assetId, symbol: t.symbol, decimals: t.decimals, blockchain: t.blockchain, balance_raw: String(raw[i]) })).filter((b) => b.balance_raw !== '0');
 }
 
 /** The agent's wallet is an implicit NEAR account derived from the server seed: nothing is stored and nothing is created on chain. */
 export const agentWallet = (agentId) => internals.deriveDepositKey(`agent:${agentId}`);
 
-export const ownerView = (a) => ({ type: 'near', account_id: a.owner_account, public_key: a.owner_public_key });
+export const ownerView = (a) => (a.owner_json ? JSON.parse(a.owner_json) : { type: 'near', account_id: a.owner_account, public_key: a.owner_public_key });
 export const walletView = (a) => ({ wallet_id: a.id, near_account_id: a.wallet_account, evm_account_id: null, solana_account_id: null });
 export const agentView = (a) => ({
-  agent_id: a.id, id: a.id, name: a.name, external_user_id: a.external_user_id, status: a.status, archived: false, deleted: false, frozen: a.frozen,
-  owner: ownerView(a), owner_account: { account_id: a.owner_account, public_key: a.owner_public_key, authority: 'wallet' }, wallet: walletView(a),
+  agent_id: a.id, id: a.id, name: a.name, external_user_id: a.external_user_id, status: a.status, archived: a.status === 'ARCHIVED', deleted: a.status === 'DELETED', frozen: a.frozen,
+  owner: ownerView(a), owner_account: a.owner_json ? null : { account_id: a.owner_account, public_key: a.owner_public_key, authority: 'wallet' }, wallet: walletView(a),
   cooldowns: { policy_change_available_at: null, unfreeze_available_at: null }, created_at: a.created_at,
 });
 export function policyView(a) {

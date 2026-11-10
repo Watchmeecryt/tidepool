@@ -64,6 +64,9 @@ Checked against the official Agent API OpenAPI (`https://api.agentsonintents.com
 | Policy destinations | Matched on `chain`, `address` and `memo` | Same |
 | `owner_approval` | `PENDING_APPROVAL`, `GET …/approvals`, `approval_vote` | Same shapes; one owner vote (`required_approvals: 1`); approvals expire after 24 hours |
 | `timelock_ms`, `schedule` | `QUEUED`, `GET …/executions/scheduled`, `execution_cancel`; outside the schedule `policy_schedule_denied` | Same; the off-chain worker releases due work every 4 s and judges grant, policy, budget and balance again at release |
+| Owner wallets | `near` (NEP-413), `evm` (EIP-712), `passkey` (WebAuthn) | Same three, verified off-chain. EVM also accepts an ERC-191 `personal_sign` of the intent text. Tidepool's own EIP-712 domain (`Tidepool Agent API`, version `1`, the owner's `chain_id`) |
+| `agent_archive`, `agent_restore` | Archive stops the agent, restore resumes it | Same; 409 `agent_archived` for actions, 409 `executions_pending` while work is held or running |
+| `agent_delete` | Retires the wallet; the preview warns about assets that would be lost | Refused with 409 `wallet_not_empty` while the wallet holds any token (no beneficiary sweep). An empty wallet is deleted: status `DELETED`, grants revoked, 410 `agent_deleted` |
 
 ## Settlement distinction
 
