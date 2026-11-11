@@ -105,7 +105,7 @@ Current minters: `tidepool-sandbox.testnet` (wallet faucet) and `maker.tidepool-
 
 | Token | Asset id | Description | Decimals | Tidepool faucet | External faucet |
 | --- | --- | --- | --- | --- | --- |
-| USDC | `nep141:hypercore.tp-omft.testnet` | USDC in a HyperCore testnet perps balance | 6 (minimum 2 USDC, capped at 100 USDC per swap, both directions) | none | [Hyperliquid testnet faucet](https://app.hyperliquid-testnet.xyz/drip) (mock USDC) |
+| USDC | `nep141:hypercore.tp-omft.testnet` | USDC in a HyperCore testnet perps balance | 6 (minimum 2 USDC, capped at 5 USDC per swap, both directions) | none | [Hyperliquid testnet faucet](https://app.hyperliquid-testnet.xyz/drip) (mock USDC) |
 
 Send and receive: payouts land in the recipient's perps balance, and ORIGIN_CHAIN deposits go to a per-quote `0x` address (the sender pays Hyperliquid's ~1 USDC new-address fee on top). Recipients and `refundTo` are `0x` addresses. See the [Hyperliquid testnet bridge](/docs/guides/bridge-hyperliquid-testnet).
 

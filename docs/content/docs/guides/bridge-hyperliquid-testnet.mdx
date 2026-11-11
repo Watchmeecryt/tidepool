@@ -1,6 +1,6 @@
 ---
 title: Hyperliquid testnet (HyperCore)
-description: Swap USDC into or out of a HyperCore testnet balance with a Tidepool quote. Send and receive, minimum 2 USDC, capped at 100 USDC.
+description: Swap USDC into or out of a HyperCore testnet balance with a Tidepool quote. Send and receive, minimum 2 USDC, capped at 5 USDC.
 icon: Bridge
 ---
 
@@ -14,7 +14,7 @@ It is listed in `/v0/tokens` only while the route is live.
 
 - **Minimum 2 USDC** per payout (2,000,000 base units). A smaller quote, dry or live, answers `400` (`Minimum payout to Hyperliquid testnet is 2 USDC; Hyperliquid charges ~1 USDC to send to a new account`). Hyperliquid deducts that ~1 USDC from the first payout to a new account; Tidepool does not cover it.
 - **Minimum 2 USDC** per deposit (`amountIn`). A smaller quote answers `400` (`Minimum deposit from Hyperliquid testnet is 2 USDC`).
-- **100 USDC** per deposit, swap or payout. A larger quote answers `400` at quote time.
+- **5 USDC** per deposit, swap or payout. A larger quote answers `400` at quote time.
 - `ANY_INPUT` is not supported on HyperCore in either direction.
 - If the treasury is short of test USDC, a live quote answers `503`. Claim mock USDC to the treasury at the [Hyperliquid testnet faucet](https://app.hyperliquid-testnet.xyz/drip).
 

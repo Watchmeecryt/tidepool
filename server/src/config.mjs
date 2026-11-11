@@ -242,7 +242,7 @@ if (ONDO_DEP.live && ONDO_DEP.chain === 'bsc' && ONDO_DEP.tokens) {
 // EIP-712 usdSend from the existing EVM relayer; ORIGIN_CHAIN deposits go to a per-quote derived address and are swept to the relayer. blockchain is "hypercore", matching
 // 1Click's TokenResponse enum. The NEAR-side OMFT id is nep141:hypercore.tp-omft.testnet (6 decimals, like other USDC).
 export const HYPERCORE_DECIMALS = 6;
-export const HYPERCORE_USDC_CAP = BigInt(process.env.HYPERCORE_USDC_CAP || 100_000_000); // 100 USDC cap on a HyperCore payout or swap leg
+export const HYPERCORE_USDC_CAP = BigInt(process.env.HYPERCORE_USDC_CAP || 5_000_000); // 5 USDC cap on a HyperCore payout or swap leg
 export const HYPERCORE_USDC_MIN = BigInt(process.env.HYPERCORE_USDC_MIN || 2_000_000); // 2 USDC minimum payout; Hyperliquid charges ~1 USDC to send to a new account
 export const HYPERCORE_CHAIN = { key: 'hypercore', blockchain: 'hypercore', kind: 'hypercore', name: 'Hyperliquid Testnet', network: 'testnet', explorer: 'https://app.hyperliquid-testnet.xyz', faucet: 'https://app.hyperliquid-testnet.xyz/drip', symbol: 'USDC' };
 const HD = DEPLOYED.hypercore;
