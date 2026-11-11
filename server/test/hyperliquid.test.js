@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { ethers } from 'ethers';
 import { formatUsd, parseUsd, signUsdSend, typedData } from '../src/hyperliquid.js';
 import { hypercoreLimits, BadRequest } from '../src/engine.mjs';
-import { HYPERCORE_USDC_CAP, isEvmAddress } from '../src/config.mjs';
+import { HYPERCORE_USDC_CAP, HYPERCORE_USDC_MIN, isEvmAddress } from '../src/config.mjs';
 
 const usdc = { kind: 'hypercore', chain: 'hypercore', symbol: 'USDC', decimals: 6 };
 const near = { kind: undefined, chain: undefined, symbol: 'USDC', decimals: 6 };
@@ -40,10 +40,13 @@ test('usdSend EIP-712 recovers the treasury signer', async () => {
   assert.equal(recovered.toLowerCase(), wallet.address.toLowerCase());
 });
 
-test('limits: destination cap, ANY_INPUT and ORIGIN_CHAIN deposits are refused', () => {
-  assert.doesNotThrow(() => hypercoreLimits({ ...baseReq }, near, usdc, 1_000_000n, 1_000_000n));
+test('limits: destination min and cap, ANY_INPUT and ORIGIN_CHAIN deposits are refused', () => {
+  assert.doesNotThrow(() => hypercoreLimits({ ...baseReq }, near, usdc, 2_000_000n, 2_000_000n));
+  assert.doesNotThrow(() => hypercoreLimits({ ...baseReq, dry: false }, near, usdc, 5_000_000n, 5_000_000n));
+  assert.throws(() => hypercoreLimits({ ...baseReq }, near, usdc, 1_000_000n, 1_000_000n), (e) => e instanceof BadRequest && e.code === 400 && /Minimum payout to Hyperliquid testnet is 2 USDC/.test(e.message));
+  assert.throws(() => hypercoreLimits({ ...baseReq, dry: false }, near, usdc, 1n, HYPERCORE_USDC_MIN - 1n), (e) => e instanceof BadRequest && e.code === 400 && /Minimum payout to Hyperliquid testnet is 2 USDC/.test(e.message));
   assert.throws(() => hypercoreLimits({ ...baseReq }, near, usdc, 1n, HYPERCORE_USDC_CAP + 1n), (e) => e instanceof BadRequest && /capped/.test(e.message));
-  assert.throws(() => hypercoreLimits({ ...baseReq, swapType: 'ANY_INPUT' }, near, usdc, 1n, 1_000_000n), (e) => e instanceof BadRequest && /ANY_INPUT/.test(e.message));
-  assert.throws(() => hypercoreLimits({ ...baseReq, depositType: 'ORIGIN_CHAIN' }, usdc, near, 1_000_000n, 1_000_000n), (e) => e instanceof BadRequest && /destination only/.test(e.message));
-  assert.throws(() => hypercoreLimits({ ...baseReq, refundType: 'ORIGIN_CHAIN' }, usdc, near, 1_000_000n, 1_000_000n), (e) => e instanceof BadRequest && /destination only/.test(e.message));
+  assert.throws(() => hypercoreLimits({ ...baseReq, swapType: 'ANY_INPUT' }, near, usdc, 1n, 2_000_000n), (e) => e instanceof BadRequest && /ANY_INPUT/.test(e.message));
+  assert.throws(() => hypercoreLimits({ ...baseReq, depositType: 'ORIGIN_CHAIN' }, usdc, near, 2_000_000n, 2_000_000n), (e) => e instanceof BadRequest && /destination only/.test(e.message));
+  assert.throws(() => hypercoreLimits({ ...baseReq, refundType: 'ORIGIN_CHAIN' }, usdc, near, 2_000_000n, 2_000_000n), (e) => e instanceof BadRequest && /destination only/.test(e.message));
 });

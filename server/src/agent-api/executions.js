@@ -5,7 +5,7 @@
 import crypto from 'node:crypto';
 import { internals, feeBps, makerBalance, withSigner, hooks } from '../engine.mjs';
 import { signIntents, keyStore, NETWORK, view, call, parseNear, viewAccount } from '../near.mjs';
-import { TOKENS, VERIFIER, MAKER, ROOT, BRIDGE_ACCOUNT, ETH_CAP_WEI, EVM_CHAINS, fromUnits, isEvmAddress, isSolAddress, isStellarAddress, isSuiAddress, normSuiAddress, isXrpAddress, isBtcAddress, isZecAddress, chainOf, HYPERCORE_USDC_CAP,
+import { TOKENS, VERIFIER, MAKER, ROOT, BRIDGE_ACCOUNT, ETH_CAP_WEI, EVM_CHAINS, fromUnits, isEvmAddress, isSolAddress, isStellarAddress, isSuiAddress, normSuiAddress, isXrpAddress, isBtcAddress, isZecAddress, chainOf, HYPERCORE_USDC_CAP, HYPERCORE_USDC_MIN,
   SOL_PAYOUT_CAP_LAMPORTS, SOL_RENT_MIN_LAMPORTS, XLM_CAP_STROOPS, SUI_CAP_MIST, XRP_CAP_DROPS, BTC_CAP_SATS, BTC_MIN_SATS, ZEC_CAP_ZAT, ZEC_MIN_ZAT, HYPERCORE_CHAIN } from '../config.mjs';
 import * as evm from '../evm.mjs';
 import { prices } from '../prices.mjs';
@@ -65,7 +65,7 @@ const OTHER = {
   xrp: { ok: isXrpAddress, native: 'XRP', cap: XRP_CAP_DROPS },
   btc: { ok: isBtcAddress, native: 'BTC', cap: BTC_CAP_SATS, min: BTC_MIN_SATS },
   zec: { ok: isZecAddress, native: 'ZEC', cap: ZEC_CAP_ZAT, min: ZEC_MIN_ZAT },
-  hypercore: { ok: isEvmAddress, native: 'USDC', cap: HYPERCORE_USDC_CAP },
+  hypercore: { ok: isEvmAddress, native: 'USDC', cap: HYPERCORE_USDC_CAP, min: HYPERCORE_USDC_MIN },
 };
 async function normalize(kind, body, agent) {
   if (!body || typeof body !== 'object') throw bad('body must be a JSON object');

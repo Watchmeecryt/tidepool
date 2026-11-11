@@ -6,7 +6,7 @@ import { KeyPair } from 'near-api-js';
 import bs58 from 'bs58';
 import stringify from 'json-stable-stringify';
 import { rpc, call, view, viewAccount, sendNear, signIntents, deriveDepositKey, keyStore, NETWORK, TGAS, parseNear, txUrl } from './near.mjs';
-import { ROOT, VERIFIER, MAKER, TOKENS, fromUnits, chainOf, isEvmAddress, isSolAddress, isStellarAddress, STELLAR_CHAIN, XLM_CAP_STROOPS, isSuiAddress, SUI_CHAIN, SUI_CAP_MIST, BTC_CHAIN, ZEC_CHAIN, XRP_CHAIN, XRP_CAP_DROPS, XRP_DECIMALS, HYPERCORE_CHAIN, HYPERCORE_USDC_CAP, HYPERCORE_DECIMALS, isXrpAddress, isBtcAddress, isZecAddress, BTC_CAP_SATS, BTC_MIN_SATS, ZEC_CAP_ZAT, ZEC_MIN_ZAT, BRIDGE_ACCOUNT, ETH_CAP_WEI, ETH_RESERVE_WEI, SOL_PAYOUT_CAP_LAMPORTS, SOL_RENT_MIN_LAMPORTS, ONDO_TOKENS } from './config.mjs';
+import { ROOT, VERIFIER, MAKER, TOKENS, fromUnits, chainOf, isEvmAddress, isSolAddress, isStellarAddress, STELLAR_CHAIN, XLM_CAP_STROOPS, isSuiAddress, SUI_CHAIN, SUI_CAP_MIST, BTC_CHAIN, ZEC_CHAIN, XRP_CHAIN, XRP_CAP_DROPS, XRP_DECIMALS, HYPERCORE_CHAIN, HYPERCORE_USDC_CAP, HYPERCORE_USDC_MIN, HYPERCORE_DECIMALS, isXrpAddress, isBtcAddress, isZecAddress, BTC_CAP_SATS, BTC_MIN_SATS, ZEC_CAP_ZAT, ZEC_MIN_ZAT, BRIDGE_ACCOUNT, ETH_CAP_WEI, ETH_RESERVE_WEI, SOL_PAYOUT_CAP_LAMPORTS, SOL_RENT_MIN_LAMPORTS, ONDO_TOKENS } from './config.mjs';
 import * as evm from './evm.mjs';
 import * as sol from './solana.mjs';
 import * as stellar from './stellar.mjs';
@@ -256,6 +256,7 @@ export function hypercoreLimits(req, inT, outT, amountIn, amountOut) {
   const hintCap = (why, extra = {}) => hint(`USDC on Tidepool's Hyperliquid testnet (HyperCore) is capped at ${cap()} USDC per swap or payout. ${why}`, req, { capUnits: HYPERCORE_USDC_CAP.toString(), ...extra });
   if (inT.kind === 'hypercore' && (req.depositType === 'ORIGIN_CHAIN' || req.refundType === 'ORIGIN_CHAIN')) throw new BadRequest('Hyperliquid testnet USDC is a destination only: Tidepool does not accept ORIGIN_CHAIN deposits or refunds on HyperCore. Deposit from NEAR Intents or another supported origin.');
   if (outT.kind === 'hypercore') {
+    if (amountOut < HYPERCORE_USDC_MIN) throw new BadRequest(`Minimum payout to Hyperliquid testnet is 2 USDC; Hyperliquid charges ~1 USDC to send to a new account`, 400, hint(`Minimum payout to Hyperliquid testnet is ${fromUnits(HYPERCORE_USDC_MIN, HYPERCORE_DECIMALS)} USDC (${HYPERCORE_USDC_MIN} units). Hyperliquid charges about 1 USDC to send to a new account. Raise the amount.`, req, { field: 'amount', minUnits: HYPERCORE_USDC_MIN.toString() }));
     if (amountOut > HYPERCORE_USDC_CAP) throw new BadRequest(`HyperCore USDC is capped at ${cap()} USDC (${HYPERCORE_USDC_CAP} units) per swap on Tidepool's Hyperliquid testnet bridge; this quote would pay out ${fromUnits(amountOut, HYPERCORE_DECIMALS)} USDC. Lower the amount.`, 400, hintCap('Lower amount (or the EXACT_OUTPUT amount) so the USDC payout is at most the cap.', { field: 'amount' }));
     if (req.recipientType === 'DESTINATION_CHAIN' && req.swapType === 'ANY_INPUT') throw new BadRequest(`ANY_INPUT quotes cannot pay out USDC on Hyperliquid Testnet (each deposit would be converted separately and could exceed the ${cap()} USDC cap); use EXACT_INPUT, EXACT_OUTPUT or FLEX_INPUT`);
   }

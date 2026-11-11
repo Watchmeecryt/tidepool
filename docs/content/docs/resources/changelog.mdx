@@ -3,6 +3,10 @@ title: Changelog
 description: What changed in Tidepool and when.
 icon: ClockCounterClockwise
 ---
+## 2026-11-11 · Hyperliquid testnet minimum payout is 2 USDC
+
+- **Minimum:** quotes whose destination is `nep141:hypercore.tp-omft.testnet` now answer `400` when the output is below 2 USDC (2,000,000 units), dry or live. Hyperliquid charges about 1 USDC the first time it sends to a new account, so smaller payouts fail. The 100 USDC cap is unchanged.
+
 ## 2026-11-10 · Public swap explorer
 
 - **[/explorer](/explorer):** a public page listing every funded testnet swap, newest first: from and to tokens with chain badges, amounts, USD value (testnet prices), status, time, sender, recipient, deposit address and block explorer links. Search, status and chain filters, pagination, and a header with total swaps, successful volume, last-24h swaps and unique addresses. It refreshes every 15 seconds.
