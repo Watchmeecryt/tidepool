@@ -1,0 +1,64 @@
+---
+title: Aurora testnet bridge
+description: Swap between Aurora Testnet (chain id 1313161555) and NEAR testnet through Tidepool's testnet relayer, with test USDC/USDT, 1Click-style deposit addresses, status, refunds and payouts to any 0x address (Safe included).
+icon: Cube
+---
+
+<Callout type="warn">**Trusted relayer, testnet only.** This route is run by Tidepool as its own testnet service. It is not a NEAR, Omni Bridge or 1Click bridge, and the tokens have no value. Read [Test bridges](/docs/guides/bridges) for what you are trusting.</Callout>
+
+## Contracts
+
+| What | Address |
+| --- | --- |
+| Chain | Aurora Testnet, chain id `1313161555`, `blockchain: "aurora"`, native gas ETH |
+| RPC | `https://testnet.aurora.dev` |
+| Explorer | [testnet.aurorascan.dev](https://testnet.aurorascan.dev) |
+| Vault | [`0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2`](https://testnet.aurorascan.dev/address/0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2) |
+| Test USDC (6 decimals) | [`0x38d81431B9f76d9699AF7517040D5221D9dEA252`](https://testnet.aurorascan.dev/address/0x38d81431B9f76d9699AF7517040D5221D9dEA252) |
+| Test USDT (6 decimals) | [`0xC15Cf5600225302675604310094f134e88705E62`](https://testnet.aurorascan.dev/address/0xC15Cf5600225302675604310094f134e88705E62) |
+| Relayer | `0x55F2c8044D790e1b8369508c31c756c0c2Ca0E93` |
+
+| Asset id | NEP-141 on NEAR testnet |
+| --- | --- |
+| `nep141:aur-0x38d81431b9f76d9699af7517040d5221d9dea252.tp-omft.testnet` | USDC on Aurora Testnet |
+| `nep141:aur-0xc15cf5600225302675604310094f134e88705e62.tp-omft.testnet` | USDT on Aurora Testnet |
+
+Both appear in [`GET /v0/tokens`](/docs/api-reference/get-tokens) with `blockchain: "aurora"` and `contractAddress` set to the ERC-20. The prefix is `aur-` (not `aurora-`) because NEAR account ids are at most 64 characters.
+
+## 1. Get tokens and gas
+
+```bash
+curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: application/json' \
+  -d '{"chain":"aurora","address":"0xYourAddress"}'
+```
+
+This mints 100 test USDC and 100 test USDT on Aurora Testnet. The faucet is site-only, so claim on the [Faucet](https://app.usetidepool.tech/faucet) page (Aurora card). Gas is **not** included: get Aurora testnet ETH from the [Aurora faucet](https://aurora.dev/faucet), or bridge Sepolia ETH to Aurora Testnet with the Omni bridge.
+
+## 2. Aurora Testnet → NEAR
+
+```ts
+const quote = await OneClickService.getQuote({
+  dry: false, swapType: 'EXACT_INPUT', slippageTolerance: 100,
+  originAsset: 'nep141:aur-0x38d81431b9f76d9699af7517040d5221d9dea252.tp-omft.testnet', // USDC on Aurora
+  destinationAsset: 'nep141:wnear.tidepool-sandbox.testnet',
+  amount: '10000000',                       // 10 USDC
+  depositType: 'ORIGIN_CHAIN', refundTo: '0xYourAddress', refundType: 'ORIGIN_CHAIN',
+  recipient: 'you.testnet', recipientType: 'DESTINATION_CHAIN',
+  deadline: new Date(Date.now() + 30 * 60_000).toISOString(),
+});
+// quote.quote.depositAddress is a 0x address on Aurora Testnet. Send the ERC-20 there.
+await OneClickService.submitDepositTx({ txHash: '0x…', depositAddress: quote.quote.depositAddress });
+```
+
+## 3. Anything → Aurora Testnet (Safe payouts)
+
+Set `destinationAsset` to an `aur-` asset id and `recipient` to any `0x` address. Payouts are plain ERC-20 `transfer`s from the vault, so contract wallets such as a Safe receive them like any EOA (no callback, no gas needed on the recipient).
+
+Status goes `PENDING_DEPOSIT → KNOWN_DEPOSIT_TX → PROCESSING → SUCCESS`, usually within a minute.
+
+## See also
+
+- [Test bridges](/docs/guides/bridges)
+- [Tokens](/docs/resources/tokens)
+- [Faucet](/docs/guides/faucet)
+- [Get tokens](/docs/api-reference/get-tokens)
