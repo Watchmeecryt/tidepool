@@ -33,6 +33,7 @@ export const EVM_CHAINS = [
   { key: 'arb', blockchain: 'arb', name: 'Arbitrum Sepolia', chainId: 421614, rpc: process.env.ARB_SEPOLIA_RPC || 'https://sepolia-rollup.arbitrum.io/rpc', explorer: 'https://sepolia.arbiscan.io' },
   { key: 'eth', blockchain: 'eth', name: 'Ethereum Sepolia', chainId: 11155111, rpc: process.env.SEPOLIA_RPC || 'https://ethereum-sepolia-rpc.publicnode.com', explorer: 'https://sepolia.etherscan.io' },
   { key: 'bsc', blockchain: 'bsc', name: 'BSC Testnet', chainId: 97, rpc: process.env.BSC_TESTNET_RPC || 'https://bsc-testnet-rpc.publicnode.com', explorer: 'https://testnet.bscscan.com' },
+  { key: 'aurora', blockchain: 'aurora', name: 'Aurora Testnet', chainId: 1313161555, rpc: process.env.AURORA_TESTNET_RPC || 'https://testnet.aurora.dev', explorer: 'https://testnet.aurorascan.dev' },
 ];
 const DEPLOYED = JSON.parse(fs.readFileSync(new URL('./bridge-deployments.json', import.meta.url), 'utf8'));
 const BRIDGED = [

@@ -1,14 +1,14 @@
 ---
 title: Faucet
 seoTitle: "NEAR Testnet Faucet for Intents Test Tokens"
-description: "Free test tokens on NEAR, Ethereum Sepolia, Base Sepolia, Arbitrum Sepolia, BSC Testnet, Solana devnet, Stellar testnet and Sui testnet (native BTC and XRP are never dripped; see below): pick a chain, paste an address, and our backend funds it."
+description: "Free test tokens on NEAR, Ethereum Sepolia, Base Sepolia, Arbitrum Sepolia, BSC Testnet, Aurora Testnet, Solana devnet, Stellar testnet and Sui testnet (native BTC and XRP are never dripped; see below): pick a chain, paste an address, and our backend funds it."
 icon: Drop
 ---
 
 <FaucetWidget />
 
 <Callout title="Faucet in the Tidepool App">
-The [Tidepool App](https://app.usetidepool.tech/faucet) has two tabs: **Tokens** (one card per chain: NEAR, Ethereum, Base, Arbitrum, BSC, Solana, Stellar, Sui and XRP, plus links for native BTC and gas) and **Stocks & RWAs** (pick up to 5 Ondo tokens on BSC Testnet). Claim there, or with the widget on this page. Direct API calls to `POST /v0/faucet` and `/v1` `testnet_faucet` answer **403 `site_only`**.
+The [Tidepool App](https://app.usetidepool.tech/faucet) has two tabs: **Tokens** (one card per chain: NEAR, Ethereum, Base, Arbitrum, BSC, Aurora, Solana, Stellar, Sui and XRP, plus links for native BTC and gas) and **Stocks & RWAs** (pick up to 5 Ondo tokens on BSC Testnet). Claim there, or with the widget on this page. Direct API calls to `POST /v0/faucet` and `/v1` `testnet_faucet` answer **403 `site_only`**.
 </Callout>
 
 ## How the faucet works
@@ -22,6 +22,7 @@ The widget above and the Tidepool App are the same faucet. In the UI you **pick 
 | Base Sepolia (`base`) | `0x…` | 100 test USDC + 100 test USDT (ERC-20) | Your address on Base Sepolia | Base Sepolia ETH for gas |
 | Arbitrum Sepolia (`arb`) | `0x…` | 100 test USDC + 100 test USDT (ERC-20) | Your address on Arbitrum Sepolia | Arbitrum Sepolia ETH for gas |
 | BSC Testnet (`bsc`) | `0x…` | 100 test USDC + 100 test USDT (ERC-20 only; Stocks & RWAs are a separate tab) | Your address on BSC Testnet | BSC Testnet tBNB for gas |
+| Aurora Testnet (`aurora`) | `0x…` | 100 test USDC + 100 test USDT (ERC-20; Safe and other contract addresses work) | Your address on Aurora Testnet | Aurora testnet ETH for gas |
 | Stocks & RWAs (BSC) | `0x…` | Up to 5 Ondo tokens per claim (`assets: ["AAPLon",…]`); separate 7-day slot from Tokens | Your address on BSC Testnet | BSC Testnet tBNB for gas |
 | Solana devnet (`sol`) | base58 wallet | 100 test USDC + 100 test USDT (SPL) | Your wallet's token accounts on Solana devnet (our backend creates them) | Devnet SOL for fees |
 | Stellar testnet (`stellar`) | `G…` | 100 test USDC + 100 test USDT (classic assets) | Your account on Stellar testnet | An existing account with trustlines |
@@ -59,7 +60,7 @@ curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: applicatio
 curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: application/json' \
   -d '{"accountId":"alice.testnet","mode":"intents","assets":["base"]}'
 
-# Ethereum Sepolia, Base Sepolia, Arbitrum Sepolia or BSC Testnet (eth, base, arb, bsc)
+# Ethereum Sepolia, Base Sepolia, Arbitrum Sepolia, BSC Testnet or Aurora Testnet (eth, base, arb, bsc, aurora)
 curl -X POST https://www.usetidepool.tech/v0/faucet -H 'content-type: application/json' \
   -d '{"chain":"eth","address":"0xYourAddress"}'
 
@@ -155,13 +156,13 @@ See [POST /v0/faucet](/docs/api-reference/tidepool-faucet) for the full response
 
 - **One Tokens claim per address every 7 days**, across every non-Ondo variant (NEAR wallet, NEAR intents, bridged intents, and every other chain). Claiming on Base blocks the same `0x` on Ethereum Sepolia, and a NEAR `wallet` drip blocks `intents` for that account until the window ends.
 - **A separate Stocks & RWAs slot** (up to 5 Ondo tokens on BSC Testnet) can be claimed once per address every 7 days, independently of the Tokens slot.
-- **Wallet age and IP cap:** NEAR accounts must exist and be at least 3 hours old, and EVM addresses must have sent a transaction or hold a native balance on Ethereum Sepolia (or on BSC Testnet for a `bsc` claim); otherwise you get `403` with a `reason`. Each IP can claim twice every 3 hours. Over the limit returns **HTTP 429** with `available_at` / `retryAfter` (and a `Retry-After` header). If a transfer fails, the limit is not consumed. If captcha is enabled, the site sends `turnstileToken`.
+- **Wallet age and IP cap:** NEAR accounts must exist and be at least 3 hours old, and EVM addresses must have sent a transaction or hold a native balance on Ethereum Sepolia (or on BSC Testnet for a `bsc` claim, or Aurora Testnet for an `aurora` claim); otherwise you get `403` with a `reason`. Each IP can claim twice every 3 hours. Over the limit returns **HTTP 429** with `available_at` / `retryAfter` (and a `Retry-After` header). If a transfer fails, the limit is not consumed. If captcha is enabled, the site sends `turnstileToken`.
 - Global daily caps protect the treasuries: Solana (it pays for token accounts), Stellar and Sui (it pays gas). Over the cap returns `429`.
 - Do not loop the faucet; every drip is a fixed amount.
 
 ## Details per chain
 
-- **EVM:** `{"chain":"base"|"arb"|"eth"|"bsc","address":"0x…"}` mints USDC and USDT (6 decimals). On BSC, `assets:["ondo"]` or specific symbols (max 5) drip Stocks & RWAs instead. You can also call `faucet()` on the token contracts yourself. Addresses are in each route guide under [Test bridges](/docs/guides/bridges).
+- **EVM:** `{"chain":"base"|"arb"|"eth"|"bsc"|"aurora","address":"0x…"}` mints USDC and USDT (6 decimals). On BSC, `assets:["ondo"]` or specific symbols (max 5) drip Stocks & RWAs instead. You can also call `faucet()` on the token contracts yourself. Addresses are in each route guide under [Test bridges](/docs/guides/bridges).
 - **Solana devnet:** see the [Solana devnet bridge](/docs/guides/bridge-solana-devnet). SOL swaps are capped at 0.005 SOL.
 - **Stellar testnet:** 7 decimals. See the [Stellar testnet bridge](/docs/guides/bridge-stellar-testnet). Get XLM from [Friendbot](https://friendbot.stellar.org) (10,000 test XLM).
 - **Bitcoin testnet4:** native coins only, no faucet drip. See the [Bitcoin testnet4 bridge](/docs/guides/bridge-bitcoin-testnet).

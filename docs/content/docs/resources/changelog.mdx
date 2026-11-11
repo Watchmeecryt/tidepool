@@ -3,6 +3,12 @@ title: Changelog
 description: What changed in Tidepool and when.
 icon: ClockCounterClockwise
 ---
+## 2026-11-11 · Aurora Testnet (USDC and USDT)
+
+- **New chain:** Aurora Testnet (`blockchain: "aurora"`, chain id 1313161555, explorer [testnet.aurorascan.dev](https://testnet.aurorascan.dev)) with Tidepool test USDC and USDT (6 decimals), ids `nep141:aurora-0x<erc20>.tp-omft.testnet`. Deposits use a per-quote `0x` deposit address; payouts are plain ERC-20 transfers, so Safe and other contract addresses can receive them.
+- **Faucet:** `{"chain":"aurora","address":"0x…"}` sends 100 test USDC + 100 test USDT (no native ETH: get Aurora testnet ETH from Aurora's faucet). The intents alias `aurora` also works.
+- **App and docs:** Aurora is in the chain picker with its official logo; `/openapi.json`, `/v1/openapi.json`, tokens, compatibility, bridges and faucet pages and the llms files are updated.
+
 ## 2026-11-11 · Hyperliquid testnet is send and receive
 
 - **Deposits from HyperCore:** quotes with `originAsset: "nep141:hypercore.tp-omft.testnet"` and `depositType: "ORIGIN_CHAIN"` now get a per-quote `0x` deposit address on HyperCore. Send `amountIn` USDC to it from Hyperliquid (spot or perps); Tidepool detects it through Hyperliquid's info API, sweeps it to the treasury with a gasless `usdSend` and credits the swap. Minimum 2 USDC and at most 100 USDC per deposit; the sender also pays Hyperliquid's ~1 USDC fee for sending to a new address. No `ANY_INPUT`.

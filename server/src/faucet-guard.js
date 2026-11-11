@@ -50,6 +50,7 @@ export async function assertEvmEligible(chainKey, addr) {
   if (!(await checkers.evmActive(chainKey, addr))) {
     const tip = chainKey === 'bsc'
       ? 'BSC Testnet (hold some tBNB or send a tx; get tBNB from a public BSC testnet faucet first)'
+      : chainKey === 'aurora' ? 'Aurora Testnet (hold some Aurora testnet ETH or send a tx; get it from the Aurora testnet faucet first)'
       : 'Ethereum Sepolia (get Sepolia ETH from a public faucet first)';
     throw new BadRequest(`${addr} has no on-chain activity. The faucet only serves EVM addresses that have sent a transaction or hold a native balance on ${tip}.`, 403, { reason: 'address_inactive' });
   }

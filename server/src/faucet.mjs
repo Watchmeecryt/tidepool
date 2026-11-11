@@ -76,7 +76,7 @@ function clearClaim(key) {
 
 // Direct-chain cooldown keys are `<address>:<chain>` (like the intents-mode keys `<account>:<mode>`), so the admin wallets list shows the
 // recipient. Older builds stored `<chain>:<address>`: rename those once at startup so existing cooldowns keep working.
-for (const k of Object.keys(db.faucet || {})) { const m = /^(base|arb|eth|bsc|sol|stellar):(.+)$/.exec(k); if (m) { db.faucet[`${m[2]}:${m[1]}`] = db.faucet[k]; delete db.faucet[k]; } }
+for (const k of Object.keys(db.faucet || {})) { const m = /^(base|arb|eth|bsc|aurora|sol|stellar):(.+)$/.exec(k); if (m) { db.faucet[`${m[2]}:${m[1]}`] = db.faucet[k]; delete db.faucet[k]; } }
 
 // Native BTC (testnet4) and ZEC (testnet) are never dripped (small public faucets fund the treasuries): answer with where to get them.
 const UTXO_FAUCETS = {

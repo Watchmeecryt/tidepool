@@ -56,7 +56,7 @@ const MAINNET_MAP = {
 export function suggestAsset(id) {
   const s = String(id || '').toLowerCase();
   if (MAINNET_MAP[s]) return MAINNET_MAP[s];
-  const chain = /^nep141:(base|arb|eth|bsc)-0x/.exec(s)?.[1] || (/^nep141:bnb-0x/.test(s) ? 'bsc' : /^nep141:sol[-.]/.test(s) ? 'sol' : /^nep141:stellar[-.]/.test(s) ? 'stellar' : /^nep141:xrp[-.]/.test(s) ? 'xrp' : /^nep141:sui[-.]/.test(s) ? 'sui' : undefined);
+  const chain = /^nep141:(base|arb|eth|bsc|aurora)-0x/.exec(s)?.[1] || (/^nep141:bnb-0x/.test(s) ? 'bsc' : /^nep141:sol[-.]/.test(s) ? 'sol' : /^nep141:stellar[-.]/.test(s) ? 'stellar' : /^nep141:xrp[-.]/.test(s) ? 'xrp' : /^nep141:sui[-.]/.test(s) ? 'sui' : undefined);
   if (/^nep141:sol\.|^(w?sol|solana)$/.test(s)) return evmTp('sol', 'SOL') || null;
   if (/^nep141:sui\.|^sui$/.test(s)) return evmTp('sui', 'SUI') || null;
   if (/^nep141:xrp\.|^(xrp|ripple)$/.test(s)) return evmTp('xrp', 'XRP') || null;

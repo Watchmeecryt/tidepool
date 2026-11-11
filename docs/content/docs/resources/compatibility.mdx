@@ -25,15 +25,15 @@ Checked against the official 1Click OpenAPI (`https://1click.chaindefuser.com/do
 
 | Area | Mainnet 1Click | Tidepool |
 | --- | --- | --- |
-| Network | NEAR mainnet + many chains | NEAR testnet; Base, Arbitrum and Ethereum Sepolia, BSC Testnet (Ondo via `ondoTokens=1`), Solana devnet, Stellar testnet, Sui testnet, Bitcoin testnet4, XRP Ledger testnet, Hyperliquid testnet (HyperCore, send and receive) |
+| Network | NEAR mainnet + many chains | NEAR testnet; Base, Arbitrum and Ethereum Sepolia, BSC Testnet (Ondo via `ondoTokens=1`), Aurora Testnet, Solana devnet, Stellar testnet, Sui testnet, Bitcoin testnet4, XRP Ledger testnet, Hyperliquid testnet (HyperCore, send and receive) |
 | Solvers | Competing solvers via the solver relay | One Tidepool maker quotes and fills every swap (CoinGecko prices + fixed fee) |
 | Verifier | `intents.near` | Official `defuse` v0.4.5 contract (built unmodified from the upstream tag) at `verifier.tidepool-sandbox.testnet` |
-| Cross-chain | Production bridges | Tidepool-run trusted relayer bridges to Base / Arbitrum / Ethereum Sepolia, BSC Testnet, Solana devnet, Stellar testnet, Sui testnet, Bitcoin testnet4, XRP Ledger testnet, Hyperliquid testnet (HyperCore, send and receive) |
-| `blockchain` values | 38 chains, listed in the spec enum | `near`, `eth`, `base`, `arb`, `bsc`, `sol`, `stellar`, `sui`, `btc`, `xrp` |
+| Cross-chain | Production bridges | Tidepool-run trusted relayer bridges to Base / Arbitrum / Ethereum Sepolia, BSC Testnet, Aurora Testnet, Solana devnet, Stellar testnet, Sui testnet, Bitcoin testnet4, XRP Ledger testnet, Hyperliquid testnet (HyperCore, send and receive) |
+| `blockchain` values | 38 chains, listed in the spec enum | `near`, `eth`, `base`, `arb`, `bsc`, `aurora`, `sol`, `stellar`, `sui`, `btc`, `xrp` |
 | Native ETH asset ids | `nep141:eth.omft.near`, `nep141:base.omft.near`, `nep141:arb.omft.near`, 18 decimals | `nep141:eth.tp-omft.testnet`, `nep141:base.tp-omft.testnet`, `nep141:arb.tp-omft.testnet`, 18 decimals, ORIGIN_CHAIN + payout, capped at 0.006 ETH; read ids from `/v0/tokens` |
 | XRP asset id | `nep141:xrp.omft.near`, 6 decimals, MEMO deposits (destination tag) | `nep141:xrp.tp-omft.testnet`, 6 decimals, MEMO deposits (destination tag), capped at 100 XRP; read ids from `/v0/tokens` |
 | Stellar asset ids | `nep245:` ids from the HOT bridge, 7 decimals | `nep141:` OMFT-style ids; always read ids from `/v0/tokens` |
-| Tokens | Real assets | Six NEAR test tokens, plus bridged USDC and USDT (including BSC Testnet) and native SOL, XLM, SUI, BTC and XRP, and 28 Ondo test tokens on BSC via `GET /v0/tokens?ondoTokens=1`; test tokens come from the site faucet; no value |
+| Tokens | Real assets | Six NEAR test tokens, plus bridged USDC and USDT (including BSC Testnet and Aurora Testnet) and native SOL, XLM, SUI, BTC and XRP, and 28 Ondo test tokens on BSC via `GET /v0/tokens?ondoTokens=1`; test tokens come from the site faucet; no value |
 | Deposit addresses | Run by 1Click | Keys derived by the Tidepool server (custodial, testnet) |
 | Auth | JWT required for fee-free quotes | Free JWTs from `/v0/auth/authenticate` (`nep413`, `raw_ed25519`, `erc191`); for swaps any `x-api-key` / Bearer value gets the lower fee |
 | `depositMode: MEMO` | Memo chains | NEAR-native `ORIGIN_CHAIN` tokens, Stellar testnet and XRP Ledger testnet (required on both); a NEAR-native submit also needs `nearSenderAccount`. Not allowed with `ANY_INPUT` |

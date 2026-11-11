@@ -7,7 +7,7 @@ type Swap = { depositAddress: string; depositMemo: string | null; status: string
 type Page = { data: Swap[]; page: number; limit: number; total: number; totalPages: number };
 type Stats = { totalSwaps: number; success: number; refunded: number; failed: number; processing: number; volumeUsd: string; swaps24h: number; volume24hUsd: string; uniqueAddresses: number; chains: { chain: string; chainName: string; swaps: number }[] };
 
-const CHAINS = ['near', 'eth', 'base', 'arb', 'bsc', 'sol', 'stellar', 'sui', 'xrp', 'btc', 'zec', 'hypercore'];
+const CHAINS = ['near', 'eth', 'base', 'arb', 'bsc', 'aurora', 'sol', 'stellar', 'sui', 'xrp', 'btc', 'zec', 'hypercore'];
 const STATUS: Record<string, [string, string]> = {
   SUCCESS: ['Success', 'text-[var(--otc-ok)] bg-[var(--otc-ok-wash)]'],
   REFUNDED: ['Refunded', 'text-[var(--otc-brand)] bg-[var(--otc-gold-wash)]'],
