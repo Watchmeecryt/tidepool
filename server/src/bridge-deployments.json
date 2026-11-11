@@ -1005,11 +1005,91 @@
   "aurora": {
     "name": "Aurora Testnet",
     "chainId": 1313161555,
-    "tokens": {},
-    "txs": [],
-    "deployBlock": null,
-    "vault": null,
+    "tokens": {
+      "USDC": "0x38d81431B9f76d9699AF7517040D5221D9dEA252",
+      "USDT": "0xC15Cf5600225302675604310094f134e88705E62"
+    },
+    "txs": [
+      {
+        "label": "deploy USDC",
+        "hash": "0x8229e828c9b14c946ac398b729983293bc7e328c6712e7f6ee3a96fdf48ea922"
+      },
+      {
+        "label": "deploy USDT",
+        "hash": "0x055f933b0c1d258a2e4c1f4adc6e01176a00c76a46c4eff88d8ac2f4ed6169c7"
+      },
+      {
+        "label": "deploy TidepoolVault",
+        "hash": "0x188d8533c6236f6440c41a3461cd3d406c7e8bd4d2be85ee87424fc084d0ae77"
+      },
+      {
+        "label": "back vault with USDC",
+        "hash": "0x3fc95d69328f2867a196f67704598d5941d7eb90a6c379dc6621e234aecd5098"
+      },
+      {
+        "label": "back vault with USDT",
+        "hash": "0x4074be54248c1efdeb2c5e192fcb1e30d1efc4c82f3abf1d3f75d8edac08812e"
+      },
+      {
+        "label": "fund tp-omft.testnet",
+        "hash": "CqJHRMByVUfCtYQ9vj7VVvKifcX8rdmnRm8Zbqi2DsXk"
+      },
+      {
+        "label": "create aur-0x38d81431b9f76d9699af7517040d5221d9dea252.tp-omft.testnet",
+        "hash": "HTYB39R5oZ8dNsUprjvr93UvpM46jhAH35sNrk7tyAga"
+      },
+      {
+        "label": "deploy aur-0x38d81431b9f76d9699af7517040d5221d9dea252.tp-omft.testnet",
+        "hash": "AvhLxQSaBgYbT5pGC5xRjtVR4GyKbeVi2V8HSkitD33V"
+      },
+      {
+        "label": "init aur-0x38d81431b9f76d9699af7517040d5221d9dea252.tp-omft.testnet",
+        "hash": "6JLmUMv5nQC22aj96wV5pautHXtrZYSCkKsg31rS3pPS"
+      },
+      {
+        "label": "storage verifier.tidepool-sandbox.testnet on USDC",
+        "hash": "6ynwYQ3cgxUfRyAs1pyQJWCuSqJ62Wvdc9A3rXW9nTum"
+      },
+      {
+        "label": "mint maker inventory USDC",
+        "hash": "DynHQToknoPUZMNhddB7Ud8U7NzmZTDyY7eZLJXZ5mFn"
+      },
+      {
+        "label": "deposit maker inventory USDC",
+        "hash": "7sh76DKVHDuPGDoocHNp7gSjrHzfavAsNx92eB1JBYok"
+      },
+      {
+        "label": "fund tp-omft.testnet",
+        "hash": "BdC97DzuLVprpg7REsEum7Nws6ieZzrikcRrM74n7Tjs"
+      },
+      {
+        "label": "create aur-0xc15cf5600225302675604310094f134e88705e62.tp-omft.testnet",
+        "hash": "GS2bjfBsTy6maLpxHbw2wHEXoTdwBgHEfEWYhRGZizHA"
+      },
+      {
+        "label": "deploy aur-0xc15cf5600225302675604310094f134e88705e62.tp-omft.testnet",
+        "hash": "AJAGMGEmtXD2gS1pPqvDQY56Jrbzq4Hca7oeZPanopS"
+      },
+      {
+        "label": "init aur-0xc15cf5600225302675604310094f134e88705e62.tp-omft.testnet",
+        "hash": "HS3YXzeHUmcKGsSg1Gju4H8WQzUdhew8ixzQ9KKddGNv"
+      },
+      {
+        "label": "storage verifier.tidepool-sandbox.testnet on USDT",
+        "hash": "ARiU32XXAn5UZPXNFb4mTr2nq1fpzyXisYg1yfzMFUXD"
+      },
+      {
+        "label": "mint maker inventory USDT",
+        "hash": "DCcnjL9xVCkGSGKxYhcgv5ksf7ApeQCPgyztiLMH1Rs5"
+      },
+      {
+        "label": "deposit maker inventory USDT",
+        "hash": "23nMG17czgLdXkm7Gyjd6mRkTLYQ5wZEqUs6cG4KHtRE"
+      }
+    ],
+    "deployBlock": 277242301,
+    "vault": "0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2",
     "forwarderInitCodeHash": "0xabeef3d43fe26bb56bcef8e9101184837bf1f6f3ec95c97710a6f90f73033454",
-    "live": false
+    "live": true
   }
 }

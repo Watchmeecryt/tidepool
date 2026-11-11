@@ -33,7 +33,7 @@ export const EVM_CHAINS = [
   { key: 'arb', blockchain: 'arb', name: 'Arbitrum Sepolia', chainId: 421614, rpc: process.env.ARB_SEPOLIA_RPC || 'https://sepolia-rollup.arbitrum.io/rpc', explorer: 'https://sepolia.arbiscan.io' },
   { key: 'eth', blockchain: 'eth', name: 'Ethereum Sepolia', chainId: 11155111, rpc: process.env.SEPOLIA_RPC || 'https://ethereum-sepolia-rpc.publicnode.com', explorer: 'https://sepolia.etherscan.io' },
   { key: 'bsc', blockchain: 'bsc', name: 'BSC Testnet', chainId: 97, rpc: process.env.BSC_TESTNET_RPC || 'https://bsc-testnet-rpc.publicnode.com', explorer: 'https://testnet.bscscan.com' },
-  { key: 'aurora', blockchain: 'aurora', name: 'Aurora Testnet', chainId: 1313161555, rpc: process.env.AURORA_TESTNET_RPC || 'https://testnet.aurora.dev', explorer: 'https://testnet.aurorascan.dev' },
+  { key: 'aurora', blockchain: 'aurora', name: 'Aurora Testnet', omft: 'aur', chainId: 1313161555, rpc: process.env.AURORA_TESTNET_RPC || 'https://testnet.aurora.dev', explorer: 'https://testnet.aurorascan.dev' },
 ];
 const DEPLOYED = JSON.parse(fs.readFileSync(new URL('./bridge-deployments.json', import.meta.url), 'utf8'));
 const BRIDGED = [
@@ -48,7 +48,7 @@ for (const c of EVM_CHAINS) {
   for (const b of BRIDGED) {
     const evm = d.tokens?.[b.symbol];
     if (!evm) continue;
-    const near = `${c.key}-${evm.toLowerCase()}.${OMFT}`;
+    const near = `${c.omft || c.key}-${evm.toLowerCase()}.${OMFT}`; // omft: shorter prefix where <key>-0x<40>.<OMFT> exceeds NEAR's 64-char limit
     const t = { ...b, kind: 'evm', sub: `${c.key}-${b.symbol.toLowerCase()}`, chain: c.key, blockchain: c.blockchain, evmAddress: evm, contractAddress: evm, nearContract: near, assetId: `nep141:${near}`, name: `Tidepool Testnet ${b.symbol} on ${c.name} (bridged, no value)` };
     if (c.deployed) TOKENS.push(t);
     c.tokens = [...(c.tokens || []), t];

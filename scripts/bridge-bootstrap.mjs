@@ -63,7 +63,7 @@ if (!(await viewAccount(OMFT))) {
 }
 const WASM = fs.readFileSync(new URL('../contracts/token/target/near/tidepool_token.wasm', import.meta.url));
 for (const b of BRIDGED) {
-  const id = `${c.key}-${d.tokens[b.symbol].toLowerCase()}.${OMFT}`;
+  const id = `${c.omft || c.key}-${d.tokens[b.symbol].toLowerCase()}.${OMFT}`;
   const assetId = `nep141:${id}`;
   if (!(await viewAccount(id))) {
     step(`create ${id}`);
