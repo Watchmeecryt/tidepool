@@ -1,6 +1,6 @@
 # Tidepool
 
-**A free testnet sandbox for NEAR Intents.** It runs NEAR's official, unmodified Intents verifier (`defuse` v0.4.5) on NEAR testnet and puts an API in front of it that matches the 1Click Swap API (OpenAPI v0.1.10). Point a 1Click client at Tidepool, swap test tokens across NEAR and eight other testnets, and spend no mainnet funds.
+**A free testnet sandbox for NEAR Intents.** It runs NEAR's official, unmodified Intents verifier (`defuse` v0.4.5) on NEAR testnet and puts an API in front of it that matches the 1Click Swap API (OpenAPI v0.1.10). Point a 1Click client at Tidepool, swap test tokens across NEAR and ten other testnets, and spend no mainnet funds.
 
 - **Live API and docs:** https://www.usetidepool.tech (docs: https://www.usetidepool.tech/docs)
 - **Swap app (human UI):** https://app.usetidepool.tech, repo [Watchmeecryt/tidepool-app](https://github.com/Watchmeecryt/tidepool-app)
@@ -21,10 +21,11 @@ NEAR Intents has no testnet and none is planned (`HACKATHON.md` Q-007). To test 
 | Test tokens | `contracts/token/` | A minimal NEP-141 token (owner mint, auto storage registration); six NEAR tokens: USDC, USDT, wNEAR, wBTC, ETH, XAUT. |
 | API | `server/` | 1Click v0.1.10 shapes: `/v0/tokens`, `/v0/quote`, `/v0/deposit/submit`, `/v0/status`, `/v0/generate-intent`, `/v0/submit-intent`, orders, auth, account and any-input withdrawals, plus `/v0/faucet` and `/v0/health`. Swap types `EXACT_INPUT`, `EXACT_OUTPUT`, `FLEX_INPUT`, `ANY_INPUT`; `appFees`; `depositMode: MEMO`. |
 | Maker | `server/src/engine.mjs` | A real solver that prices from CoinGecko plus a fixed fee and settles each swap with one `execute_intents` call on the verifier. |
-| Testnet bridges | `server/src/evm.mjs`, `solana.mjs`, `stellar.mjs`, `sui.mjs`, `utxo.mjs`, `btc.mjs`, `xrp.mjs`, `contracts/evm/`, `scripts/sui-coins/` | Deposits from and payouts to Ethereum Sepolia, Base Sepolia, Arbitrum Sepolia, Solana devnet, Bitcoin testnet4, Stellar testnet, Sui testnet and XRP Ledger testnet, bridged into the verifier as `nep141:<chain>-….tp-omft.testnet` tokens. 23 tokens in total. |
+| Testnet bridges | `server/src/evm.mjs`, `solana.mjs`, `stellar.mjs`, `sui.mjs`, `utxo.mjs`, `btc.mjs`, `xrp.mjs`, `hyperliquid.js`, `contracts/evm/`, `scripts/sui-coins/` | Deposits from and payouts to Ethereum Sepolia, Base Sepolia, Arbitrum Sepolia, BSC Testnet, Solana devnet, Hyperliquid testnet (HyperCore USDC), Bitcoin testnet4, Stellar testnet, Sui testnet and XRP Ledger testnet, bridged into the verifier as `nep141:<chain>-….tp-omft.testnet` tokens. 29 tokens in total, plus Ondo tokenized stocks and RWAs on BSC Testnet with `?ondoTokens=1` (57 with them). |
 | Faucet | `server/src/faucet.mjs` | `POST /v0/faucet` drips test tokens to a NEAR account (wallet or verifier balance) or to an address on the other chains. |
 | Docs | `docs/` | Fumadocs site (Next.js static export served by the server): quickstart, concepts, one guide per bridge, generated API reference, changelog, trust model. Markdown of every page by appending `.md`. |
 | Machine-readable | `site/public/openapi.json`, `server/src/site.mjs` | `/openapi.json`, `/llms.txt`, `/llms-full.txt`, `/AGENTS.md`. |
+| Explorer | `server/src/explorer.js` | Public swap explorer at [/explorer](https://www.usetidepool.tech/explorer) with read-only `GET /v0/explorer/swaps` and `/v0/explorer/stats`: funded swaps only, public fields only. |
 | Swap app | [tidepool-app](https://github.com/Watchmeecryt/tidepool-app) | Static React client of this API: swap or bridge UI, wallet connect per chain, faucet page. |
 | Scripts | `scripts/`, `examples/` | Idempotent testnet bootstrap; `examples/swap.mjs` runs a full swap end to end. |
 
@@ -37,10 +38,10 @@ flowchart LR
   C["Client: swap app, bot or AI agent<br/>(any 1Click client or SDK)"] -->|"HTTPS /v0/*"| A["Tidepool 1Click-compatible API<br/>index.mjs, orders.mjs, intents.mjs, auth.mjs"]
   A --> Q["Quote and solver layer<br/>engine.mjs: one maker, CoinGecko price + fixed fee"]
   Q -->|"execute_intents: two token_diff intents"| V["Official defuse v0.4.5 verifier, unmodified<br/>verifier.tidepool-sandbox.testnet (NEAR testnet)"]
-  V <-->|"ft_transfer_call in, ft_withdraw out"| B["Tidepool-run trusted relayers<br/>evm.mjs, solana.mjs, stellar.mjs, sui.mjs, btc.mjs, xrp.mjs"]
-  B <--> E["Ethereum, Base and Arbitrum Sepolia"]
+  V <-->|"ft_transfer_call in, ft_withdraw out"| B["Tidepool-run trusted relayers<br/>evm.mjs, solana.mjs, stellar.mjs, sui.mjs, btc.mjs, xrp.mjs, hyperliquid.js"]
+  B <--> E["Ethereum, Base, Arbitrum Sepolia and BSC Testnet"]
   B <--> S["Solana devnet"]
-  B <--> O["Bitcoin testnet4, Stellar, Sui and XRP Ledger testnets"]
+  B <--> O["Bitcoin testnet4, Stellar, Sui, XRP Ledger and Hyperliquid testnets"]
 ```
 
 Swap lifecycle, as the code runs it:
@@ -96,7 +97,7 @@ ME=<your-account>.testnet   # your own NEAR testnet account
 ```
 
 1. **`curl -s $API/v0/health`** - see `"network":"testnet"`, the verifier account, its wasm sha256 equal to the `defuse` v0.4.5 hash above, and maker and bridge status.
-2. **`curl -s $API/v0/tokens`** - see 23 tokens with `assetId` (for example `nep141:usdc.tidepool-sandbox.testnet`), `decimals` and a live USD `price`, across `near`, `eth`, `base`, `arb`, `sol`, `btc`, `stellar`, `sui` and `xrp`.
+2. **`curl -s $API/v0/tokens`** - see 29 tokens with `assetId` (for example `nep141:usdc.tidepool-sandbox.testnet`), `decimals` and a live USD `price`, across `near`, `eth`, `base`, `arb`, `sol`, `btc`, `stellar`, `sui` and `xrp`.
 3. **Get test tokens into your verifier balance:**
    ```bash
    curl -s -X POST $API/v0/faucet -H 'content-type: application/json' \
@@ -183,14 +184,28 @@ import { createAgentApi } from '@near-intents-agent-api/sdk'; // Node 24+
 const api = createAgentApi({ baseUrl: 'https://www.usetidepool.tech', apiKey: process.env.KEY }); // the SDK appends /v1
 ```
 
-**Policy model.** Enforced by the API before each action; changes apply immediately and are versioned (`expected_revision`). A policy sets the allowed `actions` and `assets`, per-asset `limits` (`per_transaction`, `hourly`, `daily`, `monthly`), `max_actions_per_hour`, `destinations` (any, allowlist or denylist) and a USD `budget` (`daily_usd`, `weekly_usd`, `monthly_usd`). Owners can freeze and unfreeze an agent and revoke grants. Violations return HTTP 403 with `layer: "policy"` (for example `policy_transaction_limit_exceeded`). Errors are JSON:API; actions are idempotent per `Idempotency-Key`. Withdrawals support the `near` chain and NEAR-native tokens only.
+**Policy model.** Enforced by the API before each action; changes apply immediately and are versioned (`expected_revision`). A policy sets the allowed `actions` and `assets`, per-asset `limits` (`per_transaction`, `hourly`, `daily`, `monthly`), `max_actions_per_hour`, `destinations` (any, allowlist or denylist) and a USD `budget` (`daily_usd`, `weekly_usd`, `monthly_usd`). Owners can freeze and unfreeze an agent and revoke grants. Violations return HTTP 403 with `layer: "policy"` (for example `policy_transaction_limit_exceeded`). Errors are JSON:API; actions are idempotent per `Idempotency-Key`. Withdrawals go to NEAR or, for bridged tokens, to every chain `/v0` pays out on (EVM testnets, Solana, Stellar, Sui, XRP, Bitcoin, Hyperliquid).
 
 Docs: [/docs/guides/agent-api](https://www.usetidepool.tech/docs/guides/agent-api) · Agents: start at [/llms.txt](https://www.usetidepool.tech/llms.txt)
+
+## Since submission (2026-11-01)
+
+Everything below shipped after the submission and is live; full detail in the [changelog](https://www.usetidepool.tech/docs/resources/changelog).
+
+- **Agent API (`/v1`):** free self-serve keys, withdrawals of bridged tokens to every `/v0` payout chain, owner approvals, timelocks and schedules, EVM and passkey owners, archive/restore/delete, withdrawal memos on Stellar, XRP and Solana.
+- **New chains:** native ETH on Ethereum, Base and Arbitrum Sepolia (deposits and payouts); BSC Testnet with Ondo tokenized stocks and RWAs (`?ondoTokens=1`); Hyperliquid testnet (HyperCore USDC, send and receive, real Hyperliquid testnet USDC in the user's own account).
+- **Public swap explorer** at [/explorer](https://www.usetidepool.tech/explorer) with a read-only API.
+- **Faucet:** site-only claims, a separate Stocks & RWAs tab, one claim per address every 7 days, account-age and per-IP limits against abuse.
+- **Reliability:** swaps no longer stick in `PROCESSING` on RPC errors; unpaid expired quotes are not reported as `FAILED`; admin treasury balances with low-balance flags.
+
+## Who is using it
+
+Tidepool is already used by other builders: a ballpark of about 10 hackathon apps have built and tested their NEAR Intents and 1Click integrations against it, and agent builders use the Agent API (`/v1`) with free keys. Live usage is public on the [explorer](https://www.usetidepool.tech/explorer).
 
 ## How NEAR fits
 
 - Every swap settles on NEAR testnet through one `execute_intents` call on NEAR's unmodified verifier with two `token_diff` intents, so it is atomic: both legs apply or neither does. Each deposit, settlement and refund is a public testnet transaction listed in `/v0/status`.
-- Deposits can arrive on NEAR (`ft_transfer`, `ft_transfer_call`, or a signed intents transfer) or on any of the eight other testnets; payouts can go to any of them. Non-NEAR assets are bridged into the verifier as NEP-141 tokens. This is chain abstraction on a testnet: one API and one verifier balance in front of nine chains.
+- Deposits can arrive on NEAR (`ft_transfer`, `ft_transfer_call`, or a signed intents transfer) or on any of the ten other testnets; payouts can go to any of them. Non-NEAR assets are bridged into the verifier as NEP-141 tokens. This is chain abstraction on a testnet: one API and one verifier balance in front of eleven chains.
 - Developers can test 1Click clients, `appFees`, `ANY_INPUT`, `MEMO` deposits, refunds and failed swaps (see [Failure cases](https://www.usetidepool.tech/docs/guides/failure-cases)) without mainnet funds. Moving to mainnet is a base-URL and asset-id change ([Mainnet migration](https://www.usetidepool.tech/docs/guides/mainnet-migration)).
 
 ## Hackathon track and window
@@ -202,8 +217,8 @@ Docs: [/docs/guides/agent-api](https://www.usetidepool.tech/docs/guides/agent-ap
 ## Honest limits
 
 - **Testnet only.** Tokens have no value. Do not send mainnet assets to any address Tidepool shows you.
-- **Custodial relayers for non-NEAR chains.** The Ethereum/Base/Arbitrum Sepolia, BSC Testnet, Solana, Bitcoin, Stellar, Sui and XRP routes use Tidepool-held keys, a vault or treasury and a trusted relayer. No proofs, no light clients. Deposit-address keys are derived on the server. Only the NEAR path is trust-minimized, and even there Tidepool deploys the verifier and the token accounts.
-- **Per-chain caps** (a request over the cap answers 400 at quote time): SOL 0.005 per swap, payout or refund; XLM 100; SUI 10; BTC 0.005 (minimum 0.0001); XRP 100. BTC and XRP payout quotes answer 503 while the treasury is low. Native BTC and XRP are never dripped by the faucet.
+- **Custodial relayers for non-NEAR chains.** The Ethereum/Base/Arbitrum Sepolia, BSC Testnet, Solana, Bitcoin, Stellar, Sui, XRP and Hyperliquid routes use Tidepool-held keys, a vault or treasury and a trusted relayer. No proofs, no light clients. Deposit-address keys are derived on the server. Only the NEAR path is trust-minimized, and even there Tidepool deploys the verifier and the token accounts.
+- **Per-chain caps** (a request over the cap answers 400 at quote time): SOL 0.005 per swap, payout or refund; XLM 100; SUI 0.005; BTC 0.005 (minimum 0.0001); XRP 100; native ETH 0.006; Hyperliquid USDC 5 (minimum 2). BTC and XRP payout quotes answer 503 while the treasury is low. Native BTC and XRP are never dripped by the faucet.
 - **One maker** with finite inventory sets every price (CoinGecko plus a fixed fee); large quotes fail with `Not enough maker liquidity`.
 - **Confidentiality is not implemented.** The `confidentiality` request parameter is accepted but ignored: every swap settles publicly. `CONFIDENTIAL_INTENTS` deposit, refund and recipient types answer 400. NEAR's confidential settlement runs on NEAR Private Shard, which is not open to outside builders ([NEAR's update](https://docs.near-intents.org/changelog/entries/2026-10-27-1click-confidential.md)). Rely on `status`, not on a swap hash in `swapDetails.nearTxHashes`.
 - Faucet limits: one Tokens claim per address every 7 days, plus a separate Stocks & RWAs slot every 7 days; 2 claims per IP every 3 hours; NEAR accounts must be at least 3 hours old. State is a JSON file on one server volume; there is no SLA.
