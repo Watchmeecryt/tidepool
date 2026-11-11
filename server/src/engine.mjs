@@ -254,7 +254,8 @@ const CAP_SUI = () => fromUnits(SUI_CAP_MIST, 9);
 export function hypercoreLimits(req, inT, outT, amountIn, amountOut) {
   const cap = () => fromUnits(HYPERCORE_USDC_CAP, HYPERCORE_DECIMALS);
   const hintCap = (why, extra = {}) => hint(`USDC on Tidepool's Hyperliquid testnet (HyperCore) is capped at ${cap()} USDC per swap or payout. ${why}`, req, { capUnits: HYPERCORE_USDC_CAP.toString(), ...extra });
-  if (inT.kind === 'hypercore' && (req.depositType === 'ORIGIN_CHAIN' || req.refundType === 'ORIGIN_CHAIN')) throw new BadRequest('Hyperliquid testnet USDC is a destination only: Tidepool does not accept ORIGIN_CHAIN deposits or refunds on HyperCore. Deposit from NEAR Intents or another supported origin.');
+  if (inT.kind === 'hypercore' && amountIn < HYPERCORE_USDC_MIN) throw new BadRequest(`Minimum deposit from Hyperliquid testnet is ${fromUnits(HYPERCORE_USDC_MIN, HYPERCORE_DECIMALS)} USDC; Hyperliquid also charges the sender ~1 USDC to send to a new address`, 400, hint(`Minimum deposit from Hyperliquid testnet is ${fromUnits(HYPERCORE_USDC_MIN, HYPERCORE_DECIMALS)} USDC (${HYPERCORE_USDC_MIN} units). Raise the amount.`, req, { field: 'amount', minUnits: HYPERCORE_USDC_MIN.toString() }));
+  if (inT.kind === 'hypercore' && req.depositType === 'ORIGIN_CHAIN' && req.swapType === 'ANY_INPUT') throw new BadRequest('ANY_INPUT quotes cannot take deposits on Hyperliquid Testnet; use EXACT_INPUT, EXACT_OUTPUT or FLEX_INPUT');
   if (outT.kind === 'hypercore') {
     if (amountOut < HYPERCORE_USDC_MIN) throw new BadRequest(`Minimum payout to Hyperliquid testnet is 2 USDC; Hyperliquid charges ~1 USDC to send to a new account`, 400, hint(`Minimum payout to Hyperliquid testnet is ${fromUnits(HYPERCORE_USDC_MIN, HYPERCORE_DECIMALS)} USDC (${HYPERCORE_USDC_MIN} units). Hyperliquid charges about 1 USDC to send to a new account. Raise the amount.`, req, { field: 'amount', minUnits: HYPERCORE_USDC_MIN.toString() }));
     if (amountOut > HYPERCORE_USDC_CAP) throw new BadRequest(`HyperCore USDC is capped at ${cap()} USDC (${HYPERCORE_USDC_CAP} units) per swap on Tidepool's Hyperliquid testnet bridge; this quote would pay out ${fromUnits(amountOut, HYPERCORE_DECIMALS)} USDC. Lower the amount.`, 400, hintCap('Lower amount (or the EXACT_OUTPUT amount) so the USDC payout is at most the cap.', { field: 'amount' }));
@@ -404,7 +405,7 @@ export async function quote(req, { authed, maxDeadlineMs = 24 * 3600_000 } = {})
     }
     if (outT.kind === 'stellar' && req.recipientType === 'DESTINATION_CHAIN' && await stellar.treasuryLow()) throw new BadRequest('The Stellar testnet treasury is low on XLM right now (it refills from Friendbot automatically). Try again in a few minutes.', 503);
     if (inT.native && inT.kind === 'evm' && req.depositType === 'ORIGIN_CHAIN' && !evm.relayerAddress()) throw new BadRequest(`${chainOf(inT.chain).name} native ETH deposits are not configured on this server`, 503);
-    let depositAddress = inT.chain && req.depositType === 'ORIGIN_CHAIN' ? (inT.kind === 'sol' ? sol.depositAddressFor(MASTER, correlationId) : inT.kind === 'stellar' ? STELLAR_CHAIN.treasury : inT.kind === 'xrp' ? XRP_CHAIN.treasury : inT.kind === 'sui' ? sui.depositAddressFor(MASTER, correlationId) : UTXO[inT.kind] ? UTXO[inT.kind].depositAddressFor(MASTER, correlationId) : inT.native ? evm.nativeDepositAddressFor(MASTER, correlationId) : evm.depositAddressFor(inT.chain, correlationId)) : accountId;
+    let depositAddress = inT.chain && req.depositType === 'ORIGIN_CHAIN' ? (inT.kind === 'sol' ? sol.depositAddressFor(MASTER, correlationId) : inT.kind === 'stellar' ? STELLAR_CHAIN.treasury : inT.kind === 'xrp' ? XRP_CHAIN.treasury : inT.kind === 'sui' ? sui.depositAddressFor(MASTER, correlationId) : UTXO[inT.kind] ? UTXO[inT.kind].depositAddressFor(MASTER, correlationId) : inT.native || inT.kind === 'hypercore' ? evm.nativeDepositAddressFor(MASTER, correlationId) : evm.depositAddressFor(inT.chain, correlationId)) : accountId;
     if (memoMode) {
       depositAddress = inT.kind === 'stellar' ? STELLAR_CHAIN.treasury : inT.kind === 'xrp' ? XRP_CHAIN.treasury : await memoAccount(inT); q.depositAddress = depositAddress;
       if (inT.kind === 'xrp') { do q.depositMemo = xrp.newTag(); while (db.swaps[keyOf(depositAddress, q.depositMemo)]); } // a destination tag is a uint32: re-roll on the (rare) collision
@@ -729,7 +730,7 @@ async function execute(signed) {
 
 // ORIGIN_CHAIN: the user sent NEP-141 tokens to the deposit address itself. Move them into the verifier.
 async function sweepOrigin(addr, s, inT) {
-  if (inT.chain) return inT.kind === 'sol' ? bridgeInSol(addr, s, inT) : inT.kind === 'sui' ? bridgeInSui(addr, s, inT) : UTXO[inT.kind] ? bridgeInUtxo(addr, s, inT) : inT.native ? bridgeInEvmNative(addr, s, inT) : bridgeIn(addr, s, inT);
+  if (inT.chain) return inT.kind === 'hypercore' ? bridgeInHypercore(addr, s, inT) : inT.kind === 'sol' ? bridgeInSol(addr, s, inT) : inT.kind === 'sui' ? bridgeInSui(addr, s, inT) : UTXO[inT.kind] ? bridgeInUtxo(addr, s, inT) : inT.native ? bridgeInEvmNative(addr, s, inT) : bridgeIn(addr, s, inT);
   const bal = BigInt(await view(inT.nearContract, 'ft_balance_of', { account_id: addr }));
   if (bal === 0n) return;
   const acct = await viewAccount(addr);
@@ -879,6 +880,31 @@ async function bridgeInUtxo(addr, s, inT) {
   const h = tagEvm(s, inT.kind, sw.tx.txid);
   s.txs.push({ label: `sweep deposit address into treasury (${chainOf(inT.kind).name})`, hash: h });
   sw.sweepTx = h; sw.stage = 'swept'; delete sw.tx; save();
+  return creditBridgeIn(addr, s, inT);
+}
+
+// Hyperliquid testnet origin: the quote's deposit address is the per-quote derived EOA (same key as native EVM deposits). Its USDC
+// (spot and perps) is detected via the info API, moved spot -> perps and usdSent to the relayer's perps with that key (gasless), then
+// minted + credited like the other chains. Each step is sign-first/recorded so a crash or retry never loses or doubles a credit.
+async function bridgeInHypercore(addr, s, inT) {
+  await creditBridgeIn(addr, s, inT);
+  let sw = s.bridgeIn.find(b => b.stage === 'sweeping');
+  if (!sw) {
+    if (!utxoPollDue(addr, Date.now() < new Date(s.quoteResponse.quote.deadline).getTime() ? 5_000 : 60_000)) return;
+    const { perps, spot } = await hl.depositBalances(addr);
+    if (perps + spot < 10_000n) return; // ignore dust under 0.01 USDC
+    for (const d of await hl.incoming(addr, new Date(s.quoteResponse.timestamp).getTime() - 60_000).catch(() => [])) if (!s.originTxs.includes(d.hash)) { s.originTxs.push(d.hash); tagEvm(s, 'hypercore', d.hash); }
+    if (s.status === 'PENDING_DEPOSIT') set(s, 'KNOWN_DEPOSIT_TX');
+    sw = { amount: (perps + spot).toString(), spot: spot.toString(), stage: 'sweeping', cls: spot > 0n ? {} : undefined, tx: {} };
+    s.bridgeIn.push(sw); save();
+  }
+  const dep = evm.nativeDepositWallet(MASTER, s.quoteResponse.correlationId);
+  if (dep.address.toLowerCase() !== String(addr).toLowerCase()) throw new Error('hypercore deposit key mismatch');
+  if (sw.cls && (await hl.drive(sw.cls, () => hl.sweepClass(dep, BigInt(sw.spot)), save)) !== 'confirmed') return;
+  if ((await hl.drive(sw.tx, () => hl.sweepSend(dep, BigInt(sw.amount)), save)) !== 'confirmed') return;
+  const h = tagEvm(s, 'hypercore', sw.tx.hash);
+  s.txs.push({ label: `sweep deposit address into treasury (${chainOf('hypercore').name})`, hash: h });
+  sw.sweepTx = h; sw.stage = 'swept'; delete sw.tx; delete sw.cls; save();
   return creditBridgeIn(addr, s, inT);
 }
 

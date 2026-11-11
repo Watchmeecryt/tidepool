@@ -238,8 +238,8 @@ if (ONDO_DEP.live && ONDO_DEP.chain === 'bsc' && ONDO_DEP.tokens) {
 
 
 // ---- Hyperliquid testnet (HyperCore) destination (trusted relayer run by Tidepool; testnet only) ----
-// Destination only: a swap into this asset pays USDC into the recipient's HyperCore perps balance via a gasless
-// EIP-712 usdSend from the existing EVM relayer. No ORIGIN_CHAIN deposits. blockchain is "hypercore", matching
+// Send and receive: a swap into this asset pays USDC into the recipient's HyperCore perps balance via a gasless
+// EIP-712 usdSend from the existing EVM relayer; ORIGIN_CHAIN deposits go to a per-quote derived address and are swept to the relayer. blockchain is "hypercore", matching
 // 1Click's TokenResponse enum. The NEAR-side OMFT id is nep141:hypercore.tp-omft.testnet (6 decimals, like other USDC).
 export const HYPERCORE_DECIMALS = 6;
 export const HYPERCORE_USDC_CAP = BigInt(process.env.HYPERCORE_USDC_CAP || 100_000_000); // 100 USDC cap on a HyperCore payout or swap leg
@@ -251,7 +251,7 @@ if (HD?.treasury) {
   HYPERCORE_CHAIN.treasury = HD.treasury;
   HYPERCORE_CHAIN.tokens = [];
   const usdc = { chain: 'hypercore', kind: 'hypercore', blockchain: 'hypercore', sub: 'hypercore', symbol: 'USDC', decimals: HYPERCORE_DECIMALS, coingeckoId: 'usd-coin', fallback: 1, drip: '0', inventory: HD.inventory?.USDC || '200000',
-    nearContract: `hypercore.${OMFT}`, assetId: `nep141:hypercore.${OMFT}`, name: 'Tidepool Testnet USDC on Hyperliquid Testnet (HyperCore, no value)', destinationOnly: true };
+    nearContract: `hypercore.${OMFT}`, assetId: `nep141:hypercore.${OMFT}`, name: 'Tidepool Testnet USDC on Hyperliquid Testnet (HyperCore, no value)' };
   if (HYPERCORE_CHAIN.deployed) TOKENS.push(usdc);
   HYPERCORE_CHAIN.tokens.push(usdc);
 }

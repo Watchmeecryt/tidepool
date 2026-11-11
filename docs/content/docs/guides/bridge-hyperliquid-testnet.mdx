@@ -1,23 +1,24 @@
 ---
 title: Hyperliquid testnet (HyperCore)
-description: Pay USDC out to a HyperCore testnet perps balance with a Tidepool quote. Destination only, minimum 2 USDC, capped at 100 USDC.
+description: Swap USDC into or out of a HyperCore testnet balance with a Tidepool quote. Send and receive, minimum 2 USDC, capped at 100 USDC.
 icon: Bridge
 ---
 
 <Callout type="warn">**This is a trusted relayer run by Tidepool, on Hyperliquid testnet only.** It is not 1Click infrastructure and not Hyperliquid's official bridge. Test USDC has no value.</Callout>
 
-Tidepool can pay **USDC** into a recipient's HyperCore **perps** balance on Hyperliquid testnet. The asset id is `nep141:hypercore.tp-omft.testnet`, `blockchain: "hypercore"` (the same blockchain value 1Click uses). Recipients are `0x` addresses. The route is **destination only**: there are no ORIGIN_CHAIN deposits or refunds on HyperCore.
+Tidepool can pay **USDC** into a recipient's HyperCore **perps** balance on Hyperliquid testnet, and take USDC **deposits** from HyperCore (send and receive). The asset id is `nep141:hypercore.tp-omft.testnet`, `blockchain: "hypercore"` (the same blockchain value 1Click uses). Recipients, `refundTo` and deposit addresses are `0x` addresses.
 
 It is listed in `/v0/tokens` only while the route is live.
 
 ## Limits
 
-- **Minimum 2 USDC** per payout (2,000,000 base units). A smaller quote, dry or live, answers `400` (`Minimum payout to Hyperliquid testnet is 2 USDC; Hyperliquid charges ~1 USDC to send to a new account`).
-- **100 USDC** per swap or payout. A larger quote answers `400` at quote time.
-- `ANY_INPUT` cannot pay out on HyperCore.
+- **Minimum 2 USDC** per payout (2,000,000 base units). A smaller quote, dry or live, answers `400` (`Minimum payout to Hyperliquid testnet is 2 USDC; Hyperliquid charges ~1 USDC to send to a new account`). Hyperliquid deducts that ~1 USDC from the first payout to a new account; Tidepool does not cover it.
+- **Minimum 2 USDC** per deposit (`amountIn`). A smaller quote answers `400` (`Minimum deposit from Hyperliquid testnet is 2 USDC`).
+- **100 USDC** per deposit, swap or payout. A larger quote answers `400` at quote time.
+- `ANY_INPUT` is not supported on HyperCore in either direction.
 - If the treasury is short of test USDC, a live quote answers `503`. Claim mock USDC to the treasury at the [Hyperliquid testnet faucet](https://app.hyperliquid-testnet.xyz/drip).
 
-## Quote and payout
+## Receive: quote and payout
 
 Quote with a HyperCore `destinationAsset`, `recipient: "0x…"`, and `recipientType: "DESTINATION_CHAIN"`. Deposit on NEAR Intents (or another supported origin) as usual. After settlement the relayer sends a gasless EIP-712 `usdSend` from Tidepool's HyperCore treasury, so the USDC appears in the recipient's perps balance. No gas is needed on Hyperliquid, and there is no memo.
 
@@ -31,11 +32,38 @@ curl -X POST "https://www.usetidepool.tech/v0/quote" \
   "originAsset": "nep141:usdc.tidepool-sandbox.testnet",
   "depositType": "INTENTS",
   "destinationAsset": "nep141:hypercore.tp-omft.testnet",
-  "amount": "1000000",
+  "amount": "5000000",
   "recipient": "0x0000000000000000000000000000000000000001",
   "recipientType": "DESTINATION_CHAIN",
   "refundTo": "user.testnet",
   "refundType": "INTENTS",
+  "deadline": "2030-01-01T00:00:00.000Z"
+}'
+```
+
+## Send: deposit from Hyperliquid
+
+Quote with `originAsset: "nep141:hypercore.tp-omft.testnet"` and `depositType: "ORIGIN_CHAIN"`. Each live quote gets its **own** `0x` `depositAddress` on HyperCore (no memo). Send exactly `amountIn` USDC to it from Hyperliquid: in the Hyperliquid testnet app open **Portfolio → Send**, paste the deposit address, pick USDC (spot or perps both work) and send. Via the API it is a `usdSend` (perps) or `spotSend` (spot).
+
+- **Activation fee:** Hyperliquid charges the sender about **1 USDC** extra the first time anyone sends to a new address, and every deposit address is new. Make sure your balance covers `amountIn` plus ~1 USDC.
+- Tidepool polls Hyperliquid's info API for the deposit address, moves any spot USDC to perps and sweeps it to the treasury with a gasless `usdSend` signed by that address's own key, then credits the swap. You can also call `POST /v0/deposit/submit` with the Hyperliquid tx hash, but it is not required.
+- **Refunds:** with `refundType: "ORIGIN_CHAIN"` and a `0x` `refundTo`, refunds (deadline passed, partial deposit, slippage) go back to `refundTo` on HyperCore with a `usdSend` (Hyperliquid deducts ~1 USDC if `refundTo` is a new account). With `refundType: "INTENTS"` they go to a NEAR account as usual.
+
+```bash
+curl -X POST "https://www.usetidepool.tech/v0/quote" \
+  -H 'content-type: application/json' \
+  -d '{
+  "dry": true,
+  "swapType": "EXACT_INPUT",
+  "slippageTolerance": 100,
+  "originAsset": "nep141:hypercore.tp-omft.testnet",
+  "depositType": "ORIGIN_CHAIN",
+  "destinationAsset": "nep141:usdc.tidepool-sandbox.testnet",
+  "amount": "5000000",
+  "recipient": "user.testnet",
+  "recipientType": "DESTINATION_CHAIN",
+  "refundTo": "0x0000000000000000000000000000000000000001",
+  "refundType": "ORIGIN_CHAIN",
   "deadline": "2030-01-01T00:00:00.000Z"
 }'
 ```

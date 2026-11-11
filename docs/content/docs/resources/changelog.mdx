@@ -3,6 +3,13 @@ title: Changelog
 description: What changed in Tidepool and when.
 icon: ClockCounterClockwise
 ---
+## 2026-11-11 · Hyperliquid testnet is send and receive
+
+- **Deposits from HyperCore:** quotes with `originAsset: "nep141:hypercore.tp-omft.testnet"` and `depositType: "ORIGIN_CHAIN"` now get a per-quote `0x` deposit address on HyperCore. Send `amountIn` USDC to it from Hyperliquid (spot or perps); Tidepool detects it through Hyperliquid's info API, sweeps it to the treasury with a gasless `usdSend` and credits the swap. Minimum 2 USDC and at most 100 USDC per deposit; the sender also pays Hyperliquid's ~1 USDC fee for sending to a new address. No `ANY_INPUT`.
+- **Refunds:** `refundType: "ORIGIN_CHAIN"` with a `0x` `refundTo` now refunds on HyperCore.
+- **App:** Hyperliquid shows in the "You send" picker too, with deposit instructions, and uses the official Hyperliquid logo.
+- **Docs:** [Hyperliquid testnet guide](/docs/guides/bridge-hyperliquid-testnet), `/openapi.json`, `/v1/openapi.json` and llms files updated.
+
 ## 2026-11-11 · Hyperliquid testnet minimum payout is 2 USDC
 
 - **Minimum:** quotes whose destination is `nep141:hypercore.tp-omft.testnet` now answer `400` when the output is below 2 USDC (2,000,000 units), dry or live. Hyperliquid charges about 1 USDC the first time it sends to a new account, so smaller payouts fail. The 100 USDC cap is unchanged.
