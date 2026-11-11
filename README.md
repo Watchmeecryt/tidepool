@@ -21,7 +21,7 @@ NEAR Intents has no testnet and none is planned (`HACKATHON.md` Q-007). To test 
 | Test tokens | `contracts/token/` | A minimal NEP-141 token (owner mint, auto storage registration); six NEAR tokens: USDC, USDT, wNEAR, wBTC, ETH, XAUT. |
 | API | `server/` | 1Click v0.1.10 shapes: `/v0/tokens`, `/v0/quote`, `/v0/deposit/submit`, `/v0/status`, `/v0/generate-intent`, `/v0/submit-intent`, orders, auth, account and any-input withdrawals, plus `/v0/faucet` and `/v0/health`. Swap types `EXACT_INPUT`, `EXACT_OUTPUT`, `FLEX_INPUT`, `ANY_INPUT`; `appFees`; `depositMode: MEMO`. |
 | Maker | `server/src/engine.mjs` | A real solver that prices from CoinGecko plus a fixed fee and settles each swap with one `execute_intents` call on the verifier. |
-| Testnet bridges | `server/src/evm.mjs`, `solana.mjs`, `stellar.mjs`, `sui.mjs`, `utxo.mjs`, `btc.mjs`, `xrp.mjs`, `hyperliquid.js`, `contracts/evm/`, `scripts/sui-coins/` | Deposits from and payouts to Ethereum Sepolia, Base Sepolia, Arbitrum Sepolia, BSC Testnet, Solana devnet, Hyperliquid testnet (HyperCore USDC), Bitcoin testnet4, Stellar testnet, Sui testnet and XRP Ledger testnet, bridged into the verifier as `nep141:<chain>-….tp-omft.testnet` tokens. 29 tokens in total, plus Ondo tokenized stocks and RWAs on BSC Testnet with `?ondoTokens=1` (57 with them). |
+| Testnet bridges | `server/src/evm.mjs`, `solana.mjs`, `stellar.mjs`, `sui.mjs`, `utxo.mjs`, `btc.mjs`, `xrp.mjs`, `hyperliquid.js`, `contracts/evm/`, `scripts/sui-coins/` | Deposits from and payouts to Ethereum Sepolia, Base Sepolia, Arbitrum Sepolia, BSC Testnet, Aurora Testnet, Solana devnet, Hyperliquid testnet (HyperCore USDC), Bitcoin testnet4, Stellar testnet, Sui testnet and XRP Ledger testnet, bridged into the verifier as `nep141:<chain>-….tp-omft.testnet` tokens. 31 tokens in total, plus Ondo tokenized stocks and RWAs on BSC Testnet with `?ondoTokens=1` (59 with them). Aurora uses the short prefix `nep141:aur-0x….tp-omft.testnet` (NEAR account ids max out at 64 characters). |
 | Faucet | `server/src/faucet.mjs` | `POST /v0/faucet` drips test tokens to a NEAR account (wallet or verifier balance) or to an address on the other chains. |
 | Docs | `docs/` | Fumadocs site (Next.js static export served by the server): quickstart, concepts, one guide per bridge, generated API reference, changelog, trust model. Markdown of every page by appending `.md`. |
 | Machine-readable | `site/public/openapi.json`, `server/src/site.mjs` | `/openapi.json`, `/llms.txt`, `/llms-full.txt`, `/AGENTS.md`. |
@@ -39,7 +39,7 @@ flowchart LR
   A --> Q["Quote and solver layer<br/>engine.mjs: one maker, CoinGecko price + fixed fee"]
   Q -->|"execute_intents: two token_diff intents"| V["Official defuse v0.4.5 verifier, unmodified<br/>verifier.tidepool-sandbox.testnet (NEAR testnet)"]
   V <-->|"ft_transfer_call in, ft_withdraw out"| B["Tidepool-run trusted relayers<br/>evm.mjs, solana.mjs, stellar.mjs, sui.mjs, btc.mjs, xrp.mjs, hyperliquid.js"]
-  B <--> E["Ethereum, Base, Arbitrum Sepolia and BSC Testnet"]
+  B <--> E["Ethereum, Base, Arbitrum Sepolia, BSC Testnet and Aurora Testnet"]
   B <--> S["Solana devnet"]
   B <--> O["Bitcoin testnet4, Stellar, Sui, XRP Ledger and Hyperliquid testnets"]
 ```
@@ -57,7 +57,7 @@ Official side: [OpenAPI v0.1.10](https://1click.chaindefuser.com/docs/v0/openapi
 
 | Tidepool (`https://www.usetidepool.tech`) | Official 1Click (same path) | Shape |
 | --- | --- | --- |
-| `GET /v0/tokens` | `GET /v0/tokens` | Same shape. Testnet asset ids and the `blockchain` values `near`, `eth`, `base`, `arb`, `sol`, `stellar`, `sui`, `btc`, `xrp`. |
+| `GET /v0/tokens` | `GET /v0/tokens` | Same shape. Testnet asset ids and the `blockchain` values `near`, `eth`, `base`, `arb`, `bsc`, `aurora`, `sol`, `stellar`, `sui`, `btc`, `xrp`, `hypercore`. |
 | `POST /v0/quote` | `POST /v0/quote` | Same shape. Extras: optional `simulate` (`STUCK` or `FAILED`) and a `tidepool` object. `confidentiality` is accepted and ignored; `CONFIDENTIAL_INTENTS` types return 400. `ANY_INPUT` needs a real `originAsset` and an `amount` above `"0"` (official example: `1cs_v1:any`, `"0"`). |
 | `POST /v0/deposit/submit` | `POST /v0/deposit/submit` | Same shape. |
 | `GET /v0/status` | `GET /v0/status` | Same shape. `swapDetails.slippage` is a fraction (`0.0012` is 0.12%); `nearTxHashes` includes the swap's own transaction; extra `tidepool` object (explorer links, notes). |
@@ -193,9 +193,9 @@ Docs: [/docs/guides/agent-api](https://www.usetidepool.tech/docs/guides/agent-ap
 Everything below shipped after the submission and is live; full detail in the [changelog](https://www.usetidepool.tech/docs/resources/changelog).
 
 - **Agent API (`/v1`):** free self-serve keys, withdrawals of bridged tokens to every `/v0` payout chain, owner approvals, timelocks and schedules, EVM and passkey owners, archive/restore/delete, withdrawal memos on Stellar, XRP and Solana.
-- **New chains:** native ETH on Ethereum, Base and Arbitrum Sepolia (deposits and payouts); BSC Testnet with Ondo tokenized stocks and RWAs (`?ondoTokens=1`); Hyperliquid testnet (HyperCore USDC, send and receive, real Hyperliquid testnet USDC in the user's own account).
+- **New chains:** native ETH on Ethereum, Base and Arbitrum Sepolia (deposits and payouts); BSC Testnet with Ondo tokenized stocks and RWAs (`?ondoTokens=1`); Hyperliquid testnet (HyperCore USDC, send and receive, real Hyperliquid testnet USDC in the user's own account; minimum 2 USDC, cap 5 USDC per swap; the app pays from a connected EVM wallet with a signed `usdSend`/`spotSend`); Aurora Testnet (chain id 1313161555, test USDC/USDT, faucet drip, payouts are plain ERC-20 transfers so Safe addresses work; guide: [Aurora testnet bridge](https://www.usetidepool.tech/docs/guides/bridge-aurora-testnet)).
 - **Public swap explorer** at [/explorer](https://www.usetidepool.tech/explorer) with a read-only API.
-- **Faucet:** site-only claims, a separate Stocks & RWAs tab, one claim per address every 7 days, account-age and per-IP limits against abuse.
+- **Faucet:** site-only claims, a separate Stocks & RWAs tab, one claim per address every 7 days, NEAR accounts at least 3 hours old and 2 claims per IP every 3 hours; 100 USDC + 100 USDT per EVM chain including BSC and Aurora (native gas is never dripped).
 - **Reliability:** swaps no longer stick in `PROCESSING` on RPC errors; unpaid expired quotes are not reported as `FAILED`; admin treasury balances with low-balance flags.
 
 ## Who is using it
