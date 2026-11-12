@@ -2,6 +2,7 @@
 // Every field here is already public through /v0/status or on chain (deposit address, amounts, addresses,
 // explorer links). No notes, intents accounts, IPs, keys, fee internals or treasury data.
 import { db } from './store.mjs';
+import { usageCounts } from './admin.mjs';
 import { TOKENS, ONDO_TOKENS, fromUnits, chainOf } from './config.mjs';
 import { txExplorerUrl, statusPrices } from './engine.mjs';
 
@@ -58,6 +59,7 @@ export function explorerStats() {
     processing: all.filter(r => !['SUCCESS', 'REFUNDED', 'FAILED'].includes(r.status)).length,
     volumeUsd: vol(ok), swaps24h: all.filter(r => Date.parse(r.createdAt) >= day).length, volume24hUsd: vol(ok.filter(r => Date.parse(r.createdAt) >= day)),
     uniqueAddresses: new Set(all.flatMap(r => [r.sender, r.recipient]).filter(Boolean)).size,
+    ...usageCounts(),
     chains: Object.entries(chains).sort((a, b) => b[1] - a[1]).map(([chain, swaps]) => ({ chain, chainName: chainName(chain), swaps })),
     note: 'Testnet only: USD values use testnet price feeds and the tokens have no value.',
   };

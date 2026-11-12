@@ -134,6 +134,14 @@ function purgeInactive() {
   saveDb(); saveLog();
   return { wallets: gone.size, faucetKeys, logWallets, agents };
 }
+// Raw totals for the public explorer (our own wallets excluded).
+export function usageCounts() {
+  const ws = walletStats().filter(w => !w.ours);
+  const inactive = (w) => !w.quotes && !w.dryQuotes && !w.swaps && !w.agentTransfers && !w.agentOther;
+  const hide = new Set(ws.filter(inactive).map(w => w.wallet));
+  const swaps = Object.values(db.swaps).filter(s => swapWallets(s).some(w => !isOurs(w)));
+  return { wallets: ws.length - hide.size, liveQuotes: swaps.length, dryQuotes: ws.reduce((a, w) => a + (w.dryQuotes || 0), 0) };
+}
 function dashboard(all, fo = false) {
   const ws = walletStats();
   // Faucet-only: claimed from the faucet but never quoted (live or dry), swapped, or used the agent API beyond faucet drips.

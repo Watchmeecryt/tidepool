@@ -5,7 +5,7 @@ const ORIGIN = process.env.NEXT_PUBLIC_TIDEPOOL_URL || '';
 type Side = { assetId: string; symbol: string; chain: string; chainName: string; amount: string | null; amountUsd: string | null };
 type Swap = { depositAddress: string; depositMemo: string | null; status: string; swapType: string; createdAt: string; updatedAt: string; from: Side; to: Side; sender: string | null; recipient: string | null; txs: { label: string; url: string }[] };
 type Page = { data: Swap[]; page: number; limit: number; total: number; totalPages: number };
-type Stats = { totalSwaps: number; success: number; refunded: number; failed: number; processing: number; volumeUsd: string; swaps24h: number; volume24hUsd: string; uniqueAddresses: number; chains: { chain: string; chainName: string; swaps: number }[] };
+type Stats = { totalSwaps: number; success: number; refunded: number; failed: number; processing: number; volumeUsd: string; swaps24h: number; volume24hUsd: string; uniqueAddresses: number; wallets?: number; liveQuotes?: number; dryQuotes?: number; chains: { chain: string; chainName: string; swaps: number }[] };
 
 const CHAINS = ['near', 'eth', 'base', 'arb', 'bsc', 'aurora', 'sol', 'stellar', 'sui', 'xrp', 'btc', 'zec', 'hypercore'];
 const STATUS: Record<string, [string, string]> = {
@@ -71,6 +71,9 @@ export function SwapExplorer() {
         <Stat k="Volume (successful)" v={stats ? usd(stats.volumeUsd) : '—'} />
         <Stat k="Swaps, last 24h" v={stats ? stats.swaps24h.toLocaleString() : '—'} />
         <Stat k="Unique addresses" v={stats ? stats.uniqueAddresses.toLocaleString() : '—'} />
+        <Stat k="Wallets" v={stats?.wallets != null ? stats.wallets.toLocaleString() : '—'} />
+        <Stat k="Live quotes" v={stats?.liveQuotes != null ? stats.liveQuotes.toLocaleString() : '—'} />
+        <Stat k="Dry quotes" v={stats?.dryQuotes != null ? stats.dryQuotes.toLocaleString() : '—'} />
       </div>
       {stats && stats.chains.length > 0 && (
         <div className="flex flex-wrap gap-2">

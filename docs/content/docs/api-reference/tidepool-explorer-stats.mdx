@@ -47,6 +47,9 @@ const data = await res.json();
   "swaps24h": 0,
   "volume24hUsd": "string",
   "uniqueAddresses": 0,
+  "wallets": 0,
+  "liveQuotes": 0,
+  "dryQuotes": 0,
   "chains": [
     {
       "chain": "string",
@@ -71,6 +74,9 @@ const data = await res.json();
 | `swaps24h` | integer |  |  |
 | `volume24hUsd` | string |  |  |
 | `uniqueAddresses` | integer |  |  |
+| `wallets` | integer |  | Active outside wallets (quoted, swapped or used the agent API). |
+| `liveQuotes` | integer |  | Live (non-dry) quotes involving an outside wallet. |
+| `dryQuotes` | integer |  | Total dry quotes from outside wallets. |
 | `chains` | object[] |  |  |
 | `chains[].[]chain` | string |  |  |
 | `chains[].[]chainName` | string |  |  |

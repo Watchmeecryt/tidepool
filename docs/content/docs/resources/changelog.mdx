@@ -3,6 +3,10 @@ title: Changelog
 description: What changed in Tidepool and when.
 icon: ClockCounterClockwise
 ---
+## 2026-11-12 · Explorer usage totals
+
+- **[/explorer](/explorer)** now shows total wallets, live quotes and dry quotes. `GET /v0/explorer/stats` returns them as `wallets`, `liveQuotes` and `dryQuotes` (our own wallets excluded). `/openapi.json` and llms files updated.
+
 ## 2026-11-11 · Aurora Testnet (USDC and USDT)
 
 - **New chain:** Aurora Testnet (`blockchain: "aurora"`, chain id 1313161555, explorer [testnet.aurorascan.dev](https://testnet.aurorascan.dev)) with Tidepool test USDC and USDT (6 decimals), ids `nep141:aur-0x<erc20>.tp-omft.testnet` (short `aur` prefix: NEAR account ids max out at 64 characters). Deposits use a per-quote `0x` deposit address; payouts are plain ERC-20 transfers, so Safe and other contract addresses can receive them.

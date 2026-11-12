@@ -33261,6 +33261,18 @@
           "uniqueAddresses": {
             "type": "integer"
           },
+          "wallets": {
+            "type": "integer",
+            "description": "Active outside wallets (quoted, swapped or used the agent API), as on the usage dashboard."
+          },
+          "liveQuotes": {
+            "type": "integer",
+            "description": "Live (non-dry) quotes involving an outside wallet."
+          },
+          "dryQuotes": {
+            "type": "integer",
+            "description": "Total dry quotes from outside wallets."
+          },
           "chains": {
             "type": "array",
             "items": {
