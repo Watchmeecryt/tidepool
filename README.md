@@ -167,15 +167,38 @@ curl -s https://www.usetidepool.tech/v1/e2e.js -o agent-api-e2e.mjs && node agen
 
 **Endpoints**
 
-| Endpoint | Purpose |
-| --- | --- |
-| `POST /v1/keys` | Free self-serve `naa_` key |
-| `GET /v1/whoami`, `/quotas`, `/network`, `/tokens` | Identity, limits, network, assets |
-| `POST /v1/generate-intent`, `POST /v1/submit-intent` | Owner intents (NEP-413 signed): `agent_create`, `grant_issue`, `grant_revoke`, `policy_update`, `agent_freeze`, `agent_unfreeze` |
-| `GET /v1/status?correlation_id=...&wait_ms=30000` | Long-poll any intent or action |
-| `GET /v1/agents`, `/agents/ID`, `/wallet`, `/balances`, `/policy`, `/policy/history`, `/grants`, `/history` | Read agents |
-| `POST /v1/agents/ID/swap` (`dry: true` for a quote), `/transfer`, `/withdraw`, `/deposit` | Agent actions: need `x-grant-token` and `Idempotency-Key` |
-| `GET /v1/openapi.json` | OpenAPI spec |
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `GET` | `/v1` | Index of the Agent API |
+| `POST` | `/v1/keys` | Free self-serve `naa_` partner key (no sign-up) |
+| `GET` | `/v1/whoami` | Identify the key |
+| `GET` | `/v1/quotas` | Rate limits and usage for this key |
+| `GET` | `/v1/network` | Network and verifier |
+| `GET` | `/v1/tokens` | Supported assets |
+| `POST` | `/v1/generate-intent` | Build an owner intent to sign (NEP-413): `agent_create`, `grant_issue`, `grant_revoke`, `policy_update`, `agent_freeze`, `agent_unfreeze` |
+| `POST` | `/v1/submit-intent` | Submit a signed owner intent |
+| `GET` | `/v1/status` | Status of an intent or action (`correlation_id`, long-poll with `wait_ms`) |
+| `GET` | `/v1/agents` | List agents for this key |
+| `GET` | `/v1/agents/{agent_id}` | Get an agent |
+| `GET` | `/v1/agents/{agent_id}/wallet` | Agent wallet (implicit NEAR account) |
+| `GET` | `/v1/agents/{agent_id}/balances` | Balances in the verifier |
+| `GET` | `/v1/agents/{agent_id}/policy` | Current policy and revision |
+| `GET` | `/v1/agents/{agent_id}/policy/history` | Policy revisions |
+| `GET` | `/v1/agents/{agent_id}/grants` | Grants issued for the agent |
+| `GET` | `/v1/agents/{agent_id}/history` | Executed actions |
+| `POST` | `/v1/agents/{agent_id}/swap` | Swap, or a quote with `dry: true` |
+| `POST` | `/v1/agents/{agent_id}/transfer` | Transfer inside the verifier to another account |
+| `POST` | `/v1/agents/{agent_id}/withdraw` | Withdraw to NEAR or a bridged testnet |
+| `POST` | `/v1/agents/{agent_id}/deposit` | Fund the agent wallet |
+| `GET` | `/v1/agents/{agent_id}/approvals` | Requests waiting for owner approval |
+| `GET` | `/v1/agents/{agent_id}/approvals/{approval_id}` | One approval request |
+| `GET` | `/v1/agents/{agent_id}/executions/scheduled` | Executions held by a timelock, earliest first |
+| `GET` | `/v1/releases` | List verifier releases |
+| `GET` | `/v1/releases/latest` | Latest release (SDK `getLatestRelease`) |
+| `GET` | `/v1/releases/{version}` | One release |
+| `GET` | `/v1/openapi.json` | OpenAPI spec |
+
+Agent actions (`swap`, `transfer`, `withdraw`, `deposit`) need an `x-grant-token` and an `Idempotency-Key`. All calls take `authorization: Bearer naa_...` except `POST /v1/keys`.
 
 **Official SDK**
 
@@ -200,7 +223,9 @@ Everything below shipped after the submission and is live; full detail in the [c
 
 ## Who is using it
 
-Tidepool is already used by other builders: a ballpark of about 10 hackathon apps have built and tested their NEAR Intents and 1Click integrations against it, and agent builders use the Agent API (`/v1`) with free keys. Live usage is public on the [explorer](https://www.usetidepool.tech/explorer).
+Tidepool is already used by other builders: a ballpark of about 10 hackathon apps have built and tested their NEAR Intents and 1Click integrations against it, and agent builders use the Agent API (`/v1`) with free keys. Live usage is public on the [explorer](https://www.usetidepool.tech/explorer). So far 37 agents have been created through the Agent API.
+
+![Tidepool swap explorer (light mode), Nov 14 2026: 635 swaps, 497 wallets, 884 live quotes, 1,626 dry quotes](docs/public/readme/explorer-light.png)
 
 ## How NEAR fits
 
